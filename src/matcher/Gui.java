@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -180,7 +181,7 @@ public class Gui extends Application {
 		menuItem.setOnAction(event -> runProgressTask(
 				"Auto matching classes...",
 				progressReceiver -> matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver),
-				clsListA::refresh,
+				() -> invokeChangeListeners(classMatchListeners),
 				Throwable::printStackTrace));
 
 		menuItem = new MenuItem("Auto method match");
@@ -188,10 +189,7 @@ public class Gui extends Application {
 		menuItem.setOnAction(event -> runProgressTask(
 				"Auto matching methods...",
 				progressReceiver -> matcher.autoMatchMethods(absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver),
-				() -> {
-					clsListA.refresh();
-					memberListA.refresh();
-				},
+				() -> invokeChangeListeners(memberMatchListeners),
 				Throwable::printStackTrace));
 
 		menuItem = new MenuItem("Auto field match");
@@ -199,10 +197,7 @@ public class Gui extends Application {
 		menuItem.setOnAction(event -> runProgressTask(
 				"Auto matching fields...",
 				progressReceiver -> matcher.autoMatchFields(absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver),
-				() -> {
-					clsListA.refresh();
-					memberListA.refresh();
-				},
+				() -> invokeChangeListeners(memberMatchListeners),
 				Throwable::printStackTrace));
 
 		menu.getItems().add(new SeparatorMenuItem());
@@ -264,7 +259,7 @@ public class Gui extends Application {
 			clearProject();
 
 			runProgressTask("Initializing files...", progressReceiver -> matcher.init(newConfig, progressReceiver), () -> {
-				projectChangeListeners.forEach(Runnable::run);
+				invokeChangeListeners(projectChangeListeners);
 			}, Throwable::printStackTrace);
 		});
 	}
@@ -392,8 +387,7 @@ public class Gui extends Application {
 
 	private void clearProject() {
 		matcher.reset();
-
-		projectChangeListeners.forEach(Runnable::run);
+		invokeChangeListeners(projectChangeListeners);
 	}
 
 	private void loadMappings() {
@@ -611,6 +605,8 @@ public class Gui extends Application {
 		});
 
 		projectChangeListeners.add(() -> clsListA.setItems(FXCollections.observableList(matcher.getClassesA())));
+		classMatchListeners.add(() -> clsListA.refresh());
+		memberMatchListeners.add(() -> clsListA.refresh());
 
 		SplitPane.setResizableWithParent(verticalPane, false);
 		horizontalPane.setDividerPosition(0, 0.25);
@@ -648,7 +644,20 @@ public class Gui extends Application {
 			}
 		});
 
-		memberListA.getSelectionModel().selectedItemProperty().addListener(new MemberChangeListener(leftContent));
+		ChangeListener<MemberInstance<?>> changeListener = new MemberChangeListener(leftContent);
+
+		memberListA.getSelectionModel().selectedItemProperty().addListener(changeListener);
+		// update member match list after matching a class while having one of its members selected
+		classMatchListeners.add(() -> {
+			if (!memberListA.getSelectionModel().isEmpty()) {
+				changeListener.changed(null, memberListA.getSelectionModel().getSelectedItem(), memberListA.getSelectionModel().getSelectedItem());
+			}
+		});
+		// update member match list after matching a member
+		memberMatchListeners.add(() -> {
+			memberListA.refresh();
+			changeListener.changed(null, memberListA.getSelectionModel().getSelectedItem(), memberListA.getSelectionModel().getSelectedItem());
+		});
 
 		verticalPane.setDividerPosition(0, 0.65);
 
@@ -797,9 +806,13 @@ public class Gui extends Application {
 
 		if (leftSide) {
 			clsListA.getSelectionModel().selectedItemProperty().addListener(listener);
+			classMatchListeners.add(() -> listener.changed(null, clsListA.getSelectionModel().getSelectedItem(), clsListA.getSelectionModel().getSelectedItem()));
 		} else {
-			clsListB.getSelectionModel().selectedItemProperty().addListener(adaptRankResultListener(listener));
+			ChangeListener<RankResult<ClassInstance>> rankResultListener = adaptRankResultListener(listener);
+
+			clsListB.getSelectionModel().selectedItemProperty().addListener(rankResultListener);
 			memberListB.getSelectionModel().selectedItemProperty().addListener(adaptRankResultListener(new MemberChangeListener(contentNode)));
+			classMatchListeners.add(() -> rankResultListener.changed(null, clsListB.getSelectionModel().getSelectedItem(), clsListB.getSelectionModel().getSelectedItem()));
 		}
 
 		return contentNode;
@@ -839,10 +852,10 @@ public class Gui extends Application {
 		ret.setPadding(new Insets(padding));
 		ret.setAlignment(Pos.CENTER);
 
-		Button button = new Button("match classes");
-		ret.getChildren().add(button);
+		Button matchClassButton = new Button("match classes");
+		ret.getChildren().add(matchClassButton);
 
-		button.setOnAction(event -> {
+		matchClassButton.setOnAction(event -> {
 			ClassInstance clsA = clsListA.getSelectionModel().getSelectedItem();
 			RankResult<ClassInstance> resB = clsListB.getSelectionModel().getSelectedItem();
 
@@ -852,13 +865,17 @@ public class Gui extends Application {
 
 			ClassInstance clsB = resB.getSubject();
 			matcher.match(clsA, clsB);
-			clsListA.refresh();
+			invokeChangeListeners(classMatchListeners);
 		});
 
-		button = new Button("match members");
-		ret.getChildren().add(button);
+		matchClassButton.setDisable(true);
+		clsListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchClassButton.setDisable(newValue == null || clsListB.getSelectionModel().isEmpty()));
+		clsListB.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchClassButton.setDisable(newValue == null || clsListA.getSelectionModel().isEmpty()));
 
-		button.setOnAction(event -> {
+		Button matchMemberButton = new Button("match members");
+		ret.getChildren().add(matchMemberButton);
+
+		matchMemberButton.setOnAction(event -> {
 			MemberInstance<?> memberA = memberListA.getSelectionModel().getSelectedItem();
 			RankResult<MemberInstance<?>> resB = memberListB.getSelectionModel().getSelectedItem();
 
@@ -874,9 +891,12 @@ public class Gui extends Application {
 				matcher.match((FieldInstance) memberA, (FieldInstance) memberB);
 			}
 
-			clsListA.refresh();
-			memberListA.refresh();
+			invokeChangeListeners(memberMatchListeners);
 		});
+
+		matchMemberButton.setDisable(true);
+		memberListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchMemberButton.setDisable(newValue == null || memberListB.getSelectionModel().isEmpty()));
+		memberListB.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchMemberButton.setDisable(newValue == null || memberListA.getSelectionModel().isEmpty()));
 
 		return ret;
 	}
@@ -1031,6 +1051,10 @@ public class Gui extends Application {
 		return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
 	}
 
+	private static void invokeChangeListeners(Collection<Runnable> listeners) {
+		listeners.forEach(Runnable::run);
+	}
+
 	private static class ContentNode {
 		public ContentNode(boolean leftSide, TabPane tabPane,
 				TextArea srcText, TextArea bcText,
@@ -1070,35 +1094,50 @@ public class Gui extends Application {
 		@Override
 		public void changed(ObservableValue<? extends ClassInstance> observable, ClassInstance oldValue, ClassInstance newValue) {
 			// clear everything
-			clearClassInfo();
+			if (newValue != oldValue) {
+				clearClassInfo();
+			}
+
+			final ClassInstance prevMatchSelection;
 
 			if (contentNode.leftSide) {
-				memberListA.getItems().clear();
+				prevMatchSelection = newValue != oldValue || clsListB.getSelectionModel().isEmpty() ? null : clsListB.getSelectionModel().getSelectedItem().getSubject();
+
+				if (newValue != oldValue) {
+					memberListA.getItems().clear();
+				}
+
 				clsListB.getItems().clear();
 				memberListB.getItems().clear();
 			} else { // right side
+				prevMatchSelection = null;
+
 				contentNode.classClassifierTable.getItems().clear();
 			}
 
 			if (newValue == null) return;
 
-			updateClassInfo(newValue);
+			if (newValue != oldValue) {
+				updateClassInfo(newValue);
+			}
 
 			if (contentNode.leftSide) {
 				// update member list
-				memberListA.getItems().setAll(newValue.getMethods());
-				memberListA.getItems().addAll(newValue.getFields());
+				if (newValue != oldValue) {
+					memberListA.getItems().setAll(newValue.getMethods());
+					memberListA.getItems().addAll(newValue.getFields());
 
-				memberListA.getItems().sort((a, b) -> {
-					boolean aIsMethod = a instanceof MethodInstance;
-					boolean bIsMethod = b instanceof MethodInstance;
+					memberListA.getItems().sort((a, b) -> {
+						boolean aIsMethod = a instanceof MethodInstance;
+						boolean bIsMethod = b instanceof MethodInstance;
 
-					if (aIsMethod != bIsMethod) {
-						return aIsMethod ? -1 : 1;
-					} else {
-						return a.getOrigName().compareTo(b.getOrigName());
-					}
-				});
+						if (aIsMethod != bIsMethod) {
+							return aIsMethod ? -1 : 1;
+						} else {
+							return a.getOrigName().compareTo(b.getOrigName());
+						}
+					});
+				}
 
 				// update matches list
 				if (cmpClasses != null) {
@@ -1109,6 +1148,19 @@ public class Gui extends Application {
 							exc.printStackTrace();
 						} else if (clsListA.getSelectionModel().getSelectedItem() == newValue) {
 							clsListB.getItems().setAll(res);
+
+							if (prevMatchSelection != null) { // reselect the previously selected entry
+								for (int i = 0; i < clsListB.getItems().size(); i++) {
+									if (clsListB.getItems().get(i).getSubject() == prevMatchSelection) {
+										clsListB.getSelectionModel().select(i);
+										break;
+									}
+								}
+							}
+
+							if (clsListB.getSelectionModel().isEmpty()) {
+								clsListB.getSelectionModel().selectFirst();
+							}
 						}
 					});
 				}
@@ -1254,9 +1306,15 @@ public class Gui extends Application {
 		@SuppressWarnings("unchecked")
 		@Override
 		public void changed(ObservableValue<? extends MemberInstance<?>> observable, MemberInstance<?> oldValue, MemberInstance<?> newValue) {
+			final MemberInstance<?> prevMatchSelection;
+
 			if (contentNode.leftSide) {
+				prevMatchSelection = newValue != oldValue || memberListB.getSelectionModel().isEmpty() ? null : memberListB.getSelectionModel().getSelectedItem().getSubject();
+
 				memberListB.getItems().clear();
 			} else { // right side
+				prevMatchSelection = null;
+
 				contentNode.memberClassifierTable.getItems().clear();
 			}
 
@@ -1279,6 +1337,19 @@ public class Gui extends Application {
 						exc.printStackTrace();
 					} else if (memberListA.getSelectionModel().getSelectedItem() == newValue) {
 						memberListB.getItems().setAll((List<RankResult<MemberInstance<?>>>) res);
+
+						if (prevMatchSelection != null) { // reselect the previously selected entry
+							for (int i = 0; i < memberListB.getItems().size(); i++) {
+								if (memberListB.getItems().get(i).getSubject() == prevMatchSelection) {
+									memberListB.getSelectionModel().select(i);
+									break;
+								}
+							}
+						}
+
+						if (memberListB.getSelectionModel().isEmpty()) {
+							memberListB.getSelectionModel().selectFirst();
+						}
 					}
 				});
 			} else { // right side
@@ -1297,6 +1368,8 @@ public class Gui extends Application {
 	private static final Object zipFsLock = new Object();
 
 	private final Set<Runnable> projectChangeListeners = new HashSet<>();
+	private final Set<Runnable> classMatchListeners = new HashSet<>();
+	private final Set<Runnable> memberMatchListeners = new HashSet<>();
 	private Matcher matcher;
 
 	Scene scene;
