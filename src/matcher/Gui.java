@@ -176,6 +176,26 @@ public class Gui extends Application {
 		menu = new Menu("Matching");
 		ret.getMenus().add(menu);
 
+		menuItem = new MenuItem("Auto match all");
+		menu.getItems().add(menuItem);
+		menuItem.setOnAction(event -> runProgressTask(
+				"Auto matching...",
+				progressReceiver -> {
+					matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+					matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+					boolean matchedAny;
+
+					do {
+						matchedAny = matcher.autoMatchMethods(absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
+						matchedAny |= matcher.autoMatchFields(absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
+						matchedAny |= matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+					} while (matchedAny);
+				},
+				() -> invokeChangeListeners(classMatchListeners),
+				Throwable::printStackTrace));
+
+		menu.getItems().add(new SeparatorMenuItem());
+
 		menuItem = new MenuItem("Auto class match");
 		menu.getItems().add(menuItem);
 		menuItem.setOnAction(event -> runProgressTask(

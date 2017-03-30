@@ -515,7 +515,7 @@ public class Matcher {
 		b.setMatch(a);
 	}
 
-	public void autoMatchClasses(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
+	public boolean autoMatchClasses(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		double absThreshold = normalizedAbsThreshold * ClassClassifier.getMaxScore();
 
 		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && cls.isNameObfuscated() && cls.getMatch() == null;
@@ -547,6 +547,8 @@ public class Matcher {
 		}
 
 		System.out.println("Auto matched "+matches.size()+" classes ("+(classes.size() - matches.size())+" unmatched, "+extractorA.getClasses().size()+" total)");
+
+		return !matches.isEmpty();
 	}
 
 	private <T, C> void runInParallel(List<T> workSet, Consumer<T> worker, DoubleConsumer progressReceiver) {
@@ -566,7 +568,7 @@ public class Matcher {
 		});
 	}
 
-	public void autoMatchMethods(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
+	public boolean autoMatchMethods(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		double absThreshold = normalizedAbsThreshold * MethodClassifier.getMaxScore();
 
 		AtomicInteger totalUnmatched = new AtomicInteger();
@@ -577,9 +579,11 @@ public class Matcher {
 		}
 
 		System.out.println("Auto matched "+matches.size()+" methods ("+totalUnmatched.get()+" unmatched)");
+
+		return !matches.isEmpty();
 	}
 
-	public void autoMatchFields(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
+	public boolean autoMatchFields(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		double absThreshold = normalizedAbsThreshold * FieldClassifier.getMaxScore();
 
 		AtomicInteger totalUnmatched = new AtomicInteger();
@@ -590,6 +594,8 @@ public class Matcher {
 		}
 
 		System.out.println("Auto matched "+matches.size()+" fields ("+totalUnmatched.get()+" unmatched)");
+
+		return !matches.isEmpty();
 	}
 
 	private <T extends MemberInstance<T>> Map<T, T> match(double absThreshold, double relThreshold,
