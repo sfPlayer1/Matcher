@@ -98,7 +98,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 			ret += arg.id;
 		}
 
-		ret += ")" + retType.getName();
+		ret += ")" + retType.getId();
 
 		return ret;
 	}
