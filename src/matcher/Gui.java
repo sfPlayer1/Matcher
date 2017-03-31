@@ -181,8 +181,10 @@ public class Gui extends Application {
 		menuItem.setOnAction(event -> runProgressTask(
 				"Auto matching...",
 				progressReceiver -> {
-					matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
-					matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+					if (matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)) {
+						matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+					}
+
 					boolean matchedAny;
 
 					do {
@@ -191,7 +193,10 @@ public class Gui extends Application {
 						matchedAny |= matcher.autoMatchClasses(absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
 					} while (matchedAny);
 				},
-				() -> invokeChangeListeners(classMatchListeners),
+				() -> {
+					invokeChangeListeners(classMatchListeners);
+					invokeChangeListeners(memberMatchListeners);
+				},
 				Throwable::printStackTrace));
 
 		menu.getItems().add(new SeparatorMenuItem());
@@ -889,8 +894,16 @@ public class Gui extends Application {
 		});
 
 		matchClassButton.setDisable(true);
-		clsListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchClassButton.setDisable(newValue == null || clsListB.getSelectionModel().isEmpty()));
-		clsListB.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchClassButton.setDisable(newValue == null || clsListA.getSelectionModel().isEmpty()));
+
+		clsListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		matchClassButton.setDisable(newValue == null
+		|| clsListB.getSelectionModel().isEmpty()
+		|| newValue.getMatch() == clsListB.getSelectionModel().getSelectedItem().getSubject()));
+
+		clsListB.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		matchClassButton.setDisable(newValue == null
+		|| clsListA.getSelectionModel().isEmpty()
+		|| clsListA.getSelectionModel().getSelectedItem().getMatch() == newValue.getSubject()));
 
 		Button matchMemberButton = new Button("match members");
 		ret.getChildren().add(matchMemberButton);
@@ -915,8 +928,16 @@ public class Gui extends Application {
 		});
 
 		matchMemberButton.setDisable(true);
-		memberListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchMemberButton.setDisable(newValue == null || memberListB.getSelectionModel().isEmpty()));
-		memberListB.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> matchMemberButton.setDisable(newValue == null || memberListA.getSelectionModel().isEmpty()));
+
+		memberListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		matchMemberButton.setDisable(newValue == null
+		|| memberListB.getSelectionModel().isEmpty()
+		|| newValue.getMatch() == memberListB.getSelectionModel().getSelectedItem().getSubject()));
+
+		memberListB.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		matchMemberButton.setDisable(newValue == null
+		|| memberListA.getSelectionModel().isEmpty()
+		|| memberListA.getSelectionModel().getSelectedItem().getMatch() == newValue.getSubject()));
 
 		return ret;
 	}
