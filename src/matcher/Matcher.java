@@ -515,6 +515,26 @@ public class Matcher {
 		b.setMatch(a);
 	}
 
+	public void unmatch(ClassInstance cls) {
+		if (cls == null) throw new NullPointerException("null class");
+		if (cls.getMatch() == null) return;
+
+		System.out.println("unmatch class "+cls+" (was "+cls.getMatch()+")"+(cls.getMappedName() != null ? " ("+cls.getMappedName()+")" : ""));
+
+		unmatchMembers(cls);
+		cls.setMatch(null);
+	}
+
+	public void unmatch(MemberInstance<?> m) {
+		if (m == null) throw new NullPointerException("null class");
+		if (m.getMatch() == null) return;
+
+		System.out.println("unmatch member "+m+" (was "+m.getMatch()+")"+(m.getMappedName() != null ? " ("+m.getMappedName()+")" : ""));
+
+		m.getMatch().setMatch(null);
+		m.setMatch(null);
+	}
+
 	public boolean autoMatchClasses(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		double absThreshold = normalizedAbsThreshold * ClassClassifier.getMaxScore();
 

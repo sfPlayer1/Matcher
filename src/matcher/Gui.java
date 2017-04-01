@@ -77,6 +77,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
@@ -873,12 +874,16 @@ public class Gui extends Application {
 	}
 
 	private Node createBottomRow() {
-		HBox ret = new HBox(8);
+		StackPane ret = new StackPane();
 		ret.setPadding(new Insets(padding));
-		ret.setAlignment(Pos.CENTER);
+
+		HBox center = new HBox(padding);
+		ret.getChildren().add(center);
+		StackPane.setAlignment(center, Pos.CENTER);
+		center.setAlignment(Pos.CENTER);
 
 		Button matchClassButton = new Button("match classes");
-		ret.getChildren().add(matchClassButton);
+		center.getChildren().add(matchClassButton);
 
 		matchClassButton.setOnAction(event -> {
 			ClassInstance clsA = clsListA.getSelectionModel().getSelectedItem();
@@ -906,7 +911,7 @@ public class Gui extends Application {
 		|| clsListA.getSelectionModel().getSelectedItem().getMatch() == newValue.getSubject()));
 
 		Button matchMemberButton = new Button("match members");
-		ret.getChildren().add(matchMemberButton);
+		center.getChildren().add(matchMemberButton);
 
 		matchMemberButton.setOnAction(event -> {
 			MemberInstance<?> memberA = memberListA.getSelectionModel().getSelectedItem();
@@ -938,6 +943,51 @@ public class Gui extends Application {
 		matchMemberButton.setDisable(newValue == null
 		|| memberListA.getSelectionModel().isEmpty()
 		|| memberListA.getSelectionModel().getSelectedItem().getMatch() == newValue.getSubject()));
+
+		HBox right = new HBox(padding);
+		ret.getChildren().add(right);
+		StackPane.setAlignment(right, Pos.CENTER_RIGHT);
+		right.setAlignment(Pos.CENTER_RIGHT);
+		right.setPickOnBounds(false);
+
+		Button unmatchClassButton = new Button("unmatch classes");
+		right.getChildren().add(unmatchClassButton);
+
+		unmatchClassButton.setOnAction(event -> {
+			ClassInstance cls = clsListA.getSelectionModel().getSelectedItem();
+			if (cls == null) return;
+
+			matcher.unmatch(cls);
+			invokeChangeListeners(classMatchListeners);
+			invokeChangeListeners(memberMatchListeners);
+		});
+
+		unmatchClassButton.setDisable(true);
+
+		clsListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		unmatchClassButton.setDisable(newValue == null || newValue.getMatch() == null));
+
+		classMatchListeners.add(() ->
+		unmatchClassButton.setDisable(clsListA.getSelectionModel().isEmpty() || clsListA.getSelectionModel().getSelectedItem().getMatch() == null));
+
+		Button unmatchMemberButton = new Button("unmatch members");
+		right.getChildren().add(unmatchMemberButton);
+
+		unmatchMemberButton.setOnAction(event -> {
+			MemberInstance<?> member = memberListA.getSelectionModel().getSelectedItem();
+			if (member == null) return;
+
+			matcher.unmatch(member);
+			invokeChangeListeners(memberMatchListeners);
+		});
+
+		unmatchMemberButton.setDisable(true);
+
+		memberListA.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+		unmatchMemberButton.setDisable(newValue == null || newValue.getMatch() == null));
+
+		memberMatchListeners.add(() ->
+		unmatchMemberButton.setDisable(memberListA.getSelectionModel().isEmpty() || memberListA.getSelectionModel().getSelectedItem().getMatch() == null));
 
 		return ret;
 	}
