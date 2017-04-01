@@ -1129,6 +1129,12 @@ public class Gui extends Application {
 
 			if (contentNode.leftSide) {
 				projectChangeListeners.add(() -> cmpClasses = matcher.getClassesB());
+			} else {
+				memberMatchListeners.add(() -> {
+					if (!clsListB.getSelectionModel().isEmpty()) {
+						updateDecompText(clsListB.getSelectionModel().getSelectedItem().getSubject());
+					}
+				});
 			}
 		}
 
@@ -1235,6 +1241,17 @@ public class Gui extends Application {
 			// update decompiled source code view
 			contentNode.srcText.setText("decompiling...");
 
+			updateDecompText(cls);
+
+			// update type hierarchy
+			if (showHierarchy) {
+				populateTypeHierarchy(cls);
+			}
+		}
+
+		private void updateDecompText(ClassInstance cls) {
+			double prevScroll = contentNode.srcText.getScrollTop();
+
 			decompile(matcher.serializeClass(cls, contentNode.leftSide), cls.getUri(), result -> {
 				ClassInstance currentValue;
 
@@ -1246,14 +1263,15 @@ public class Gui extends Application {
 				}
 
 				if (currentValue == cls) { // still the correct list entry selected
+					boolean scrollUnchanged = Math.abs(contentNode.srcText.getScrollTop() - prevScroll) < 1e-4;
+
 					contentNode.srcText.setText(result);
+
+					if (scrollUnchanged) {
+						contentNode.srcText.setScrollTop(prevScroll);
+					}
 				}
 			});
-
-			// update type hierarchy
-			if (showHierarchy) {
-				populateTypeHierarchy(cls);
-			}
 		}
 
 		private void populateTypeHierarchy(ClassInstance cls) {
