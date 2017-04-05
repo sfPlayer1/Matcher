@@ -36,9 +36,7 @@ import matcher.classifier.FieldClassifier;
 import matcher.classifier.IRanker;
 import matcher.classifier.MethodClassifier;
 import matcher.classifier.RankResult;
-import matcher.mapping.IClassMappingAcceptor;
-import matcher.mapping.IFieldMappingAcceptor;
-import matcher.mapping.IMethodMappingAcceptor;
+import matcher.mapping.IMappingAcceptor;
 import matcher.mapping.MappingFormat;
 import matcher.mapping.MappingReader;
 import matcher.mapping.MappingWriter;
@@ -317,70 +315,136 @@ public class Matcher {
 	}
 
 	public void readMappings(Path path) throws IOException {
-		int[] counts = new int[3];
+		int[] counts = new int[7];
 		Set<String> warnedClasses = new HashSet<>();
-
-		IClassMappingAcceptor cmAcceptor = (String srcName, String dstName) -> {
-			ClassInstance cls = extractorA.getClassInstance(srcName);
-
-			if (cls == null) {
-				if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName+" ("+dstName+")");
-			} else {
-				cls.setMappedName(dstName);
-				counts[0]++;
-			}
-		};
-
-		IMethodMappingAcceptor mmAcceptor = (String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) -> {
-			ClassInstance cls = extractorA.getClassInstance(srcClsName);
-			MethodInstance method;
-
-			if (cls == null) {
-				if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-			} else if ((method = cls.getMethod(srcName, srcDesc)) == null) {
-				System.out.println("can't find mapped method "+srcClsName+"/"+srcName+" ("+(cls.getMappedName() != null ? cls.getMappedName()+"/" : "")+dstName+")");
-			} else {
-				method.setMappedName(dstName);
-				counts[1]++;
-			}
-		};
-
-		IFieldMappingAcceptor fmAcceptor = (String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) -> {
-			ClassInstance cls = extractorA.getClassInstance(srcClsName);
-			FieldInstance field;
-
-			if (cls == null) {
-				if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-			} else if ((field = cls.getField(srcName, srcDesc)) == null) {
-				System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(cls.getMappedName() != null ? cls.getMappedName()+"/" : "")+dstName+")");
-			} else {
-				field.setMappedName(dstName);
-				counts[2]++;
-			}
-		};
-
 		clearMappings();
 
 		try {
-			MappingReader.read(path, cmAcceptor, mmAcceptor, fmAcceptor);
+			MappingReader.read(path, new IMappingAcceptor() {
+				@Override
+				public void acceptClass(String srcName, String dstName) {
+					ClassInstance cls = extractorA.getClassInstance(srcName);
+
+					if (cls == null) {
+						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName+" ("+dstName+")");
+					} else {
+						cls.setMappedName(dstName);
+						counts[0]++;
+					}
+				}
+
+				@Override
+				public void acceptClassComment(String srcName, String comment) {
+					ClassInstance cls = extractorA.getClassInstance(srcName);
+
+					if (cls == null) {
+						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName);
+					} else {
+						cls.setMappedComment(comment);
+						counts[1]++;
+					}
+				}
+
+				@Override
+				public void acceptMethod(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
+					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					MethodInstance method;
+
+					if (cls == null) {
+						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
+					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
+						System.out.println("can't find mapped method "+srcClsName+"/"+srcName+" ("+(cls.getMappedName() != null ? cls.getMappedName()+"/" : "")+dstName+")");
+					} else {
+						method.setMappedName(dstName);
+						counts[2]++;
+					}
+				}
+
+				@Override
+				public void acceptMethodComment(String srcClsName, String srcName, String srcDesc, String comment) {
+					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					MethodInstance method;
+
+					if (cls == null) {
+						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
+					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
+						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
+					} else {
+						method.setMappedComment(comment);
+						counts[3]++;
+					}
+				}
+
+				@Override
+				public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, String dstArgName) {
+					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					MethodInstance method;
+
+					if (cls == null) {
+						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
+					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
+						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
+					} else if (argIndex < 0 || argIndex >= method.getArgs().size()) {
+						System.out.println("invalid arg index "+argIndex+" for method "+method);
+					} else {
+						method.setMappedArgName(argIndex, dstArgName);
+						counts[4]++;
+					}
+				}
+
+				@Override
+				public void acceptField(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
+					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					FieldInstance field;
+
+					if (cls == null) {
+						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
+					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
+						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(cls.getMappedName() != null ? cls.getMappedName()+"/" : "")+dstName+")");
+					} else {
+						field.setMappedName(dstName);
+						counts[5]++;
+					}
+				}
+
+				@Override
+				public void acceptFieldComment(String srcClsName, String srcName, String srcDesc, String comment) {
+					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					FieldInstance field;
+
+					if (cls == null) {
+						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
+					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
+						System.out.println("can't find mapped field "+srcClsName+"/"+srcName);
+					} else {
+						field.setMappedComment(comment);
+						counts[6]++;
+					}
+				}
+			});
 		} catch (Throwable t) {
 			clearMappings();
 			throw t;
 		}
 
-		System.out.printf("Loaded mappings for %d classes, %d methods and %d fields.", counts[0], counts[1], counts[2]);
+		System.out.printf("Loaded mappings for %d classes, %d methods (%d args) and %d fields (comments: %d/%d/%d).%n",
+				counts[0], counts[2], counts[4], counts[5], counts[1], counts[3], counts[6]);
 	}
 
 	public void clearMappings() {
 		for (ClassInstance cls : extractorA.getClasses().values()) {
 			cls.setMappedName(null);
+			cls.setMappedComment(null);
 
 			for (MethodInstance method : cls.getMethods()) {
 				method.setMappedName(null);
+				method.clearMappedArgNames();
+				method.setMappedComment(null);
 			}
 
 			for (FieldInstance field : cls.getFields()) {
 				field.setMappedName(null);
+				field.setMappedComment(null);
 			}
 		}
 	}
@@ -399,15 +463,32 @@ public class Matcher {
 
 				writer.acceptClass(name, mappedName);
 
+				if (cls.getMappedComment() != null) writer.acceptClassComment(name, cls.getMappedComment());
+
 				Stream.of(cls.getMethods())
 				.filter(MemberInstance::hasMappedName)
 				.sorted(Comparator.<MemberInstance<?>, String>comparing(m -> m.getOrigName()).thenComparing(MemberInstance::getDesc))
-				.forEachOrdered(m -> writer.acceptMethod(name, m.getOrigName(), m.getDesc(), mappedName, m.getMappedName(), getMappedDesc(m)));
+				.forEachOrdered(m -> {
+					String desc = m.getDesc();
+					writer.acceptMethod(name, m.getOrigName(), desc, mappedName, m.getMappedName(), getMappedDesc(m));
+
+					if (m.getMappedComment() != null) writer.acceptMethodComment(name, m.getOrigName(), desc, m.getMappedComment());
+
+					for (int i = 0; i < m.getArgs().size(); i++) {
+						String argName = m.getMappedArgName(i);
+						if (argName != null) writer.acceptMethodArg(name, m.getOrigName(), desc, i, argName);
+					}
+				});
 
 				Stream.of(cls.getFields())
 				.filter(MemberInstance::hasMappedName)
 				.sorted(Comparator.<MemberInstance<?>, String>comparing(m -> m.getOrigName()).thenComparing(MemberInstance::getDesc))
-				.forEachOrdered(m -> writer.acceptField(name, m.getOrigName(), m.getDesc(), mappedName, m.getMappedName(), getMappedDesc(m)));
+				.forEachOrdered(m -> {
+					String desc = m.getDesc();
+					writer.acceptField(name, m.getOrigName(), desc, mappedName, m.getMappedName(), getMappedDesc(m));
+
+					if (m.getMappedComment() != null) writer.acceptMethodComment(name, m.getOrigName(), desc, m.getMappedComment());
+				});
 			}
 		} catch (UncheckedIOException e) {
 			throw e.getCause();
@@ -442,10 +523,10 @@ public class Matcher {
 		}
 	}
 
-	public byte[] serializeClass(ClassInstance cls, boolean isA) {
+	public byte[] serializeClass(ClassInstance cls, boolean isA, boolean mapped) {
 		ClassFeatureExtractor extractor = isA ? extractorA : extractorB;
 
-		return extractor.serializeClass(cls);
+		return extractor.serializeClass(cls, mapped);
 	}
 
 	public void match(ClassInstance a, ClassInstance b) {
@@ -708,19 +789,38 @@ public class Matcher {
 		for (ClassInstance cls : extractorA.getClasses().values()) {
 			if (cls.getMatch() != null) matchedClassCount++;
 
-			totalMethodCount += cls.getMethods().length;
-			totalFieldCount += cls.getFields().length;
-
 			for (MethodInstance method : cls.getMethods()) {
-				if (method.getMatch() != null) matchedMethodCount++;
+				if (method.isReal()) {
+					totalMethodCount++;
+
+					if (method.getMatch() != null) matchedMethodCount++;
+				}
 			}
 
 			for (FieldInstance field : cls.getFields()) {
-				if (field.getMatch() != null) matchedFieldCount++;
+				if (field.isReal()) {
+					totalFieldCount++;
+
+					if (field.getMatch() != null) matchedFieldCount++;
+				}
 			}
 		}
 
 		return new MatchingStatus(totalClassCount, matchedClassCount, totalMethodCount, matchedMethodCount, totalFieldCount, matchedFieldCount);
+	}
+
+	public String decompile(ClassInstance cls, boolean mapped) {
+		ClassFeatureExtractor extractor;
+
+		if (extractorA.getClasses().get(cls.getId()) == cls) {
+			extractor = extractorA;
+		} else if (extractorB.getClasses().get(cls.getId()) == cls) {
+			extractor = extractorB;
+		} else {
+			throw new IllegalArgumentException("unknown class: "+cls);
+		}
+
+		return CfrIf.decompile(cls, extractor, mapped);
 	}
 
 	private static List<ClassInstance> getClasses(ClassFeatureExtractor extractor) {

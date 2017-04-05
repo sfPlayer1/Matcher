@@ -38,38 +38,6 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		retType.methodTypeRefs.add(this);
 	}
 
-	public MethodNode getAsmNode() {
-		return asmNode;
-	}
-
-	public List<ClassInstance> getArgs() {
-		return args;
-	}
-
-	public ClassInstance getRetType() {
-		return retType;
-	}
-
-	public Set<MethodInstance> getRefsIn() {
-		return refsIn;
-	}
-
-	public Set<MethodInstance> getRefsOut() {
-		return refsOut;
-	}
-
-	public Set<FieldInstance> getFieldReadRefs() {
-		return fieldReadRefs;
-	}
-
-	public Set<FieldInstance> getFieldWriteRefs() {
-		return fieldWriteRefs;
-	}
-
-	public Set<ClassInstance> getClassRefs() {
-		return classRefs;
-	}
-
 	@Override
 	public String getName() {
 		String ret = origName+"(";
@@ -103,6 +71,72 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		return ret;
 	}
 
+	@Override
+	public boolean isReal() {
+		return asmNode != null;
+	}
+
+	public MethodNode getAsmNode() {
+		return asmNode;
+	}
+
+	public List<ClassInstance> getArgs() {
+		return args;
+	}
+
+	public ClassInstance getRetType() {
+		return retType;
+	}
+
+	public Set<MethodInstance> getRefsIn() {
+		return refsIn;
+	}
+
+	public Set<MethodInstance> getRefsOut() {
+		return refsOut;
+	}
+
+	public Set<FieldInstance> getFieldReadRefs() {
+		return fieldReadRefs;
+	}
+
+	public Set<FieldInstance> getFieldWriteRefs() {
+		return fieldWriteRefs;
+	}
+
+	public Set<ClassInstance> getClassRefs() {
+		return classRefs;
+	}
+
+	public String getMappedArgName(int idx) {
+		if (idx < 0 || idx >= args.size()) throw new IllegalArgumentException("invalid arg idx: "+idx);
+		if (mappedArgNames == null) return null;
+
+		return mappedArgNames[idx];
+	}
+
+	public void setMappedArgName(int idx, String name) {
+		if (idx < 0 || idx >= args.size()) throw new IllegalArgumentException("invalid arg idx: "+idx);
+
+		if (name != null) {
+			if (mappedArgNames == null) mappedArgNames = new String[args.size()];
+
+			mappedArgNames[idx] = name;
+		} else if (mappedArgNames != null) {
+			mappedArgNames[idx] = null;
+
+			for (int i = 0; i < mappedArgNames.length; i++) {
+				if (mappedArgNames[i] != null) return;
+			}
+
+			mappedArgNames = null;
+		}
+	}
+
+	public void clearMappedArgNames() {
+		mappedArgNames = null;
+	}
+
 	static String getId(String name, String desc) {
 		return name+desc;
 	}
@@ -116,4 +150,6 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 	final Set<FieldInstance> fieldReadRefs = Util.newIdentityHashSet();
 	final Set<FieldInstance> fieldWriteRefs = Util.newIdentityHashSet();
 	final Set<ClassInstance> classRefs = Util.newIdentityHashSet();
+
+	String[] mappedArgNames;
 }

@@ -28,6 +28,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 
 	public abstract String getName();
 	public abstract String getDesc();
+	public abstract boolean isReal();
 
 	public String getOrigName() {
 		return origName;
@@ -68,6 +69,16 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 		this.mappedName = mappedName;
 	}
 
+	public String getMappedComment() {
+		return mappedComment;
+	}
+
+	public void setMappedComment(String comment) {
+		if (comment != null && comment.isEmpty()) comment = null;
+
+		this.mappedComment = comment;
+	}
+
 	@Override
 	public T getMatch() {
 		return matchedInstance;
@@ -92,5 +103,6 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	final Set<T> children = Util.newIdentityHashSet();
 
 	String mappedName;
+	String mappedComment;
 	T matchedInstance;
 }

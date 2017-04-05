@@ -438,12 +438,17 @@ public class ClassFeatureExtractor {
 		}
 	}
 
-	public byte[] serializeClass(ClassInstance cls) {
+	public byte[] serializeClass(ClassInstance cls, boolean mapped) {
 		if (classes.get(cls.id) != cls) throw new IllegalArgumentException("unknown cls "+cls);
 		if (cls.asmNode == null) throw new IllegalArgumentException("cls without asm node: "+cls);
 
 		ClassWriter writer = new ClassWriter(0);
-		cls.asmNode.accept(new AsmClassRemapper(writer, remapper));
+
+		if (mapped) {
+			cls.asmNode.accept(new AsmClassRemapper(writer, remapper));
+		} else {
+			cls.asmNode.accept(writer);
+		}
 
 		return writer.toByteArray();
 	}

@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.GZIPOutputStream;
 
-public class MappingWriter implements IClassMappingAcceptor, IMethodMappingAcceptor, IFieldMappingAcceptor, Closeable {
+public class MappingWriter implements IMappingAcceptor, Closeable {
 	public MappingWriter(Path file, MappingFormat format) throws IOException {
 		this.format = format;
 
@@ -20,9 +20,15 @@ public class MappingWriter implements IClassMappingAcceptor, IMethodMappingAccep
 		case TINY:
 		case SRG:
 			writer = Files.newBufferedWriter(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			enigmaState = null;
 			break;
 		case TINY_GZIP:
 			writer = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Files.newOutputStream(file)), StandardCharsets.UTF_8));
+			enigmaState = null;
+			break;
+		case ENIGMA:
+			writer = null;
+			enigmaState = new EnigmaMappingState(file);
 			break;
 		default:
 			throw new IllegalArgumentException("invalid  mapping format: "+format.name());
@@ -51,6 +57,33 @@ public class MappingWriter implements IClassMappingAcceptor, IMethodMappingAccep
 				writer.write(' ');
 				writer.write(dstName);
 				writer.write('\n');
+				break;
+			case ENIGMA:
+				enigmaState.acceptClass(srcName, dstName);
+				break;
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public void acceptClassComment(String srcName, String comment) {
+		try {
+			switch (format) {
+			case TINY:
+			case TINY_GZIP:
+				writer.write("CLS-CMT\t");
+				writer.write(srcName);
+				writer.write('\t');
+				writer.write(escape(comment));
+				writer.write('\n');
+				break;
+			case SRG:
+				// not supported
+				break;
+			case ENIGMA:
+				enigmaState.acceptClassComment(srcName, comment);
 				break;
 			}
 		} catch (IOException e) {
@@ -89,6 +122,67 @@ public class MappingWriter implements IClassMappingAcceptor, IMethodMappingAccep
 				writer.write(dstDesc);
 				writer.write('\n');
 				break;
+			case ENIGMA:
+				enigmaState.acceptMethod(srcClsName, srcName, srcDesc, dstClsName, dstName, dstDesc);
+				break;
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public void acceptMethodComment(String srcClsName, String srcName, String srcDesc, String comment) {
+		try {
+			switch (format) {
+			case TINY:
+			case TINY_GZIP:
+				writer.write("MTH-CMT\t");
+				writer.write(srcClsName);
+				writer.write('\t');
+				writer.write(srcDesc);
+				writer.write('\t');
+				writer.write(srcName);
+				writer.write('\t');
+				writer.write(escape(comment));
+				writer.write('\n');
+				break;
+			case SRG:
+				// not supported
+				break;
+			case ENIGMA:
+				enigmaState.acceptMethodComment(srcClsName, srcName, srcDesc, comment);
+				break;
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, String dstArgName) {
+		try {
+			switch (format) {
+			case TINY:
+			case TINY_GZIP:
+				writer.write("MTH-ARG\t");
+				writer.write(srcClsName);
+				writer.write('\t');
+				writer.write(srcDesc);
+				writer.write('\t');
+				writer.write(srcName);
+				writer.write('\t');
+				writer.write(Integer.toString(argIndex));
+				writer.write('\t');
+				writer.write(dstArgName);
+				writer.write('\n');
+				break;
+			case SRG:
+				// not supported
+				break;
+			case ENIGMA:
+				enigmaState.acceptMethodArg(srcClsName, srcName, srcDesc, argIndex, dstArgName);
+				break;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -122,6 +216,37 @@ public class MappingWriter implements IClassMappingAcceptor, IMethodMappingAccep
 				writer.write(dstName);
 				writer.write('\n');
 				break;
+			case ENIGMA:
+				enigmaState.acceptField(srcClsName, srcName, srcDesc, dstClsName, dstName, dstDesc);
+				break;
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public void acceptFieldComment(String srcClsName, String srcName, String srcDesc, String comment) {
+		try {
+			switch (format) {
+			case TINY:
+			case TINY_GZIP:
+				writer.write("FLD-CMT\t");
+				writer.write(srcClsName);
+				writer.write('\t');
+				writer.write(srcDesc);
+				writer.write('\t');
+				writer.write(srcName);
+				writer.write('\t');
+				writer.write(escape(comment));
+				writer.write('\n');
+				break;
+			case SRG:
+				// not supported
+				break;
+			case ENIGMA:
+				enigmaState.acceptFieldComment(srcClsName, srcName, srcDesc, comment);
+				break;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -129,14 +254,49 @@ public class MappingWriter implements IClassMappingAcceptor, IMethodMappingAccep
 	}
 
 	public void flush() throws IOException {
-		writer.flush();
+		if (writer != null) writer.flush();
 	}
 
 	@Override
 	public void close() throws IOException {
-		writer.close();
+		if (writer != null) writer.close();
+		if (enigmaState != null) enigmaState.save();
+	}
+
+	private static String escape(String str) {
+		StringBuilder ret = null;
+		int len = str.length();
+		int start = 0;
+
+		for (int i = 0; i < len; i++) {
+			char c = str.charAt(i);
+
+			if (c == '\t' || c == '\n' || c == '\r' || c == '\\') {
+				if (ret == null) ret = new StringBuilder(len * 2);
+
+				ret.append(str, start, i);
+
+				switch (c) {
+				case '\t': ret.append("\\t"); break;
+				case '\n': ret.append("\\n"); break;
+				case '\r': ret.append("\\r"); break;
+				case '\\': ret.append("\\\\"); break;
+				}
+
+				start = i + 1;
+			}
+		}
+
+		if (ret == null) {
+			return str;
+		} else {
+			ret.append(str, start, str.length());
+
+			return ret.toString();
+		}
 	}
 
 	private final MappingFormat format;
 	private final Writer writer;
+	private final EnigmaMappingState enigmaState;
 }

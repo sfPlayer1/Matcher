@@ -26,6 +26,11 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 		return type.id;
 	}
 
+	@Override
+	public boolean isReal() {
+		return asmNode != null;
+	}
+
 	public FieldNode getAsmNode() {
 		return asmNode;
 	}

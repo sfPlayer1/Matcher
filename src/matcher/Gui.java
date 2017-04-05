@@ -4,18 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.ProcessBuilder.Redirect;
-import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -26,11 +23,13 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import org.objectweb.asm.util.TraceClassVisitor;
 
@@ -79,6 +78,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Modality;
@@ -146,11 +146,19 @@ public class Gui extends Application {
 
 		menuItem = new MenuItem("Load mappings");
 		menu.getItems().add(menuItem);
-		menuItem.setOnAction(event -> loadMappings());
+		menuItem.setOnAction(event -> loadMappings(false));
+
+		menuItem = new MenuItem("Load mappings (Enigma)");
+		menu.getItems().add(menuItem);
+		menuItem.setOnAction(event -> loadMappings(true));
 
 		menuItem = new MenuItem("Save mappings");
 		menu.getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMappings());
+		menuItem.setOnAction(event -> saveMappings(false));
+
+		menuItem = new MenuItem("Save mappings (Enigma)");
+		menu.getItems().add(menuItem);
+		menuItem.setOnAction(event -> saveMappings(true));
 
 		menuItem = new MenuItem("Clear mappings");
 		menu.getItems().add(menuItem);
@@ -395,11 +403,11 @@ public class Gui extends Application {
 		return ret;
 	}
 
-	private static ExtensionFilter[] getInputLoadExtensionFilters() {
-		return new ExtensionFilter[] { new FileChooser.ExtensionFilter("Java archive", "*.jar") };
+	private static List<ExtensionFilter> getInputLoadExtensionFilters() {
+		return Arrays.asList(new FileChooser.ExtensionFilter("Java archive", "*.jar"));
 	}
 
-	private static Path requestLoadPath(String title, Window parent, ExtensionFilter... extensionFilters) {
+	private static Path requestLoadPath(String title, Window parent, List<ExtensionFilter> extensionFilters) {
 		FileChooser fileChooser = new FileChooser();
 
 		fileChooser.setTitle(title);
@@ -411,13 +419,31 @@ public class Gui extends Application {
 		return file.toPath();
 	}
 
+	private static Path requestDir(String title, Window parent) {
+		DirectoryChooser fileChooser = new DirectoryChooser();
+
+		fileChooser.setTitle(title);
+
+		File file = fileChooser.showDialog(parent);
+		if (file == null) return null;
+
+		return file.toPath();
+	}
+
 	private void clearProject() {
 		matcher.reset();
 		invokeChangeListeners(projectChangeListeners);
 	}
 
-	private void loadMappings() {
-		Path file = requestLoadPath("Select mapping file", scene.getWindow(), getMappingLoadExtensionFilters());
+	private void loadMappings(boolean fromDir) {
+		Path file;
+
+		if (!fromDir) {
+			file = requestLoadPath("Select mapping file", scene.getWindow(), getMappingLoadExtensionFilters());
+		} else {
+			file = requestDir("Select mapping dir", scene.getWindow());
+		}
+
 		if (file == null) return;
 
 		try {
@@ -434,48 +460,80 @@ public class Gui extends Application {
 		memberListB.refresh();
 	}
 
-	private static ExtensionFilter[] getMappingLoadExtensionFilters() {
+	private static List<ExtensionFilter> getMappingLoadExtensionFilters() {
 		MappingFormat[] formats = MappingFormat.values();
-		ExtensionFilter[] ret = new ExtensionFilter[formats.length + 1];
-		String[] supportedExtensions = new String[formats.length];
+		List<ExtensionFilter> ret = new ArrayList<>(formats.length + 1);
+		List<String> supportedExtensions = new ArrayList<>(formats.length);
 
-		for (int i = 0; i < formats.length; i++) {
-			supportedExtensions[i] = formats[i].getGlobPattern();
+		for (MappingFormat format : formats) {
+			if (format.hasSingleFile()) supportedExtensions.add(format.getGlobPattern());
 		}
 
-		ret[0] = new FileChooser.ExtensionFilter("All supported", supportedExtensions);
+		ret.add(new FileChooser.ExtensionFilter("All supported", supportedExtensions));
 
-		for (int i = 0; i < formats.length; i++) {
-			MappingFormat format = formats[i];
-			ret[i + 1] = new FileChooser.ExtensionFilter(format.name, format.getGlobPattern());
+		for (MappingFormat format : formats) {
+			if (format.hasSingleFile()) ret.add(new FileChooser.ExtensionFilter(format.name, format.getGlobPattern()));
 		}
 
 		return ret;
 	}
 
-	private void saveMappings() {
-		FileChooser fileChooser = new FileChooser();
-		fileChooser.setTitle("Save mapping file");
+	private void saveMappings(boolean toDir) {
+		Path path;
+		String ext;
 
-		for (MappingFormat format : MappingFormat.values()) {
-			fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.name, "*."+format.fileExt));
+		if (!toDir) {
+			FileChooser fileChooser = new FileChooser();
+			fileChooser.setTitle("Save mapping file");
+
+			for (MappingFormat format : MappingFormat.values()) {
+				fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.name, "*."+format.fileExt));
+			}
+
+			File file = fileChooser.showSaveDialog(scene.getWindow());
+			path = file == null ? null : file.toPath();
+			ext = fileChooser.getSelectedExtensionFilter().getDescription();
+		} else {
+			path = requestDir("Save mapping dir", scene.getWindow());
+
+			if (Files.exists(path) && !isDirEmpty(path)) { // reusing existing dir, clear out after confirmation
+				if (!requestConfirmation("Save Confirmation", "Replace existing data", "The selected save location is not empty.\nDo you want to clear and reuse it?")) return;
+
+				try {
+					if (!clearDir(path, file -> !Files.isDirectory(file) && !file.getFileName().toString().endsWith(".mapping"))) {
+						showAlert(AlertType.ERROR, "Save error", "Error while preparing save location", "The target directory contains non-mapping files.");
+						return;
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+					showAlert(AlertType.ERROR, "Save error", "Error while preparing save location", e.getMessage());
+					return;
+				}
+			}
+
+			ext = null;
 		}
 
-		File file = fileChooser.showSaveDialog(scene.getWindow());
-		if (file == null) return;
+		if (path == null) return;
 
-		Path path = file.toPath();
 		MappingFormat format = getFormat(path);
 
 		if (format == null) {
-			format = getFormat(fileChooser.getSelectedExtensionFilter().getDescription());
-			path = path.resolveSibling(path.getFileName().toString()+"."+format.fileExt);
+			format = getFormat(ext);
+			if (format == null) throw new IllegalStateException("mapping format detection failed");
+
+			if (format.hasSingleFile()) {
+				path = path.resolveSibling(path.getFileName().toString()+"."+format.fileExt);
+			}
 		}
 
 		try {
-			if (Files.isDirectory(path)) {
-				showAlert(AlertType.ERROR, "Save error", "Invalid file selection", "The selected file is a directory.");
-			} else if (Files.exists(path)) {
+			if (Files.exists(path)) {
+				if (Files.isDirectory(path) != !format.hasSingleFile()) {
+					showAlert(AlertType.ERROR, "Save error", "Invalid file selection", "The selected file is of the wrong type.");
+					return;
+				}
+
 				Files.deleteIfExists(path);
 			}
 
@@ -489,11 +547,56 @@ public class Gui extends Application {
 		}
 	}
 
+	private static boolean isDirEmpty(Path dir) {
+		try (Stream<Path> stream = Files.list(dir)) {
+			return !stream.anyMatch(ignore -> true);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	private static boolean clearDir(Path path, Predicate<Path> disallowed) throws IOException {
+		try (Stream<Path> stream = Files.walk(path, FileVisitOption.FOLLOW_LINKS)) {
+			if (stream.anyMatch(disallowed)) return false;
+		}
+
+		AtomicBoolean ret = new AtomicBoolean(true);
+
+		Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				if (disallowed.test(file)) {
+					ret.set(false);
+
+					return FileVisitResult.TERMINATE;
+				} else {
+					Files.delete(file);
+
+					return FileVisitResult.CONTINUE;
+				}
+			}
+
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+				if (exc != null) throw exc;
+				if (!dir.equals(path)) Files.delete(dir);
+
+				return FileVisitResult.CONTINUE;
+			}
+		});
+
+		return ret.get();
+	}
+
 	private static MappingFormat getFormat(Path file) {
+		if (Files.isDirectory(file)) return MappingFormat.ENIGMA;
+
 		String name = file.getFileName().toString().toLowerCase(Locale.ENGLISH);
 
 		for (MappingFormat format : MappingFormat.values()) {
-			if (name.endsWith(format.fileExt)
+			if (format.hasSingleFile()
+					&& name.endsWith(format.fileExt)
 					&& name.length() > format.fileExt.length()
 					&& name.charAt(name.length() - 1 - format.fileExt.length()) == '.') {
 				return format;
@@ -1054,74 +1157,6 @@ public class Gui extends Application {
 		threadPool.execute(jfxTask);
 	}
 
-	private static void decompile(byte[] clsData, URI file, Consumer<String> handler) {
-		Task<String> task = new Task<String>() {
-			@Override
-			protected String call() throws Exception {
-				String path = file.getRawSchemeSpecificPart();
-				int sepPos = path.lastIndexOf('!');
-				String jarPath = URLDecoder.decode(path.substring("file://".length(), sepPos), "UTF-8");
-				String clsPath = URLDecoder.decode(path.substring(sepPos + 1), "UTF-8");
-
-				Path tmpIn = null;
-				Path tmpOut = null;
-
-				try {
-					tmpIn = Files.createTempFile("decmp-tmp", ".class");
-
-					if (clsData == null) {
-						synchronized (zipFsLock) { // avoid opening the same fs multiple times at once
-							try (FileSystem fs = FileSystems.newFileSystem(file, Collections.emptyMap())) {
-								Files.copy(fs.getPath(clsPath), tmpIn, StandardCopyOption.REPLACE_EXISTING);
-							}
-						}
-					} else {
-						Files.write(tmpIn, clsData);
-					}
-
-					tmpOut = Files.createTempFile("decmp-tmp", ".java");
-
-					Process process = new ProcessBuilder("java", "-jar", "cfr_0_119.jar", tmpIn.toString(), "--silent"/*, "--extraclasspath", jarPath*/)
-							.directory(Paths.get("extbin").toFile())
-							.redirectOutput(tmpOut.toFile())
-							.redirectError(Redirect.INHERIT)
-							.start();
-
-					try {
-						process.waitFor();
-					} catch (InterruptedException e) { }
-
-					return new String(Files.readAllBytes(tmpOut), StandardCharsets.UTF_8);
-				} finally {
-					try {
-						if (tmpIn != null) Files.deleteIfExists(tmpIn);
-						if (tmpOut != null) Files.deleteIfExists(tmpOut);
-					} catch (IOException e) { }
-				}
-			}
-		};
-
-		task.setOnSucceeded(event -> {
-			try {
-				handler.accept(task.get());
-			} catch (InterruptedException | ExecutionException e) {
-				throw new RuntimeException(e);
-			}
-		});
-
-		task.setOnFailed(event -> {
-			Throwable t = task.getException();
-
-			if (t == null) {
-				System.err.println("decompilation failed for unknown reason");
-			} else {
-				t.printStackTrace();
-			}
-		});
-
-		threadPool.execute(task);
-	}
-
 	private static void showAlert(AlertType type, String title, String headerText, String text) {
 		Alert alert = new Alert(type);
 
@@ -1221,8 +1256,16 @@ public class Gui extends Application {
 			if (contentNode.leftSide) {
 				// update member list
 				if (newValue != oldValue) {
-					memberListA.getItems().setAll(newValue.getMethods());
-					memberListA.getItems().addAll(newValue.getFields());
+					List<MemberInstance<?>> items = memberListA.getItems();
+					items.clear();
+
+					for (MethodInstance m : newValue.getMethods()) {
+						if (m.isReal()) items.add(m);
+					}
+
+					for (FieldInstance m : newValue.getFields()) {
+						if (m.isReal()) items.add(m);
+					}
 
 					memberListA.getItems().sort((a, b) -> {
 						boolean aIsMethod = a instanceof MethodInstance;
@@ -1302,24 +1345,34 @@ public class Gui extends Application {
 		private void updateDecompText(ClassInstance cls) {
 			double prevScroll = contentNode.srcText.getScrollTop();
 
-			decompile(matcher.serializeClass(cls, contentNode.leftSide), cls.getUri(), result -> {
+			runAsyncTask(() -> matcher.decompile(cls, true))
+			.whenComplete((res, exc) -> {
 				ClassInstance currentValue;
 
 				if (contentNode.leftSide) {
 					currentValue = clsListA.getSelectionModel().getSelectedItem();
 				} else {
-					RankResult<ClassInstance> res = clsListB.getSelectionModel().getSelectedItem();
-					currentValue = res == null ? null : res.getSubject();
+					RankResult<ClassInstance> rankRes = clsListB.getSelectionModel().getSelectedItem();
+					currentValue = rankRes == null ? null : rankRes.getSubject();
 				}
 
-				if (currentValue == cls) { // still the correct list entry selected
-					boolean scrollUnchanged = Math.abs(contentNode.srcText.getScrollTop() - prevScroll) < 1e-4;
+				if (currentValue == cls) {
+					if (exc != null) {
+						if (currentValue == cls) {
+							StringWriter sw = new StringWriter();
+							exc.printStackTrace(new PrintWriter(sw));
 
-					contentNode.srcText.setText(result);
+							contentNode.srcText.setText("decompile error: "+sw.toString());
+						}
+					} else {
+						boolean scrollUnchanged = Math.abs(contentNode.srcText.getScrollTop() - prevScroll) < 1e-4;
 
-					if (scrollUnchanged) {
-						contentNode.srcText.setScrollTop(prevScroll);
+						contentNode.srcText.setText(res);
+
+						if (scrollUnchanged) contentNode.srcText.setScrollTop(prevScroll);
 					}
+				} else if (exc != null) {
+					exc.printStackTrace();
 				}
 			});
 		}
@@ -1474,7 +1527,6 @@ public class Gui extends Application {
 	private static final double padding = 5;
 
 	private static final ExecutorService threadPool = Executors.newCachedThreadPool();
-	private static final Object zipFsLock = new Object();
 
 	private final Set<Runnable> projectChangeListeners = new HashSet<>();
 	private final Set<Runnable> classMatchListeners = new HashSet<>();

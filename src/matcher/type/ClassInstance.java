@@ -283,6 +283,16 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		this.mappedName = mappedName;
 	}
 
+	public String getMappedComment() {
+		return mappedComment;
+	}
+
+	public void setMappedComment(String comment) {
+		if (comment != null && comment.isEmpty()) comment = null;
+
+		this.mappedComment = comment;
+	}
+
 	@Override
 	public String toString() {
 		return getName();
@@ -330,5 +340,6 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	final Set<FieldInstance> fieldTypeRefs = Util.newIdentityHashSet();
 
 	String mappedName;
+	String mappedComment;
 	ClassInstance matchedClass;
 }
