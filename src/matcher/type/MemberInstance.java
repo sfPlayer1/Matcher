@@ -1,17 +1,21 @@
 package matcher.type;
 
+import java.util.Collections;
 import java.util.Set;
+
+import org.objectweb.asm.Opcodes;
 
 import matcher.Util;
 
 public abstract class MemberInstance<T extends MemberInstance<T>> implements IMatchable<T> {
 	@SuppressWarnings("unchecked")
-	protected MemberInstance(ClassInstance cls, String id, String origName, boolean nameObfuscated, int position) {
+	protected MemberInstance(ClassInstance cls, String id, String origName, boolean nameObfuscated, int position, boolean isStatic) {
 		this.cls = cls;
 		this.id = id;
 		this.origName = origName;
 		this.nameObfuscated = nameObfuscated;
 		this.position = position;
+		this.isStatic = isStatic;
 
 		if (cls.isShared()) {
 			matchedInstance = (T) this;
@@ -26,40 +30,122 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 		return id;
 	}
 
-	public abstract String getName();
-	public abstract String getDesc();
-	public abstract boolean isReal();
-
-	public String getOrigName() {
+	@Override
+	public final String getName() {
 		return origName;
 	}
 
 	@Override
-	public boolean isNameObfuscated() {
-		return nameObfuscated;
+	public String getDisplayName(boolean full, boolean mapped) {
+		String name;
+
+		if (!mapped) {
+			name = getName();
+		} else {
+			name = getMappedName(true);
+		}
+
+		if (full) {
+			return cls.getDisplayName(full, mapped) + "." + name;
+		} else {
+			return name;
+		}
+	}
+
+	public abstract String getDesc();
+	public abstract boolean isReal();
+
+	@Override
+	public IClassEnv getEnv() {
+		return cls.getEnv();
+	}
+
+	@Override
+	public boolean isNameObfuscated(boolean recursive) {
+		if (!recursive) {
+			return nameObfuscated;
+		} else {
+			return nameObfuscated || cls.isNameObfuscated(true);
+		}
 	}
 
 	public int getPosition() {
 		return position;
 	}
 
-	public T getParent() {
-		return parent;
+	public abstract int getAccess();
+
+	public boolean isStatic() {
+		return isStatic;
+	}
+
+	public boolean isFinal() {
+		return (getAccess() & Opcodes.ACC_FINAL) != 0;
+	}
+
+	void addParent(T parent) {
+		assert parent.getCls() != getCls();
+		assert parent != this;
+		assert !children.contains(parent);
+
+		if (parents.isEmpty()) parents = Util.newIdentityHashSet();
+
+		parents.add(parent);
+	}
+
+	public Set<T> getParents() {
+		return parents;
+	}
+
+	void addChild(T child) {
+		assert child.getCls() != getCls();
+		assert child != this;
+		assert !parents.contains(child);
+
+		if (children.isEmpty()) children = Util.newIdentityHashSet();
+
+		children.add(child);
 	}
 
 	public Set<T> getChildren() {
 		return children;
 	}
 
+	@SuppressWarnings("unchecked")
+	public T getMatchedHierarchyMember() {
+		if (getMatch() != null) return (T) this;
+
+		IClassEnv reqEnv = cls.getEnv();
+
+		for (T m : hierarchyMembers) {
+			if (m.getMatch() != null) {
+				IClassEnv env = m.cls.getEnv();
+
+				if (env.isShared() || env == reqEnv) return m;
+			}
+		}
+
+		return null;
+	}
+
+	public Set<T> getAllHierarchyMembers() {
+		assert hierarchyMembers != null;
+
+		return hierarchyMembers;
+	}
+
 	public boolean hasMappedName() {
 		return mappedName != null || matchedInstance != null && matchedInstance.mappedName != null;
 	}
 
-	public String getMappedName() {
+	@Override
+	public String getMappedName(boolean defaultToUnmapped) {
 		if (mappedName != null) {
 			return mappedName;
-		} else if (matchedInstance != null) {
+		} else if (matchedInstance != null && matchedInstance.mappedName != null) {
 			return matchedInstance.mappedName;
+		} else if (defaultToUnmapped) {
+			return getName();
 		} else {
 			return null;
 		}
@@ -70,7 +156,13 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	}
 
 	public String getMappedComment() {
-		return mappedComment;
+		if (mappedComment != null) {
+			return mappedComment;
+		} else if (matchedInstance != null) {
+			return matchedInstance.mappedComment;
+		} else {
+			return null;
+		}
 	}
 
 	public void setMappedComment(String comment) {
@@ -85,22 +177,26 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	}
 
 	public void setMatch(T match) {
+		assert match == null || cls == match.cls.getMatch();
+
 		this.matchedInstance = match;
 	}
 
 	@Override
 	public String toString() {
-		return cls.getName()+"/"+getName();
+		return getDisplayName(true, false);
 	}
 
 	final ClassInstance cls;
 	final String id;
 	final String origName;
-	final boolean nameObfuscated;
+	boolean nameObfuscated;
 	final int position;
+	final boolean isStatic;
 
-	T parent;
-	final Set<T> children = Util.newIdentityHashSet();
+	private Set<T> parents = Collections.emptySet();
+	private Set<T> children = Collections.emptySet();
+	Set<T> hierarchyMembers;
 
 	String mappedName;
 	String mappedComment;

@@ -14,6 +14,11 @@ public class ClassifierResult<T> {
 		return score;
 	}
 
+	@Override
+	public String toString() {
+		return classifier.getName()+": "+score;
+	}
+
 	private final IClassifier<T> classifier;
 	private final double score;
 }

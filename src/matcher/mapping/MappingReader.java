@@ -1,6 +1,7 @@
 package matcher.mapping;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
@@ -11,46 +12,50 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 public class MappingReader {
-	public static void read(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
-		MappingFormat format;
+	public static void read(Path file, MappingFormat format, IMappingAcceptor mappingAcceptor) throws IOException {
+		if (format == null) {
+			if (Files.isDirectory(file)) {
+				format = MappingFormat.ENIGMA;
+			} else {
+				try (SeekableByteChannel channel = Files.newByteChannel(file)) {
+					byte[] header = new byte[3];
+					ByteBuffer buffer = ByteBuffer.wrap(header);
 
-		if (Files.isDirectory(file)) {
-			format = MappingFormat.ENIGMA;
-		} else {
-			try (SeekableByteChannel channel = Files.newByteChannel(file)) {
-				byte[] header = new byte[3];
-				ByteBuffer buffer = ByteBuffer.wrap(header);
+					while (buffer.hasRemaining()) {
+						if (channel.read(buffer) == -1) throw new IOException("invalid/truncated tiny mapping file");
+					}
 
-				while (buffer.hasRemaining()) {
-					if (channel.read(buffer) == -1) throw new IOException("invalid/truncated tiny mapping file");
-				}
+					if (header[0] == (byte) 0x1f && header[1] == (byte) 0x8b && header[2] == (byte) 0x08) { // gzip with deflate header
+						format = MappingFormat.TINY_GZIP;
+					} else if ((header[0] & 0xff) < 0x80 && (header[1] & 0xff) < 0x80 && (header[2] & 0xff) < 0x80) {
+						String headerStr = new String(header, StandardCharsets.US_ASCII);
 
-				if (header[0] == (byte) 0x1f && header[1] == (byte) 0x8b && header[2] == (byte) 0x08) { // gzip with deflate header
-					format = MappingFormat.TINY_GZIP;
-				} else if ((header[0] & 0xff) < 0x80 && (header[1] & 0xff) < 0x80 && (header[2] & 0xff) < 0x80) {
-					String headerStr = new String(header, StandardCharsets.US_ASCII);
-
-					switch (headerStr) {
-					case "v1\t":
-						format = MappingFormat.TINY;
-						break;
-					case "PK:":
-					case "CL:":
-					case "MD:":
-					case "FD:":
-						format = MappingFormat.SRG;
-						break;
-					default:
+						switch (headerStr) {
+						case "v1\t":
+							format = MappingFormat.TINY;
+							break;
+						case "PK:":
+						case "CL:":
+						case "MD:":
+						case "FD:":
+							format = MappingFormat.SRG;
+							break;
+						default:
+							throw new IOException("invalid/unsupported mapping format");
+						}
+					} else {
 						throw new IOException("invalid/unsupported mapping format");
 					}
-				} else {
-					throw new IOException("invalid/unsupported mapping format");
 				}
 			}
 		}
@@ -64,6 +69,9 @@ public class MappingReader {
 			break;
 		case ENIGMA:
 			readEnigma(file, mappingAcceptor);
+			break;
+		case MCP:
+			readMcp(file, mappingAcceptor);
 			break;
 		case SRG:
 			readSrg(file, mappingAcceptor);
@@ -148,7 +156,8 @@ public class MappingReader {
 
 				mappingAcceptor.acceptMethodArg(
 						parts[1], parts[3], parts[2],
-						Integer.parseInt(parts[4]), parts[5]);
+						Integer.parseInt(parts[4]), -1,
+						parts[5]);
 				break;
 			case "FIELD":
 				if (parts.length != 5) throw new IOException("invalid tiny line (missing/extra columns): "+line);
@@ -249,6 +258,7 @@ public class MappingReader {
 							methodContext.substring(1, methodDescStart),
 							methodContext.substring(methodDescStart),
 							Integer.parseInt(parts[1]),
+							-1,
 							parts[2]);
 					break;
 				}
@@ -267,7 +277,145 @@ public class MappingReader {
 		}
 	}
 
+	public static void readMcp(Path dir, IMappingAcceptor mappingAcceptor) throws IOException {
+		Path fieldsCsv = dir.resolve("fields.csv");
+		if (!Files.isRegularFile(fieldsCsv)) throw new FileNotFoundException("no fields.csv");
+		Path methodsCsv = dir.resolve("methods.csv");
+		if (!Files.isRegularFile(fieldsCsv)) throw new FileNotFoundException("no methods.csv");
+		Path paramsCsv = dir.resolve("params.csv");
+		if (!Files.isRegularFile(fieldsCsv)) throw new FileNotFoundException("no params.csv");
+
+		Path notchSrgSrg = null;
+		Path excFile = null;
+
+		for (Path p : Files.newDirectoryStream(dir, Files::isDirectory)) {
+			if (!p.endsWith("srgs")) p = p.resolve("srgs");
+			Path cSrgFile = p.resolve("notch-srg.srg"); // alternatively joined.srg
+
+			if (Files.isRegularFile(cSrgFile)) {
+				if (notchSrgSrg != null) System.err.print("non-unique srg folders: "+notchSrgSrg+", "+cSrgFile);
+				notchSrgSrg = cSrgFile;
+
+				excFile = p.resolve("srg.exc"); // alternatively joined.exc
+				if (!Files.isRegularFile(excFile)) excFile = null;
+			}
+		}
+
+		if (notchSrgSrg == null) throw new FileNotFoundException("no notch-srg.srg");
+
+		Map<String, String> fieldNames = new HashMap<>();
+		Map<String, String> fieldComments = new HashMap<>();
+		readMcpCsv(fieldsCsv, fieldNames, fieldComments);
+
+		Map<String, String> methodNames = new HashMap<>();
+		Map<String, String> methodComments = new HashMap<>();
+		readMcpCsv(methodsCsv, methodNames, methodComments);
+
+		Map<String, String> paramNames = new HashMap<>();
+		readMcpCsv(paramsCsv, paramNames, null);
+
+		Map<String, Integer> maxMethodParamMap = new HashMap<>();
+
+		for (String name : paramNames.keySet()) {
+			int sepPos;
+			if (!name.startsWith("p_")
+					|| name.charAt(name.length() - 1) != '_'
+					|| (sepPos = name.indexOf('_', 3)) == -1
+					|| sepPos == name.length() - 1) {
+				throw new IOException("invalid param name: "+name);
+			}
+
+			String key = name.substring(2, sepPos);
+			int idx = Integer.parseInt(name.substring(sepPos + 1, name.length() - 1));
+
+			Integer prev = maxMethodParamMap.get(key);
+
+			if (prev == null || prev < idx) {
+				maxMethodParamMap.put(key, idx);
+			}
+		}
+
+		Map<String, String> clsReverseMap = excFile != null ? new HashMap<>() : null;
+		readSrg(notchSrgSrg, methodNames, methodComments, fieldNames, fieldComments, paramNames, maxMethodParamMap, clsReverseMap, mappingAcceptor);
+
+		if (excFile != null) {
+			// read constructor parameter mappings
+			readMcpExc(excFile, clsReverseMap, paramNames, mappingAcceptor);
+		}
+	}
+
+	private static void readMcpCsv(Path file, Map<String, String> names, Map<String, String> comments) throws IOException {
+		try (BufferedReader reader = Files.newBufferedReader(file)) {
+			List<String> parts = new ArrayList<>();
+			StringBuilder part = new StringBuilder();
+			int lineNumber = 0;
+			String line;
+
+			while ((line = reader.readLine()) != null) {
+				++lineNumber;
+				if (line.isEmpty()) continue;
+
+				boolean quoted = false;
+
+				for (int i = 0, len = line.length(); i < len; i++) {
+					char c = line.charAt(i);
+
+					if (c == '"') {
+						if (!quoted) {
+							quoted = true;
+						} else if (i + 1 != len && line.charAt(i + 1) == '"') {
+							part.append('"');
+							i++;
+						} else {
+							quoted = false;
+						}
+					} else if (c == '\\' && i + 1 != len) {
+						char next = line.charAt(i + 1);
+						if (next == '"' || next == '\\') {
+							part.append(next);
+							i++;
+						} else if (next == 'n') {
+							part.append('\n');
+							i++;
+						} else {
+							part.append(c);
+						}
+					} else if (!quoted && c == ',') {
+						parts.add(part.toString());
+						part.setLength(0);
+					} else {
+						part.append(c);
+					}
+				}
+
+				parts.add(part.toString());
+				part.setLength(0);
+
+				if (parts.size() < 3 || parts.size() > 4 || (parts.size() == 3) != (comments == null)) throw new IOException("invalid part count in line "+lineNumber+" ("+file+")");
+
+				if (lineNumber != 1) {
+					names.put(parts.get(0), parts.get(1));
+
+					if (comments != null && !parts.get(3).isEmpty()) {
+						comments.put(parts.get(0), parts.get(3));
+					}
+				}
+
+				parts.clear();
+			}
+		}
+	}
+
 	public static void readSrg(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
+		readSrg(file, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, mappingAcceptor);
+	}
+
+	private static void readSrg(Path file,
+			Map<String, String> methodNameMap, Map<String, String> methodCommentMap,
+			Map<String, String> fieldNameMap, Map<String, String> fieldCommentMap,
+			Map<String, String> paramNameMap,
+			Map<String, Integer> maxMethodParamMap,
+			Map<String, String> clsReverseMap, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			String line;
 
@@ -288,6 +436,7 @@ public class MappingReader {
 					if (parts[2].isEmpty()) throw new IOException("invalid srg line (empty dst class): "+line);
 
 					mappingAcceptor.acceptClass(parts[1], parts[2]);
+					if (clsReverseMap != null) clsReverseMap.put(parts[2], parts[1]);
 					break;
 				case "MD:": {
 					if (parts.length != 5) throw new IOException("invalid srg line (missing/extra columns): "+line);
@@ -302,9 +451,44 @@ public class MappingReader {
 					int dstSepPos = parts[3].lastIndexOf('/');
 					if (dstSepPos <= 0 || dstSepPos == parts[3].length() - 1) throw new IOException("invalid srg line (invalid dst class+method name): "+line);
 
-					mappingAcceptor.acceptMethod(
-							parts[1].substring(0, srcSepPos), parts[1].substring(srcSepPos + 1), parts[2],
-							parts[3].substring(0, dstSepPos), parts[3].substring(dstSepPos + 1), parts[4]);
+					String srcCls = parts[1].substring(0, srcSepPos);
+					String srcName = parts[1].substring(srcSepPos + 1);
+					String srcDesc = parts[2];
+					String dstCls = parts[3].substring(0, dstSepPos);
+					String dstName = parts[3].substring(dstSepPos + 1);
+					String dstDesc = parts[4];
+					String comment = null;
+					String mappedName;
+
+					if ((mappedName = methodNameMap.get(dstName)) != null) {
+						int sepPos;
+						String prefix = "func_";
+
+						if (!dstName.startsWith(prefix)
+								|| (sepPos = dstName.indexOf('_', prefix.length() + 1)) == -1
+								|| sepPos == dstName.length() - 1) {
+							throw new IllegalArgumentException("invalid method name: "+dstName);
+						}
+
+						String id = dstName.substring(prefix.length(), sepPos);
+						Integer maxParam = maxMethodParamMap.get(id);
+
+						if (maxParam != null) {
+							for (int i = 0; i <= maxParam; i++) {
+								String name = paramNameMap.get("p_"+id+"_"+i+"_");
+
+								if (name != null) {
+									mappingAcceptor.acceptMethodArg(srcCls, srcName, srcDesc, -1, i, name);
+								}
+							}
+						}
+
+						comment = methodCommentMap.get(dstName);
+						dstName = mappedName;
+					}
+
+					mappingAcceptor.acceptMethod(srcCls, srcName, srcDesc, dstCls, dstName, dstDesc);
+					if (comment != null) mappingAcceptor.acceptMethodComment(srcCls, srcName, srcDesc, comment);
 					break;
 				}
 				case "FD:":
@@ -318,12 +502,92 @@ public class MappingReader {
 					int dstSepPos = parts[2].lastIndexOf('/');
 					if (dstSepPos <= 0 || dstSepPos == parts[2].length() - 1) throw new IOException("invalid srg line (invalid dst class+field name): "+line);
 
-					mappingAcceptor.acceptField(
-							parts[1].substring(0, srcSepPos), parts[1].substring(srcSepPos + 1), null,
-							parts[2].substring(0, dstSepPos), parts[2].substring(dstSepPos + 1), null);
+					String srcCls = parts[1].substring(0, srcSepPos);
+					String srcName = parts[1].substring(srcSepPos + 1);
+					String dstCls = parts[2].substring(0, dstSepPos);
+					String dstName = parts[2].substring(dstSepPos + 1);
+					String comment = null;
+					String mappedName;
+
+					if ((mappedName = fieldNameMap.get(dstName)) != null) {
+						comment = fieldCommentMap.get(dstName);
+						dstName = mappedName;
+					}
+
+					mappingAcceptor.acceptField(srcCls, srcName, null, dstCls, dstName, null);
+					if (comment != null) mappingAcceptor.acceptFieldComment(srcCls, srcName, null, comment);
 					break;
 				default:
 					throw new IOException("invalid srg line (unknown type): "+line);
+				}
+			}
+		}
+	}
+
+	private static void readMcpExc(Path file, Map<String, String> clsReverseMap, Map<String, String> paramNameMap, IMappingAcceptor mappingAcceptor) throws IOException {
+		try (BufferedReader reader = Files.newBufferedReader(file)) {
+			StringBuilder sb = new StringBuilder(128);
+			String line;
+
+			while ((line = reader.readLine()) != null) {
+				if (line.isEmpty()) continue;
+				if (line.charAt(0) == '#') continue; // commented out
+				if (line.charAt(line.length() - 1) == '|') continue; // no parameters
+
+				int pos = line.indexOf(".<init>(");
+				if (pos == -1) continue; // no constructor method
+
+				String cls = clsReverseMap.get(line.substring(0, pos));
+				assert cls != null;
+
+				// determine and map desc
+				int pos2 = line.indexOf('=', pos + 9);
+				assert pos2 != -1;
+
+				for (int i = pos + 8 - 1; i < pos2; i++) {
+					char c = line.charAt(i);
+
+					if (c == 'L') {
+						int end = line.indexOf(';', i + 1);
+						String srgName = line.substring(i + 1, end);
+						String name = clsReverseMap.get(srgName);
+
+						sb.append('L');
+						sb.append(name != null ? name : srgName);
+						sb.append(';');
+						i = end;
+					} else {
+						sb.append(c);
+					}
+				}
+
+				String desc = sb.toString();
+				sb.setLength(0);
+
+				// extract parameters
+				pos = line.lastIndexOf('|');
+				assert pos != -1;
+
+				for (int i = pos + 1; i < line.length(); i++) {
+					int end = line.indexOf(',', i + 1);
+					if (end == -1) end = line.length();
+
+					if (line.charAt(i) != 'p'
+							|| line.charAt(i + 1) != '_'
+							|| line.charAt(i + 2) != 'i'
+							|| line.charAt(end - 1) != '_'
+							|| (pos2 = line.indexOf('_', i + 4)) == -1
+							|| pos2 >= end - 1) {
+						throw new IOException("invalid param name: "+line.substring(i, end));
+					}
+
+					String name = paramNameMap.get(line.substring(i, end));
+
+					if (name != null) {
+						mappingAcceptor.acceptMethodArg(cls, "<init>", desc, -1, Integer.parseInt(line.substring(pos2 + 1, end - 1)), name);
+					}
+
+					i = end;
 				}
 			}
 		}

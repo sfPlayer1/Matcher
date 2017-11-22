@@ -45,18 +45,22 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			switch (format) {
 			case TINY:
 			case TINY_GZIP:
-				writer.write("CLASS\t");
-				writer.write(srcName);
-				writer.write('\t');
-				writer.write(dstName);
-				writer.write('\n');
+				if (dstName != null) {
+					writer.write("CLASS\t");
+					writer.write(srcName);
+					writer.write('\t');
+					writer.write(dstName);
+					writer.write('\n');
+				}
 				break;
 			case SRG:
-				writer.write("CL: ");
-				writer.write(srcName);
-				writer.write(' ');
-				writer.write(dstName);
-				writer.write('\n');
+				if (dstName != null) {
+					writer.write("CL: ");
+					writer.write(srcName);
+					writer.write(' ');
+					writer.write(dstName);
+					writer.write('\n');
+				}
 				break;
 			case ENIGMA:
 				enigmaState.acceptClass(srcName, dstName);
@@ -97,30 +101,34 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			switch (format) {
 			case TINY:
 			case TINY_GZIP:
-				writer.write("METHOD\t");
-				writer.write(srcClsName);
-				writer.write('\t');
-				writer.write(srcDesc);
-				writer.write('\t');
-				writer.write(srcName);
-				writer.write('\t');
-				writer.write(dstName);
-				writer.write('\n');
+				if (dstName != null) {
+					writer.write("METHOD\t");
+					writer.write(srcClsName);
+					writer.write('\t');
+					writer.write(srcDesc);
+					writer.write('\t');
+					writer.write(srcName);
+					writer.write('\t');
+					writer.write(dstName);
+					writer.write('\n');
+				}
 				break;
 			case SRG:
-				writer.write("MD: ");
-				writer.write(srcClsName);
-				writer.write('/');
-				writer.write(srcName);
-				writer.write(' ');
-				writer.write(srcDesc);
-				writer.write(' ');
-				writer.write(dstClsName);
-				writer.write('/');
-				writer.write(dstName);
-				writer.write(' ');
-				writer.write(dstDesc);
-				writer.write('\n');
+				if (dstClsName != null && dstName != null) {
+					writer.write("MD: ");
+					writer.write(srcClsName);
+					writer.write('/');
+					writer.write(srcName);
+					writer.write(' ');
+					writer.write(srcDesc);
+					writer.write(' ');
+					writer.write(dstClsName);
+					writer.write('/');
+					writer.write(dstName);
+					writer.write(' ');
+					writer.write(dstDesc);
+					writer.write('\n');
+				}
 				break;
 			case ENIGMA:
 				enigmaState.acceptMethod(srcClsName, srcName, srcDesc, dstClsName, dstName, dstDesc);
@@ -160,7 +168,7 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 	}
 
 	@Override
-	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, String dstArgName) {
+	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvtIndex, String dstArgName) {
 		try {
 			switch (format) {
 			case TINY:
@@ -181,7 +189,7 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				// not supported
 				break;
 			case ENIGMA:
-				enigmaState.acceptMethodArg(srcClsName, srcName, srcDesc, argIndex, dstArgName);
+				enigmaState.acceptMethodArg(srcClsName, srcName, srcDesc, argIndex, lvtIndex, dstArgName);
 				break;
 			}
 		} catch (IOException e) {
@@ -195,26 +203,30 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			switch (format) {
 			case TINY:
 			case TINY_GZIP:
-				writer.write("FIELD\t");
-				writer.write(srcClsName);
-				writer.write('\t');
-				writer.write(srcDesc);
-				writer.write('\t');
-				writer.write(srcName);
-				writer.write('\t');
-				writer.write(dstName);
-				writer.write('\n');
+				if (dstName != null) {
+					writer.write("FIELD\t");
+					writer.write(srcClsName);
+					writer.write('\t');
+					writer.write(srcDesc);
+					writer.write('\t');
+					writer.write(srcName);
+					writer.write('\t');
+					writer.write(dstName);
+					writer.write('\n');
+				}
 				break;
 			case SRG:
-				writer.write("FD: ");
-				writer.write(srcClsName);
-				writer.write('/');
-				writer.write(srcName);
-				writer.write(' ');
-				writer.write(dstClsName);
-				writer.write('/');
-				writer.write(dstName);
-				writer.write('\n');
+				if (dstClsName != null && dstName != null) {
+					writer.write("FD: ");
+					writer.write(srcClsName);
+					writer.write('/');
+					writer.write(srcName);
+					writer.write(' ');
+					writer.write(dstClsName);
+					writer.write('/');
+					writer.write(dstName);
+					writer.write('\n');
+				}
 				break;
 			case ENIGMA:
 				enigmaState.acceptField(srcClsName, srcName, srcDesc, dstClsName, dstName, dstDesc);

@@ -4,6 +4,7 @@ public enum MappingFormat {
 	TINY("Tiny", "tiny"),
 	TINY_GZIP("Tiny (gzipped)", "tiny.gz"),
 	ENIGMA("Enigma", null),
+	MCP("MCP", null),
 	SRG("SRG", "srg");
 
 	private MappingFormat(String name, String fileExt) {

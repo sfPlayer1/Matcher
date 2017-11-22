@@ -1,9 +1,9 @@
 package matcher.classifier;
 
-import matcher.Matcher;
+import matcher.type.ClassEnvironment;
 
 public interface IClassifier<T> {
 	String getName();
 	double getWeight();
-	double getScore(T a, T b, Matcher matcher);
+	double getScore(T a, T b, ClassEnvironment env);
 }

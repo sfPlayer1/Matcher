@@ -1,14 +1,24 @@
 package matcher.classifier;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-
-import matcher.Matcher;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
+import java.util.Set;
 
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
+
+import matcher.type.ClassEnvironment;
+import matcher.type.ClassInstance;
+import matcher.type.FieldInstance;
+import matcher.type.MemberInstance;
+import matcher.type.MethodInstance;
 
 public class FieldClassifier {
 	public static void init() {
@@ -18,27 +28,37 @@ public class FieldClassifier {
 		addClassifier(readReferences, 6);
 		addClassifier(writeReferences, 6);
 		addClassifier(position, 3);
+		addClassifier(initValue, 7);
+		addClassifier(initStrings, 8);
+		addClassifier(initCode, 10, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(readRefsBci, 6, ClassifierLevel.Extra);
 	}
 
-	private static void addClassifier(IClassifier<FieldInstance> classifier, double weight) {
-		classifiers.put(classifier, weight);
-		maxScore += weight;
+	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
+		if (levels.length == 0) levels = ClassifierLevel.ALL;
+
+		classifier.weight = weight;
+
+		for (ClassifierLevel level : levels) {
+			classifiers.computeIfAbsent(level, ignore -> new ArrayList<>()).add(classifier);
+			maxScore.put(level, getMaxScore(level) + weight);
+		}
 	}
 
-	public static double getMaxScore() {
-		return maxScore;
+	private static double getMaxScore(ClassifierLevel level) {
+		return maxScore.getOrDefault(level, 0.);
 	}
 
-	public static List<RankResult<FieldInstance>> rank(FieldInstance src, FieldInstance[] dsts, Matcher matcher) {
-		return ClassifierUtil.rank(src, dsts, classifiers, ClassifierUtil::checkPotentialEquality, matcher);
+	public static List<RankResult<FieldInstance>> rank(FieldInstance src, FieldInstance[] dsts, ClassifierLevel level, ClassEnvironment env) {
+		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), getMaxScore(level), ClassifierUtil::checkPotentialEquality, env);
 	}
 
-	private static final Map<IClassifier<FieldInstance>, Double> classifiers = new IdentityHashMap<>();
-	private static double maxScore;
+	private static final Map<ClassifierLevel, List<IClassifier<FieldInstance>>> classifiers = new IdentityHashMap<>();
+	private static final Map<ClassifierLevel, Double> maxScore = new EnumMap<>(ClassifierLevel.class);
 
 	private static AbstractClassifier fieldTypeCheck = new AbstractClassifier("field type check") {
 		@Override
-		public double getScore(FieldInstance fieldA, FieldInstance fieldB, Matcher matcher) {
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
 			if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);
 
 			int mask = Opcodes.ACC_STATIC;
@@ -51,7 +71,7 @@ public class FieldClassifier {
 
 	private static AbstractClassifier accessFlags = new AbstractClassifier("access flags") {
 		@Override
-		public double getScore(FieldInstance fieldA, FieldInstance fieldB, Matcher matcher) {
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
 			if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);
 
 			int mask = (Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED | Opcodes.ACC_PRIVATE) | Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE | Opcodes.ACC_TRANSIENT | Opcodes.ACC_SYNTHETIC;
@@ -64,35 +84,132 @@ public class FieldClassifier {
 
 	private static AbstractClassifier type = new AbstractClassifier("types") {
 		@Override
-		public double getScore(FieldInstance fieldA, FieldInstance fieldB, Matcher matcher) {
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
 			return ClassifierUtil.checkPotentialEquality(fieldA.getType(), fieldB.getType()) ? 1 : 0;
 		}
 	};
 
 	private static AbstractClassifier readReferences = new AbstractClassifier("read references") {
 		@Override
-		public double getScore(FieldInstance fieldA, FieldInstance fieldB, Matcher matcher) {
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
 			return ClassifierUtil.compareMethodSets(fieldA.getReadRefs(), fieldB.getReadRefs(), true);
 		}
 	};
 
 	private static AbstractClassifier writeReferences = new AbstractClassifier("write references") {
 		@Override
-		public double getScore(FieldInstance fieldA, FieldInstance fieldB, Matcher matcher) {
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
 			return ClassifierUtil.compareMethodSets(fieldA.getWriteRefs(), fieldB.getWriteRefs(), true);
 		}
 	};
 
 	private static AbstractClassifier position = new AbstractClassifier("position") {
 		@Override
-		public double getScore(FieldInstance fieldA, FieldInstance fieldB, Matcher matcher) {
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
 			/*if (fieldA.position == fieldB.position) return 1;
 
 			double relPosA = ClassifierUtil.getRelativePosition(fieldA.position, fieldA.cls.fields.size());
 			double relPosB = ClassifierUtil.getRelativePosition(fieldB.position, fieldB.cls.fields.size());
 
 			return 1 - Math.abs(relPosA - relPosB);*/
-			return ClassifierUtil.classifyPosition(fieldA, fieldB, (cls, idx) -> cls.getField(idx), ClassInstance::getFields);
+			return ClassifierUtil.classifyPosition(fieldA, fieldB, MemberInstance::getPosition, (f, idx) -> f.getCls().getField(idx), f -> f.getCls().getFields());
+		}
+	};
+
+	private static AbstractClassifier initValue = new AbstractClassifier("init value") {
+		@Override
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
+			if (!checkAsmNodes(fieldA, fieldB)) return compareAsmNodes(fieldA, fieldB);
+
+			Object valA = fieldA.getAsmNode().value;
+			Object valB = fieldB.getAsmNode().value;
+
+			if (valA == null && valB == null) return 1;
+			if (valA == null || valB == null) return 0;
+
+			return valA.equals(valB) ? 1 : 0;
+		}
+	};
+
+	private static AbstractClassifier initStrings = new AbstractClassifier("init strings") {
+		@Override
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
+			List<AbstractInsnNode> initA = fieldA.getInitializer();
+			List<AbstractInsnNode> initB = fieldB.getInitializer();
+
+			if (initA == null && initB == null) return 1;
+			if (initA == null || initB == null) return 0;
+
+			Set<String> stringsA = new HashSet<>();
+			ClassifierUtil.extractStrings(initA, stringsA);
+			Set<String> stringsB = new HashSet<>();
+			ClassifierUtil.extractStrings(initB, stringsB);
+
+			return ClassifierUtil.compareSets(stringsA, stringsB, false);
+		}
+	};
+
+	private static AbstractClassifier initCode = new AbstractClassifier("init code") {
+		@Override
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
+			List<AbstractInsnNode> initA = fieldA.getInitializer();
+			List<AbstractInsnNode> initB = fieldB.getInitializer();
+
+			if (initA == null && initB == null) return 1;
+			if (initA == null || initB == null) return 0;
+
+			return ClassifierUtil.compareInsns(initA, initB, env);
+		}
+	};
+
+	private static AbstractClassifier readRefsBci = new AbstractClassifier("read refs (bci)") {
+		@Override
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
+			int matched = 0;
+			int mismatched = 0;
+
+			for (MethodInstance src : fieldA.getReadRefs()) {
+				MethodInstance dst = src.getMatch();
+
+				if (dst == null || !fieldB.getReadRefs().contains(dst)) {
+					mismatched++;
+					continue;
+				}
+
+				int[] map = ClassifierUtil.mapInsns(src, dst);
+				if (map == null) continue;
+
+				InsnList ilA = src.getAsmNode().instructions;
+				InsnList ilB = dst.getAsmNode().instructions;
+
+				for (int srcIdx = 0; srcIdx < map.length; srcIdx++) {
+					if (map[srcIdx] < 0) continue;
+
+					AbstractInsnNode in = ilA.get(srcIdx);
+					if (in.getOpcode() != Opcodes.GETFIELD && in.getOpcode() != Opcodes.GETSTATIC) continue;
+
+					FieldInsnNode fin = (FieldInsnNode) in;
+					ClassInstance owner = env.getClsByNameA(fin.owner);
+
+					if (owner == null || owner.getField(fin.name, fin.desc) != fieldA) continue;
+
+					in = ilB.get(map[srcIdx]);
+					fin = (FieldInsnNode) in;
+					owner = env.getClsByNameB(fin.owner);
+
+					if (owner == null || owner.getField(fin.name, fin.desc) != fieldB) {
+						mismatched++;
+					} else {
+						matched++;
+					}
+				}
+			}
+
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
 		}
 	};
 
@@ -116,9 +233,10 @@ public class FieldClassifier {
 
 		@Override
 		public double getWeight() {
-			return classifiers.get(this);
+			return weight;
 		}
 
 		private final String name;
+		private double weight;
 	}
 }

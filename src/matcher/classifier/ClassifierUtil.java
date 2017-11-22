@@ -1,36 +1,58 @@
 package matcher.classifier;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.ToIntBiFunction;
+import java.util.function.ToIntFunction;
 
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.LookupSwitchInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.MultiANewArrayInsnNode;
+import org.objectweb.asm.tree.TableSwitchInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 
-import matcher.Matcher;
 import matcher.Util;
+import matcher.classifier.MatchingCache.CacheToken;
+import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.IMatchable;
-import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
+import matcher.type.MethodVarInstance;
 
 public class ClassifierUtil {
 	public static boolean checkPotentialEquality(ClassInstance a, ClassInstance b) {
 		if (a == b) return true;
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
-		if (assumeBothOrNoneObfuscated && (a.isNameObfuscated() != b.isNameObfuscated())) return false;
 		if (a.isArray() != b.isArray()) return false;
 		if (a.isArray() && !checkPotentialEquality(a.getElementClass(), b.getElementClass())) return false;
+
+		boolean nameObfA = a.isNameObfuscated(false);
+		boolean nameObfB = b.isNameObfuscated(false);
+		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
+		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
 
 		return true;
 	}
@@ -40,8 +62,11 @@ public class ClassifierUtil {
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
-		if (!a.isNameObfuscated() && !b.isNameObfuscated()) return a.getOrigName().equals(b.getOrigName());
-		if (assumeBothOrNoneObfuscated && (!a.isNameObfuscated() || !b.isNameObfuscated())) return false;
+
+		boolean nameObfA = a.isNameObfuscated(false);
+		boolean nameObfB = b.isNameObfuscated(false);
+		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
+		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
 
 		return true;
 	}
@@ -51,10 +76,56 @@ public class ClassifierUtil {
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
-		if (!a.isNameObfuscated() && !b.isNameObfuscated()) return a.getOrigName().equals(b.getOrigName());
-		if (assumeBothOrNoneObfuscated && (!a.isNameObfuscated() || !b.isNameObfuscated())) return false;
+
+		boolean nameObfA = a.isNameObfuscated(false);
+		boolean nameObfB = b.isNameObfuscated(false);
+		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
+		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
 
 		return true;
+	}
+
+	public static boolean checkPotentialEquality(MethodVarInstance a, MethodVarInstance b) {
+		if (a == b) return true;
+		if (a.getMatch() != null) return a.getMatch() == b;
+		if (b.getMatch() != null) return b.getMatch() == a;
+		if (a.isArg() != b.isArg()) return false;
+		if (!checkPotentialEquality(a.getMethod(), b.getMethod())) return false;
+
+		boolean nameObfA = a.isNameObfuscated(false);
+		boolean nameObfB = b.isNameObfuscated(false);
+		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
+		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
+
+		return true;
+	}
+
+	public static boolean checkPotentialEqualityNullable(ClassInstance a, ClassInstance b) {
+		if (a == null && b == null) return true;
+		if (a == null || b == null) return false;
+
+		return checkPotentialEquality(a, b);
+	}
+
+	public static boolean checkPotentialEqualityNullable(MethodInstance a, MethodInstance b) {
+		if (a == null && b == null) return true;
+		if (a == null || b == null) return false;
+
+		return checkPotentialEquality(a, b);
+	}
+
+	public static boolean checkPotentialEqualityNullable(FieldInstance a, FieldInstance b) {
+		if (a == null && b == null) return true;
+		if (a == null || b == null) return false;
+
+		return checkPotentialEquality(a, b);
+	}
+
+	public static boolean checkPotentialEqualityNullable(MethodVarInstance a, MethodVarInstance b) {
+		if (a == null && b == null) return true;
+		if (a == null || b == null) return false;
+
+		return checkPotentialEquality(a, b);
 	}
 
 	public static double compareCounts(int countA, int countB) {
@@ -113,7 +184,7 @@ public class ClassifierUtil {
 				}
 
 				it.remove();
-			} else if (assumeBothOrNoneObfuscated && !a.isNameObfuscated()) {
+			} else if (assumeBothOrNoneObfuscated && !a.isNameObfuscated(true)) {
 				unmatched++;
 				it.remove();
 			}
@@ -124,7 +195,7 @@ public class ClassifierUtil {
 			for (Iterator<T> it = setB.iterator(); it.hasNext(); ) {
 				T b = it.next();
 
-				if (!b.isNameObfuscated()) {
+				if (!b.isNameObfuscated(true)) {
 					unmatched++;
 					it.remove();
 				}
@@ -134,7 +205,7 @@ public class ClassifierUtil {
 		for (Iterator<T> it = setA.iterator(); it.hasNext(); ) {
 			T a = it.next();
 
-			assert a.getMatch() == null && a.isNameObfuscated();
+			assert a.getMatch() == null && a.isNameObfuscated(true);
 			boolean found = false;
 
 			for (T b : setB) {
@@ -171,14 +242,210 @@ public class ClassifierUtil {
 	}
 
 	public static double compareClassLists(List<ClassInstance> listA, List<ClassInstance> listB) {
-		if (listA.isEmpty() && listB.isEmpty()) return 1;
-		if (listA.isEmpty() || listB.isEmpty()) return 0;
+		return compareLists(listA, listB, List::get, List::size, ClassifierUtil::checkPotentialEquality);
+	}
 
-		if (listA.size() == listB.size()) {
+	public static double compareInsns(InsnList listA, InsnList listB, ClassEnvironment env) {
+		return compareLists(listA, listB, InsnList::get, InsnList::size, (inA, inB) -> compareInsns(inA, inB, listA, listB, (list, item) -> list.indexOf(item), env));
+	}
+
+	public static double compareInsns(List<AbstractInsnNode> listA, List<AbstractInsnNode> listB, ClassEnvironment env) {
+		return compareLists(listA, listB, List::get, List::size, (inA, inB) -> compareInsns(inA, inB, listA, listB, (list, item) -> list.indexOf(item), env));
+	}
+
+	private static <T> boolean compareInsns(AbstractInsnNode insnA, AbstractInsnNode insnB, T listA, T listB, ToIntBiFunction<T, AbstractInsnNode> posProvider, ClassEnvironment env) {
+		if (insnA.getOpcode() != insnB.getOpcode()) return false;
+
+		switch (insnA.getType()) {
+		case AbstractInsnNode.INT_INSN: {
+			IntInsnNode a = (IntInsnNode) insnA;
+			IntInsnNode b = (IntInsnNode) insnB;
+
+			return a.operand == b.operand;
+		}
+		case AbstractInsnNode.VAR_INSN: {
+			VarInsnNode a = (VarInsnNode) insnA;
+			VarInsnNode b = (VarInsnNode) insnB;
+
+			return a.var == b.var;
+		}
+		case AbstractInsnNode.TYPE_INSN: {
+			TypeInsnNode a = (TypeInsnNode) insnA;
+			TypeInsnNode b = (TypeInsnNode) insnB;
+			ClassInstance clsA = env.getClsByNameA(a.desc);
+			ClassInstance clsB = env.getClsByNameB(b.desc);
+
+			return checkPotentialEqualityNullable(clsA, clsB);
+		}
+		case AbstractInsnNode.FIELD_INSN: {
+			FieldInsnNode a = (FieldInsnNode) insnA;
+			FieldInsnNode b = (FieldInsnNode) insnB;
+			ClassInstance clsA = env.getClsByNameA(a.owner);
+			ClassInstance clsB = env.getClsByNameB(b.owner);
+
+			if (clsA == null && clsB == null) return true;
+			if (clsA == null || clsB == null) return false;
+
+			FieldInstance fieldA = clsA.resolveField(a.name, a.desc);
+			FieldInstance fieldB = clsB.resolveField(b.name, b.desc);
+
+			return checkPotentialEqualityNullable(fieldA, fieldB);
+		}
+		case AbstractInsnNode.METHOD_INSN: {
+			MethodInsnNode a = (MethodInsnNode) insnA;
+			MethodInsnNode b = (MethodInsnNode) insnB;
+
+			return compareMethods(a.owner, a.name, a.desc, Util.isCallToInterface(a),
+					b.owner, b.name, b.desc, Util.isCallToInterface(b),
+					env);
+		}
+		case AbstractInsnNode.INVOKE_DYNAMIC_INSN: {
+			InvokeDynamicInsnNode a = (InvokeDynamicInsnNode) insnA;
+			InvokeDynamicInsnNode b = (InvokeDynamicInsnNode) insnB;
+
+			if (!a.bsm.equals(b.bsm)) return false;
+
+			if (a.bsm.getTag() == Opcodes.H_INVOKESTATIC
+					&& a.bsm.getOwner().equals("java/lang/invoke/LambdaMetafactory")
+					&& a.bsm.getName().equals("metafactory")
+					&& a.bsm.getDesc().equals("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;")
+					&& !a.bsm.isInterface()) {
+				Handle implA = (Handle) a.bsmArgs[1];
+				Handle implB = (Handle) b.bsmArgs[1];
+
+				if (implA.getTag() != implB.getTag()) return false;
+
+				switch (implA.getTag()) {
+				case Opcodes.H_INVOKEVIRTUAL:
+				case Opcodes.H_INVOKESTATIC:
+				case Opcodes.H_INVOKESPECIAL:
+				case Opcodes.H_NEWINVOKESPECIAL:
+				case Opcodes.H_INVOKEINTERFACE:
+					return compareMethods(implA.getOwner(), implA.getName(), implA.getDesc(), Util.isCallToInterface(implA),
+							implB.getOwner(), implB.getName(), implB.getDesc(), Util.isCallToInterface(implB),
+							env);
+				default:
+					System.out.println("unexpected impl tag: "+implA.getTag());
+				}
+			} else {
+				System.out.printf("unknown invokedynamic bsm: %s/%s%s (tag=%d iif=%b)%n", a.bsm.getOwner(), a.bsm.getName(), a.bsm.getDesc(), a.bsm.getTag(), a.bsm.isInterface());
+			}
+
+			// TODO: implement
+			break;
+		}
+		case AbstractInsnNode.JUMP_INSN: {
+			JumpInsnNode a = (JumpInsnNode) insnA;
+			JumpInsnNode b = (JumpInsnNode) insnB;
+
+			// check if the 2 jumps have the same direction
+			return Integer.signum(posProvider.applyAsInt(listA, a.label) - posProvider.applyAsInt(listA, a)) == Integer.signum(posProvider.applyAsInt(listB, b.label) - posProvider.applyAsInt(listB, b));
+		}
+		case AbstractInsnNode.LABEL: {
+			// TODO: implement
+			break;
+		}
+		case AbstractInsnNode.LDC_INSN: {
+			LdcInsnNode a = (LdcInsnNode) insnA;
+			LdcInsnNode b = (LdcInsnNode) insnB;
+			Class<?> typeClsA = a.cst.getClass();
+
+			if (typeClsA != b.cst.getClass()) return false;
+
+			if (typeClsA == Type.class) {
+				Type typeA = (Type) a.cst;
+				Type typeB = (Type) b.cst;
+
+				if (typeA.getSort() != typeB.getSort()) return false;
+
+				switch (typeA.getSort()) {
+				case Type.ARRAY:
+				case Type.OBJECT:
+					return checkPotentialEqualityNullable(env.getClsByIdA(typeA.getDescriptor()), env.getClsByIdB(typeB.getDescriptor()));
+				case Type.METHOD:
+					// TODO: implement
+					break;
+				}
+			} else {
+				return a.cst.equals(b.cst);
+			}
+
+			break;
+		}
+		case AbstractInsnNode.IINC_INSN: {
+			IincInsnNode a = (IincInsnNode) insnA;
+			IincInsnNode b = (IincInsnNode) insnB;
+
+			return a.var == b.var && a.incr == b.incr;
+		}
+		case AbstractInsnNode.TABLESWITCH_INSN: {
+			TableSwitchInsnNode a = (TableSwitchInsnNode) insnA;
+			TableSwitchInsnNode b = (TableSwitchInsnNode) insnB;
+
+			return a.min == b.min && a.max == b.max;
+		}
+		case AbstractInsnNode.LOOKUPSWITCH_INSN: {
+			LookupSwitchInsnNode a = (LookupSwitchInsnNode) insnA;
+			LookupSwitchInsnNode b = (LookupSwitchInsnNode) insnB;
+
+			return a.keys.equals(b.keys);
+		}
+		case AbstractInsnNode.MULTIANEWARRAY_INSN: {
+			MultiANewArrayInsnNode a = (MultiANewArrayInsnNode) insnA;
+			MultiANewArrayInsnNode b = (MultiANewArrayInsnNode) insnB;
+
+			if (a.dims != b.dims) return false;
+
+			ClassInstance clsA = env.getClsByNameA(a.desc);
+			ClassInstance clsB = env.getClsByNameB(b.desc);
+
+			return checkPotentialEqualityNullable(clsA, clsB);
+		}
+		case AbstractInsnNode.FRAME: {
+			// TODO: implement
+			break;
+		}
+		case AbstractInsnNode.LINE: {
+			// TODO: implement
+			break;
+		}
+		}
+
+		return true;
+	}
+
+	private static boolean compareMethods(String ownerA, String nameA, String descA, boolean toIfA, String ownerB, String nameB, String descB, boolean toIfB, ClassEnvironment env) {
+		ClassInstance clsA = env.getClsByNameA(ownerA);
+		ClassInstance clsB = env.getClsByNameB(ownerB);
+
+		if (clsA == null && clsB == null) return true;
+		if (clsA == null || clsB == null) return false;
+
+		return compareMethods(clsA, nameA, descA, toIfA, clsB, nameB, descB, toIfB);
+	}
+
+	private static boolean compareMethods(ClassInstance ownerA, String nameA, String descA, boolean toIfA, ClassInstance ownerB, String nameB, String descB, boolean toIfB) {
+		MethodInstance methodA = ownerA.resolveMethod(nameA, descA, toIfA);
+		MethodInstance methodB = ownerB.resolveMethod(nameB, descB, toIfB);
+
+		if (methodA == null && methodB == null) return true;
+		if (methodA == null || methodB == null) return false;
+
+		return checkPotentialEquality(methodA, methodB);
+	}
+
+	private static <T, U> double compareLists(T listA, T listB, ListElementRetriever<T, U> elementRetriever, ListSizeRetriever<T> sizeRetriever, BiPredicate<U, U> elementComparator) {
+		final int sizeA = sizeRetriever.apply(listA);
+		final int sizeB = sizeRetriever.apply(listB);
+
+		if (sizeA == 0 && sizeB == 0) return 1;
+		if (sizeA == 0 || sizeB == 0) return 0;
+
+		if (sizeA == sizeB) {
 			boolean match = true;
 
-			for (int i = 0; i < listA.size(); i++) {
-				if (!checkPotentialEquality(listA.get(i), listB.get(i))) {
+			for (int i = 0; i < sizeA; i++) {
+				if (!elementComparator.test(elementRetriever.apply(listA, i), elementRetriever.apply(listB, i))) {
 					match = false;
 					break;
 				}
@@ -188,18 +455,18 @@ public class ClassifierUtil {
 		}
 
 		// levenshtein distance as per wp (https://en.wikipedia.org/wiki/Levenshtein_distance#Iterative_with_two_matrix_rows)
-		int[] v0 = new int[listB.size() + 1];
-		int[] v1 = new int[listB.size() + 1];
+		int[] v0 = new int[sizeB + 1];
+		int[] v1 = new int[sizeB + 1];
 
 		for (int i = 0; i < v0.length; i++) {
 			v0[i] = i;
 		}
 
-		for (int i = 0; i < listA.size(); i++) {
+		for (int i = 0; i < sizeA; i++) {
 			v1[0] = i + 1;
 
-			for (int j = 0; j < listB.size(); j++) {
-				int cost = checkPotentialEquality(listA.get(i), listB.get(j)) ? 0 : 1;
+			for (int j = 0; j < sizeB; j++) {
+				int cost = elementComparator.test(elementRetriever.apply(listA, i), elementRetriever.apply(listB, j)) ? 0 : 1;
 				v1[j + 1] = Math.min(Math.min(v1[j] + 1, v0[j + 1] + 1), v0[j] + cost);
 			}
 
@@ -208,31 +475,156 @@ public class ClassifierUtil {
 			}
 		}
 
-		int distance = v1[listB.size()];
-		int upperBound = Math.max(listA.size(), listB.size());
+		int distance = v1[sizeB];
+		int upperBound = Math.max(sizeA, sizeB);
 		assert distance >= 0 && distance <= upperBound;
 
 		return 1 - (double) distance / upperBound;
 	}
 
-	public static <T> List<RankResult<T>> rank(T src, T[] dsts, Map<IClassifier<T>, Double> classifiers, BiPredicate<T, T> potentialEqualityCheck, Matcher matcher) {
+	public static int[] mapInsns(MethodInstance a, MethodInstance b) {
+		if (a.getAsmNode() == null || b.getAsmNode() == null) return null;
+
+		InsnList ilA = a.getAsmNode().instructions;
+		InsnList ilB = b.getAsmNode().instructions;
+
+		if (ilA.size() * ilB.size() < 1000) {
+			return mapInsns(ilA, ilB, a.getEnv().getGlobal());
+		} else {
+			return a.getEnv().getGlobal().getCache().compute(ilMapCacheToken, a, b, (mA, mB) -> mapInsns(mA.getAsmNode().instructions, mB.getAsmNode().instructions, mA.getEnv().getGlobal()));
+		}
+	}
+
+	public static int[] mapInsns(InsnList listA, InsnList listB, ClassEnvironment env) {
+		return mapLists(listA, listB, InsnList::get, InsnList::size, (inA, inB) -> compareInsns(inA, inB, listA, listB, (list, item) -> list.indexOf(item), env));
+	}
+
+	private static <T, U> int[] mapLists(T listA, T listB, ListElementRetriever<T, U> elementRetriever, ListSizeRetriever<T> sizeRetriever, BiPredicate<U, U> elementComparator) {
+		final int sizeA = sizeRetriever.apply(listA);
+		final int sizeB = sizeRetriever.apply(listB);
+
+		if (sizeA == 0 && sizeB == 0) return new int[0];
+
+		final int[] ret = new int[sizeA];
+
+		if (sizeA == 0 || sizeB == 0) {
+			Arrays.fill(ret, -1);
+
+			return ret;
+		}
+
+		if (sizeA == sizeB) {
+			boolean match = true;
+
+			for (int i = 0; i < sizeA; i++) {
+				if (!elementComparator.test(elementRetriever.apply(listA, i), elementRetriever.apply(listB, i))) {
+					match = false;
+					break;
+				}
+			}
+
+			if (match) {
+				for (int i = 0; i < ret.length; i++) {
+					ret[i] = i;
+				}
+
+				return ret;
+			}
+		}
+
+		// levenshtein distance as per wp (https://en.wikipedia.org/wiki/Levenshtein_distance#Iterative_with_two_matrix_rows)
+		int size = sizeA + 1;
+		int[] v = new int[size * (sizeB + 1)];
+
+		for (int i = 1; i <= sizeA; i++) {
+			v[i + 0] = i;
+		}
+
+		for (int j = 1; j <= sizeB; j++) {
+			v[0 + j * size] = j;
+		}
+
+		for (int j = 1; j <= sizeB; j++) {
+			for (int i = 1; i <= sizeA; i++) {
+				int cost = elementComparator.test(elementRetriever.apply(listA, i - 1), elementRetriever.apply(listB, j - 1)) ? 0 : 1;
+
+				v[i + j * size] = Math.min(Math.min(v[i - 1 + j * size] + 1, v[i + (j - 1) * size] + 1), v[i - 1 + (j - 1) * size] + cost);
+			}
+		}
+
+		/*for (int j = 0; j <= sizeB; j++) {
+			for (int i = 0; i <= sizeA; i++) {
+				System.out.print(v[i + j * size]+" ");
+			}
+
+			System.out.println();
+		}*/
+
+		int i = sizeA;
+		int j = sizeB;
+
+		for (;;) {
+			int c = v[i + j * size];
+
+			if (i > 0 && v[i - 1 + j * size] + 1 == c) {
+				//System.out.println(i+"/"+j+" del "+elementRetriever.apply(listA, i - 1));
+				ret[i - 1] = -1;
+				i--;
+			} else if (j > 0 && v[i + (j - 1) * size] + 1 == c) {
+				//System.out.println(i+"/"+j+" ins "+elementRetriever.apply(listB, j - 1));
+				ret[i - 1] = -1;
+				j--;
+			} else if (i > 0 && j > 0) {
+				int dist = c - v[i - 1 + (j - 1) * size];
+
+				if (dist == 1) {
+					//System.out.println(i+"/"+j+" rep "+elementRetriever.apply(listA, i - 1)+" -> "+elementRetriever.apply(listB, j - 1));
+					ret[i - 1] = -1;
+				} else {
+					assert dist == 0;
+
+					//System.out.println(i+"/"+j+" eq");
+					ret[i - 1] = j - 1;
+				}
+
+				i--;
+				j--;
+			} else {
+				break;
+			}
+		}
+
+		return ret;
+	}
+
+	private static interface ListElementRetriever<T, U> {
+		U apply(T list, int pos);
+	}
+
+	private static interface ListSizeRetriever<T> {
+		int apply(T list);
+	}
+
+	public static <T extends IMatchable<T>> List<RankResult<T>> rank(T src, T[] dsts, Collection<IClassifier<T>> classifiers, double totalWeight, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env) {
 		List<RankResult<T>> ret = new ArrayList<>(dsts.length);
 
 		for (T dst : dsts) {
+			assert src.getEnv() != dst.getEnv();
+
 			if (!potentialEqualityCheck.test(src, dst)) continue;
 
 			double score = 0;
 			List<ClassifierResult<T>> results = new ArrayList<>(classifiers.size());
 
-			for (Map.Entry<IClassifier<T>, Double> entry : classifiers.entrySet()) {
-				double cScore = entry.getKey().getScore(src, dst, matcher);
-				assert cScore > -epsilon && cScore < 1 + epsilon : "invalid score from "+entry.getKey().getName()+": "+cScore;
+			for (IClassifier<T> classifier : classifiers) {
+				double cScore = classifier.getScore(src, dst, env);
+				assert cScore > -epsilon && cScore < 1 + epsilon : "invalid score from "+classifier.getName()+": "+cScore;
 
-				score += cScore * entry.getValue();
-				results.add(new ClassifierResult<>(entry.getKey(), cScore));
+				score += cScore * classifier.getWeight();
+				results.add(new ClassifierResult<>(classifier, cScore));
 			}
 
-			ret.add(new RankResult<>(dst, score, results));
+			ret.add(new RankResult<>(dst, adjustTotalScore(score / totalWeight), results));
 		}
 
 		ret.sort(Comparator.<RankResult<T>, Double>comparing(RankResult::getScore).reversed());
@@ -240,8 +632,20 @@ public class ClassifierUtil {
 		return ret;
 	}
 
-	public static void extractStrings(MethodNode node, Set<String> out) {
-		for (Iterator<AbstractInsnNode> it = node.instructions.iterator(); it.hasNext(); ) {
+	private static double adjustTotalScore(double score) {
+		return score * score;
+	}
+
+	public static void extractStrings(InsnList il, Set<String> out) {
+		extractStrings(il.iterator(), out);
+	}
+
+	public static void extractStrings(Collection<AbstractInsnNode> il, Set<String> out) {
+		extractStrings(il.iterator(), out);
+	}
+
+	private static void extractStrings(Iterator<AbstractInsnNode> it, Set<String> out) {
+		while (it.hasNext()) {
 			AbstractInsnNode aInsn = it.next();
 
 			if (aInsn instanceof LdcInsnNode) {
@@ -284,11 +688,14 @@ public class ClassifierUtil {
 		}
 	}
 
-	public static <T extends MemberInstance<T>> double classifyPosition(T a, T b, BiFunction<ClassInstance, Integer, T> siblingSupplier, Function<ClassInstance, T[]> siblingsSupplier) {
-		int posA = a.getPosition();
-		int posB = b.getPosition();
-		T[] siblingsA = siblingsSupplier.apply(a.getCls());
-		T[] siblingsB = siblingsSupplier.apply(b.getCls());
+	public static <T extends IMatchable<T>> double classifyPosition(T a, T b,
+			ToIntFunction<T> positionSupplier,
+			BiFunction<T, Integer, T> siblingSupplier,
+			Function<T, T[]> siblingsSupplier) {
+		int posA = positionSupplier.applyAsInt(a);
+		int posB = positionSupplier.applyAsInt(b);
+		T[] siblingsA = siblingsSupplier.apply(a);
+		T[] siblingsB = siblingsSupplier.apply(b);
 
 		if (posA == posB && siblingsA.length == siblingsB.length) return 1;
 		if (posA == -1 || posB == -1) return posA == posB ? 1 : 0;
@@ -301,11 +708,12 @@ public class ClassifierUtil {
 
 		if (posA > 0) {
 			for (int i = posA - 1; i >= 0; i--) {
-				T c = siblingSupplier.apply(a.getCls(), i);
+				T c = siblingSupplier.apply(a, i);
+				T match = c.getMatch();
 
-				if (c.getMatch() != null) {
+				if (match != null) {
 					startPosA = i + 1;
-					startPosB = c.getMatch().getPosition() + 1;
+					startPosB = positionSupplier.applyAsInt(match) + 1;
 					break;
 				}
 			}
@@ -313,11 +721,12 @@ public class ClassifierUtil {
 
 		if (posA < endPosA - 1) {
 			for (int i = posA + 1; i < endPosA; i++) {
-				T c = siblingSupplier.apply(a.getCls(), i);
+				T c = siblingSupplier.apply(a, i);
+				T match = c.getMatch();
 
-				if (c.getMatch() != null) {
+				if (match != null) {
 					endPosA = i;
-					endPosB = c.getMatch().getPosition();
+					endPosB = positionSupplier.applyAsInt(match);
 					break;
 				}
 			}
@@ -346,4 +755,6 @@ public class ClassifierUtil {
 
 	private static final boolean assumeBothOrNoneObfuscated = true;
 	private static final double epsilon = 1e-6;
+
+	private static final CacheToken<int[]> ilMapCacheToken = new CacheToken<>();
 }

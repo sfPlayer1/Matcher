@@ -10,20 +10,23 @@ import java.util.Set;
 import org.benf.cfr.reader.api.ClassFileSource;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
 import org.benf.cfr.reader.entities.ClassFile;
+import org.benf.cfr.reader.entities.Method;
 import org.benf.cfr.reader.state.DCCommonState;
 import org.benf.cfr.reader.state.TypeUsageCollector;
+import org.benf.cfr.reader.state.TypeUsageInformation;
 import org.benf.cfr.reader.util.getopt.GetOptParser;
 import org.benf.cfr.reader.util.getopt.Options;
 import org.benf.cfr.reader.util.getopt.OptionsImpl;
-import org.benf.cfr.reader.util.output.Dumper;
-import org.benf.cfr.reader.util.output.ToStringDumper;
+import org.benf.cfr.reader.util.output.IllegalIdentifierDump;
+import org.benf.cfr.reader.util.output.StreamDumper;
 
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
 
 public class CfrIf {
-	public static String decompile(ClassInstance cls, ClassFeatureExtractor extractor, boolean mapped) {
-		Options options = new GetOptParser().parse(new String[] { cls.getName() }, OptionsImpl.getFactory());
+	public static synchronized String decompile(ClassInstance cls, ClassFeatureExtractor extractor, boolean mapped) {
+		String name = (mapped ? cls.getMappedName(true) : cls.getName()) + ".class";
+		Options options = new GetOptParser().parse(new String[] { name }, OptionsImpl.getFactory());
 		ClassFileSource source = new ClassFileSource() {
 			@Override
 			public void informAnalysisRelativePathDetail(String usePath, String specPath) {
@@ -43,27 +46,26 @@ public class CfrIf {
 				String realFile = nameMap.get(file);
 				if (realFile != null) file = realFile;
 
-				assert file.endsWith(fileSuffix);
-				String clsName = file.substring(0, file.length() - fileSuffix.length());
+				String clsName;
 
-				ClassInstance cls = null;
-
-				if (mapped) {
-					for (ClassInstance cCls : extractor.getClasses().values()) {
-						if (clsName.equals(cCls.getMappedName())) {
-							file = cCls.getName();
-							cls = cCls;
-							break;
-						}
-					}
+				if (file.endsWith(fileSuffix)) {
+					clsName = file.substring(0, file.length() - fileSuffix.length());
+				} else {
+					clsName = file;
 				}
 
-				if (cls == null) cls = extractor.getClassInstance(clsName);
+				ClassInstance cls;
 
-				if (cls == null) {
-					if (warnedMissing.add(clsName)) System.out.println("can't find class file for "+file);
+				if (mapped) {
+					cls = extractor.getClsByMappedName(clsName);
+				} else {
+					cls = extractor.getClsByName(clsName);
+				}
 
-					throw new IOException("can't find class file for "+file);
+				if (cls == null || cls.getAsmNodes() == null) {
+					if (warnedMissing.add(clsName)) System.out.println("can't find class "+clsName+" for "+file);
+
+					throw new IOException("can't find class "+clsName+" for "+file);
 				}
 
 				byte[] data = extractor.serializeClass(cls, mapped);
@@ -82,18 +84,42 @@ public class CfrIf {
 
 		DCCommonState state = new DCCommonState(options, source);
 
-		ClassFile classFile = state.getClassFileMaybePath(cls.getName());
+		ClassFile classFile = state.getClassFileMaybePath(name);
 		state.configureWith(classFile);
-
+		classFile = state.getClassFile(classFile.getClassType());
 		classFile.analyseTop(state);
 
 		TypeUsageCollector typeUsageCollector = new TypeUsageCollector(classFile);
 		classFile.collectTypeUsages(typeUsageCollector);
 
-		Dumper dumper = new ToStringDumper();
+		StringDumper dumper = new StringDumper(typeUsageCollector.getTypeUsageInformation(), options);
 		classFile.dump(dumper);
 
 		return dumper.toString();
+	}
+
+	private static class StringDumper extends StreamDumper {
+		public StringDumper(TypeUsageInformation typeUsageInformation, Options options) {
+			super(typeUsageInformation, options, new IllegalIdentifierDump.Nop());
+		}
+
+		@Override
+		protected void write(String str) {
+			buffer.append(str);
+		}
+
+		@Override
+		public void addSummaryError(Method var1, String var2) { }
+
+		@Override
+		public void close() { }
+
+		@Override
+		public String toString() {
+			return buffer.toString();
+		}
+
+		private final StringBuilder buffer = new StringBuilder();
 	}
 
 	private static final String fileSuffix = ".class";

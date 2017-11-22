@@ -4,25 +4,21 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.io.Writer;
-import java.nio.file.FileSystem;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
@@ -32,130 +28,73 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import matcher.classifier.ClassClassifier;
+import matcher.classifier.ClassifierLevel;
 import matcher.classifier.FieldClassifier;
 import matcher.classifier.IRanker;
+import matcher.classifier.MethodArgClassifier;
 import matcher.classifier.MethodClassifier;
 import matcher.classifier.RankResult;
 import matcher.mapping.IMappingAcceptor;
 import matcher.mapping.MappingFormat;
 import matcher.mapping.MappingReader;
 import matcher.mapping.MappingWriter;
-import matcher.type.ClassFeatureExtractor;
+import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
+import matcher.type.IClassEnv;
 import matcher.type.InputFile;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
+import matcher.type.MethodVarInstance;
 
 public class Matcher {
-	public Matcher() {
-		this.sharedClasses = new HashMap<>();
-		this.extractorA = new ClassFeatureExtractor(this);
-		this.extractorB = new ClassFeatureExtractor(this);
-	}
-
-	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
-		try {
-			// async class reading
-			CompletableFuture.allOf(
-					CompletableFuture.runAsync(() -> extractorA.processInputs(config.pathsA)),
-					CompletableFuture.runAsync(() -> extractorB.processInputs(config.pathsB))).get();
-			progressReceiver.accept(0.2);
-
-			// class path indexing
-			initClassPath(config.sharedClassPath);
-			progressReceiver.accept(0.25);
-
-			// synchronous feature extraction
-			extractorA.process();
-			progressReceiver.accept(0.8);
-
-			extractorB.process();
-			progressReceiver.accept(0.98);
-		} catch (InterruptedException | ExecutionException | IOException e) {
-			throw new RuntimeException(e);
-		} finally {
-			classPathIndex.clear();
-			openFileSystems.forEach(Util::closeSilently);
-			openFileSystems.clear();
-		}
-
-		matchUnobfuscated();
-
+	public static void init() {
 		ClassClassifier.init();
 		MethodClassifier.init();
 		FieldClassifier.init();
-
-		progressReceiver.accept(1);
+		MethodArgClassifier.init();
 	}
 
-	private void initClassPath(Collection<Path> sharedClassPath) throws IOException {
-		for (Path archive : sharedClassPath) {
-			openFileSystems.add(Util.iterateJar(archive, false, file -> {
-				String name = file.toAbsolutePath().toString();
-				if (!name.startsWith("/") || !name.endsWith(".class") || name.startsWith("//")) throw new RuntimeException("invalid path: "+archive+" ("+name+")");
-				name = name.substring(1, name.length() - ".class".length());
+	public Matcher(ClassEnvironment env) {
+		this.env = env;
+	}
 
-				if (extractorA.getClassInstance(name) == null || extractorB.getClassInstance(name) == null) {
-					classPathIndex.putIfAbsent(name, file);
-				}
-			}));
-		}
+	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
+		env.init(config, progressReceiver);
+
+		matchUnobfuscated();
 	}
 
 	private void matchUnobfuscated() {
-		for (ClassInstance cls : extractorA.getClasses().values()) {
-			if (cls.isNameObfuscated()) continue;
+		for (ClassInstance cls : env.getClassesA()) {
+			if (cls.isNameObfuscated(true)) continue;
 
-			ClassInstance match = extractorB.getClasses().get(cls.getId());
+			ClassInstance match = env.getLocalClsByIdB(cls.getId());
 
-			if (match != null && !match.isNameObfuscated()) {
+			if (match != null && !match.isNameObfuscated(true)) {
 				match(cls, match);
 			}
 		}
 	}
 
 	public void reset() {
-		extractorA.reset();
-		extractorB.reset();
-		sharedClasses.clear();
+		env.reset();
 	}
 
-	public void addOpenFileSystem(FileSystem fs) {
-		openFileSystems.add(fs);
+	public ClassifierLevel getAutoMatchLevel() {
+		return autoMatchLevel;
 	}
 
-	public ClassInstance getSharedCls(String id) {
-		return sharedClasses.get(id);
-	}
-
-	public ClassInstance addSharedCls(ClassInstance cls) {
-		if (!cls.isShared()) throw new IllegalArgumentException("non-shared class");
-
-		ClassInstance prev = sharedClasses.putIfAbsent(cls.getId(), cls);
-		if (prev != null) return prev;
-
-		return cls;
-	}
-
-	public Path getSharedClassLocation(String name) {
-		return classPathIndex.get(name);
-	}
-
-	public List<ClassInstance> getClassesA() {
-		return getClasses(extractorA);
-	}
-
-	public List<ClassInstance> getClassesB() {
-		return getClasses(extractorB);
-	}
-
-	public void readMatches(Path path) throws IOException {
+	public void readMatches(Path path, List<Path> inputDirs, DoubleConsumer progressReceiver) {
 		try (BufferedReader reader = Files.newBufferedReader(path)) {
 			ParserState state = ParserState.START;
+			List<InputFile> cpFiles = new ArrayList<>();
 			List<InputFile> inputFilesA = new ArrayList<>();
 			List<InputFile> inputFilesB = new ArrayList<>();
+			List<InputFile> cpFilesA = new ArrayList<>();
+			List<InputFile> cpFilesB = new ArrayList<>();
 			ClassInstance currentClass = null;
+			MethodInstance currentMethod = null;
 			String line;
 
 			while ((line = reader.readLine()) != null) {
@@ -173,16 +112,69 @@ public class Matcher {
 						break;
 					case FILES_A_START:
 					case FILES_B_START:
-						inputFilesA = new ArrayList<>();
+					case CP_FILES_START:
 						state = ParserState.values()[state.ordinal() + 1];
 						break;
 					case FILES_A:
 					case FILES_B:
+					case CP_FILES:
+					case CP_FILES_A:
+					case CP_FILES_B:
 						if (!line.startsWith("\t\t")) {
-							state = state == ParserState.FILES_A ? ParserState.FILES_B_START : ParserState.CONTENT;
+							switch (state) {
+							case FILES_A:
+								state = ParserState.FILES_B_START;
+								break;
+							case FILES_B:
+								if (line.startsWith("\tcp:")) {
+									state = ParserState.CP_FILES_START;
+								} else if (line.startsWith("\tcp a:")) {
+									state = ParserState.CP_FILES_A;
+								} else {
+									state = ParserState.CONTENT;
+								}
+								break;
+							case CP_FILES:
+								if (line.startsWith("\tcp a:")) {
+									state = ParserState.CP_FILES_A;
+								} else {
+									state = ParserState.CONTENT;
+								}
+								break;
+							case CP_FILES_A:
+								state = ParserState.CP_FILES_B;
+								break;
+							case CP_FILES_B:
+								state = ParserState.CONTENT;
+								break;
+							default:
+								throw new IllegalStateException(state.name());
+							}
+
 							repeat = true;
 						} else {
-							List<InputFile> inputFiles = state == ParserState.FILES_A ? inputFilesA : inputFilesB;
+							List<InputFile> inputFiles;
+
+							switch (state) {
+							case FILES_A:
+								inputFiles = inputFilesA;
+								break;
+							case FILES_B:
+								inputFiles = inputFilesB;
+								break;
+							case CP_FILES:
+								inputFiles = cpFiles;
+								break;
+							case CP_FILES_A:
+								inputFiles = cpFilesA;
+								break;
+							case CP_FILES_B:
+								inputFiles = cpFilesB;
+								break;
+							default:
+								throw new IllegalStateException(state.name());
+							}
+
 							int pos = line.indexOf('\t', 2);
 							if (pos == -1 || pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
 							long size = Long.parseLong(line.substring(2, pos));
@@ -194,17 +186,23 @@ public class Matcher {
 
 						break;
 					case CONTENT:
+						if (inputDirs != null) {
+							initFromMatches(inputDirs, inputFilesA, inputFilesB, cpFiles, cpFilesA, cpFilesB, progressReceiver);
+							inputDirs = null;
+						}
+
 						if (line.startsWith("c\t")) {
 							int pos = line.indexOf('\t', 2);
 							if (pos == -1 || pos == 2 || pos + 1 == line.length()) throw new IOException("invalid matches file");
 							String idA = line.substring(2, pos);
 							String idB = line.substring(pos + 1);
-							currentClass = extractorA.getClasses().get(idA);
+							currentClass = env.getLocalClsByIdA(idA);
+							currentMethod = null;
 							ClassInstance target;
 
 							if (currentClass == null) {
 								System.err.println("Unknown a class "+idA);
-							} else if ((target = extractorB.getClasses().get(idB)) == null) {
+							} else if ((target = env.getLocalClsByIdB(idB)) == null) {
 								System.err.println("Unknown b class "+idA);
 								currentClass = null;
 							} else {
@@ -218,7 +216,7 @@ public class Matcher {
 								String idB = line.substring(pos + 1);
 
 								if (line.charAt(1) == 'm') {
-									MethodInstance a = currentClass.getMethod(idA);
+									MethodInstance a = currentMethod = currentClass.getMethod(idA);
 									MethodInstance b;
 
 									if (a == null) {
@@ -229,6 +227,7 @@ public class Matcher {
 										match(a, b);
 									}
 								} else {
+									currentMethod = null;
 									FieldInstance a = currentClass.getField(idA);
 									FieldInstance b;
 
@@ -241,6 +240,25 @@ public class Matcher {
 									}
 								}
 							}
+						} else if (line.startsWith("\t\tma\t")) {
+							if (currentMethod != null) {
+								int pos = line.indexOf('\t', 5);
+								if (pos == -1 || pos == 5 || pos + 1 == line.length()) throw new IOException("invalid matches file");
+
+								int idxA = Integer.parseInt(line.substring(5, pos));
+								int idxB = Integer.parseInt(line.substring(pos + 1));
+								MethodInstance matchedMethod = currentMethod.getMatch();
+
+								if (idxA < 0 || idxA >= currentMethod.getArgs().length) {
+									System.err.println("Unknown a method arg "+idxA+" in method "+currentMethod);
+								} else if (matchedMethod == null) {
+									System.err.println("Arg for unmatched method "+currentMethod);
+								} else if (idxB < 0 || idxB >= matchedMethod.getArgs().length) {
+									System.err.println("Unknown b method arg "+idxB+" in method "+matchedMethod);
+								} else {
+									match(currentMethod.getArg(idxA), matchedMethod.getArg(idxB));
+								}
+							}
 						}
 
 						break;
@@ -249,15 +267,61 @@ public class Matcher {
 			}
 
 			if (state != ParserState.CONTENT) throw new IOException("invalid matches file");
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
+	private void initFromMatches(List<Path> inputDirs,
+			List<InputFile> inputFilesA, List<InputFile> inputFilesB,
+			List<InputFile> cpFiles,
+			List<InputFile> cpFilesA, List<InputFile> cpFilesB, DoubleConsumer progressReceiver) throws IOException {
+		List<Path> pathsA = resolvePaths(inputDirs, inputFilesA);
+		List<Path> pathsB = resolvePaths(inputDirs, inputFilesB);
+		List<Path> sharedClassPath = resolvePaths(inputDirs, cpFiles);
+		List<Path> classPathA = resolvePaths(inputDirs, cpFilesA);
+		List<Path> classPathB = resolvePaths(inputDirs, cpFilesB);
+
+		ProjectConfig config = new ProjectConfig(pathsA, pathsB, classPathA, classPathB, sharedClassPath, false);
+		if (!config.isValid()) throw new IOException("invalid config");
+		config.saveAsLast();
+
+		reset();
+		init(config, progressReceiver);
+	}
+
+	private static List<Path> resolvePaths(List<Path> inputDirs, List<InputFile> inputFiles) throws IOException {
+		List<Path> ret = new ArrayList<>(inputFiles.size());
+
+		for (InputFile inputFile : inputFiles) {
+			boolean found = false;
+
+			for (Path inputDir : inputDirs) {
+				try (Stream<Path> matches = Files.find(inputDir, Integer.MAX_VALUE, (path, attr) -> inputFile.equals(path), FileVisitOption.FOLLOW_LINKS)) {
+					Path file = matches.findFirst().orElse(null);
+
+					if (file != null) {
+						ret.add(file);
+						found = true;
+						break;
+					}
+				} catch (UncheckedIOException e) {
+					throw e.getCause();
+				}
+			}
+
+			if (!found) throw new IOException("can't find input "+inputFile.getFileName());
+		}
+
+		return ret;
+	}
+
 	private static enum ParserState {
-		START, FILES_A_START, FILES_A, FILES_B_START, FILES_B, CONTENT;
+		START, FILES_A_START, FILES_A, FILES_B_START, FILES_B, CP_FILES_START, CP_FILES, CP_FILES_A, CP_FILES_B, CONTENT;
 	}
 
 	public boolean saveMatches(Path path) throws IOException {
-		List<ClassInstance> classes = extractorA.getClasses().values().stream()
+		List<ClassInstance> classes = env.getClassesA().stream()
 				.filter(cls -> cls.getMatch() != null)
 				.sorted(Comparator.comparing(cls -> cls.getId()))
 				.collect(Collectors.toList());
@@ -267,9 +331,15 @@ public class Matcher {
 			writer.write("Matches saved ");
 			writer.write(ZonedDateTime.now().toString());
 			writer.write(", input files:\n\ta:\n");
-			writeInputFiles(extractorA.getInputFiles(), writer);
+			writeInputFiles(env.getInputFilesA(), writer);
 			writer.write("\tb:\n");
-			writeInputFiles(extractorB.getInputFiles(), writer);
+			writeInputFiles(env.getInputFilesB(), writer);
+			writer.write("\tcp:\n");
+			writeInputFiles(env.getClassPathFiles(), writer);
+			writer.write("\tcp a:\n");
+			writeInputFiles(env.getClassPathFilesA(), writer);
+			writer.write("\tcp b:\n");
+			writeInputFiles(env.getClassPathFilesB(), writer);
 
 			for (ClassInstance cls : classes) {
 				assert !cls.isShared();
@@ -280,8 +350,8 @@ public class Matcher {
 				writer.write(cls.getMatch().getId());
 				writer.write('\n');
 
-				writeMembers(cls.getMethods(), writer);
-				writeMembers(cls.getFields(), writer);
+				writeMethods(cls.getMethods(), writer);
+				writeFields(cls.getFields(), writer);
 			}
 		}
 
@@ -300,69 +370,91 @@ public class Matcher {
 		}
 	}
 
-	private static void writeMembers(MemberInstance<?>[] members, Writer out) throws IOException {
-		for (MemberInstance<?> member : members) {
-			if (member.getMatch() == null) continue;
+	private static void writeMethods(MethodInstance[] methods, Writer out) throws IOException {
+		for (MethodInstance method : methods) {
+			writeMemberMain(method, out, true);
 
-			out.write('\t');
-			out.write(member instanceof MethodInstance ? 'm' : 'f');
-			out.write('\t');
-			out.write(member.getId());
-			out.write('\t');
-			out.write(member.getMatch().getId());
-			out.write('\n');
+			for (MethodVarInstance arg : method.getArgs()) {
+				if (arg.getMatch() == null) return;
+
+				out.write("\t\tma\t");
+				out.write(Integer.toString(arg.getIndex()));
+				out.write('\t');
+				out.write(Integer.toString(arg.getMatch().getIndex()));
+				out.write('\n');
+			}
 		}
 	}
 
-	public void readMappings(Path path) throws IOException {
+	private static void writeFields(FieldInstance[] fields, Writer out) throws IOException {
+		for (FieldInstance field : fields) {
+			writeMemberMain(field, out, false);
+		}
+	}
+
+	private static void writeMemberMain(MemberInstance<?> member, Writer out, boolean isMethod) throws IOException {
+		if (member.getMatch() == null) return;
+
+		out.write('\t');
+		out.write(isMethod ? 'm' : 'f');
+		out.write('\t');
+		out.write(member.getId());
+		out.write('\t');
+		out.write(member.getMatch().getId());
+		out.write('\n');
+	}
+
+	public void readMappings(Path path, MappingFormat format, boolean forA, final boolean replace) throws IOException {
 		int[] counts = new int[7];
 		Set<String> warnedClasses = new HashSet<>();
-		clearMappings();
+
+		final IClassEnv env = forA ? this.env.getEnvA() : this.env.getEnvB();
 
 		try {
-			MappingReader.read(path, new IMappingAcceptor() {
+			MappingReader.read(path, format, new IMappingAcceptor() {
 				@Override
 				public void acceptClass(String srcName, String dstName) {
-					ClassInstance cls = extractorA.getClassInstance(srcName);
+					ClassInstance cls = env.getLocalClsByName(srcName);
 
 					if (cls == null) {
 						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName+" ("+dstName+")");
 					} else {
-						cls.setMappedName(dstName);
+						if (!cls.hasMappedName() || replace) cls.setMappedName(dstName);
 						counts[0]++;
 					}
 				}
 
 				@Override
 				public void acceptClassComment(String srcName, String comment) {
-					ClassInstance cls = extractorA.getClassInstance(srcName);
+					ClassInstance cls = env.getLocalClsByName(srcName);
 
 					if (cls == null) {
 						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName);
 					} else {
-						cls.setMappedComment(comment);
+						if (cls.getMappedComment() == null || replace) cls.setMappedComment(comment);
 						counts[1]++;
 					}
 				}
 
 				@Override
 				public void acceptMethod(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
-					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					ClassInstance cls = env.getLocalClsByName(srcClsName);
 					MethodInstance method;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
-						System.out.println("can't find mapped method "+srcClsName+"/"+srcName+" ("+(cls.getMappedName() != null ? cls.getMappedName()+"/" : "")+dstName+")");
+						String mappedName = cls.getMappedName(false);
+						System.out.println("can't find mapped method "+srcClsName+"/"+srcName+" ("+(mappedName != null ? mappedName+"/" : "")+dstName+")");
 					} else {
-						method.setMappedName(dstName);
+						if (!method.hasMappedName() || replace) method.setMappedName(dstName);
 						counts[2]++;
 					}
 				}
 
 				@Override
 				public void acceptMethodComment(String srcClsName, String srcName, String srcDesc, String comment) {
-					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					ClassInstance cls = env.getLocalClsByName(srcClsName);
 					MethodInstance method;
 
 					if (cls == null) {
@@ -370,46 +462,75 @@ public class Matcher {
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
 						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
 					} else {
-						method.setMappedComment(comment);
+						if (method.getMappedComment() == null || replace) method.setMappedComment(comment);
 						counts[3]++;
 					}
 				}
 
 				@Override
-				public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, String dstArgName) {
-					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+				public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvtIndex, String dstArgName) {
+					ClassInstance cls = env.getLocalClsByName(srcClsName);
 					MethodInstance method;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
 						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
-					} else if (argIndex < 0 || argIndex >= method.getArgs().size()) {
+					} else if (argIndex < -1 || argIndex >= method.getArgs().length) {
 						System.out.println("invalid arg index "+argIndex+" for method "+method);
+					} else if (lvtIndex < -1 || lvtIndex >= method.getArgs().length * 2 + 1) {
+						System.out.println("invalid lvt index "+lvtIndex+" for method "+method);
 					} else {
-						method.setMappedArgName(argIndex, dstArgName);
+						if (argIndex == -1) {
+							if (lvtIndex <= -1) {
+								System.out.println("missing arg+lvt index "+lvtIndex+" for method "+method);
+								return;
+							} else {
+								for (MethodVarInstance arg : method.getArgs()) {
+									if (arg.getLvtIndex() == lvtIndex) {
+										argIndex = arg.getIndex();
+										break;
+									}
+								}
+
+								if (argIndex == -1) {
+									System.out.println("invalid lvt index "+lvtIndex+" for method "+method);
+									return;
+								}
+							}
+						}
+
+						MethodVarInstance arg = method.getArg(argIndex);
+
+						if (lvtIndex != -1 && arg.getLvtIndex() != lvtIndex) {
+							System.out.println("mismatched lvt index "+lvtIndex+" for method "+method);
+							return;
+						}
+
+						if (arg.getMappedName(false) == null || replace) arg.setMappedName(dstArgName);
 						counts[4]++;
 					}
 				}
 
 				@Override
 				public void acceptField(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
-					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					ClassInstance cls = env.getLocalClsByName(srcClsName);
 					FieldInstance field;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
-						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(cls.getMappedName() != null ? cls.getMappedName()+"/" : "")+dstName+")");
+						String mappedName = cls.getMappedName(false);
+						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(mappedName != null ? mappedName+"/" : "")+dstName+")");
 					} else {
-						field.setMappedName(dstName);
+						if (!field.hasMappedName() || replace) field.setMappedName(dstName);
 						counts[5]++;
 					}
 				}
 
 				@Override
 				public void acceptFieldComment(String srcClsName, String srcName, String srcDesc, String comment) {
-					ClassInstance cls = extractorA.getClassInstance(srcClsName);
+					ClassInstance cls = env.getLocalClsByName(srcClsName);
 					FieldInstance field;
 
 					if (cls == null) {
@@ -417,7 +538,7 @@ public class Matcher {
 					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
 						System.out.println("can't find mapped field "+srcClsName+"/"+srcName);
 					} else {
-						field.setMappedComment(comment);
+						if (field.getMappedComment() == null || replace) field.setMappedComment(comment);
 						counts[6]++;
 					}
 				}
@@ -432,14 +553,17 @@ public class Matcher {
 	}
 
 	public void clearMappings() {
-		for (ClassInstance cls : extractorA.getClasses().values()) {
+		for (ClassInstance cls : env.getClassesA()) {
 			cls.setMappedName(null);
 			cls.setMappedComment(null);
 
 			for (MethodInstance method : cls.getMethods()) {
 				method.setMappedName(null);
-				method.clearMappedArgNames();
 				method.setMappedComment(null);
+
+				for (MethodVarInstance arg : method.getArgs()) {
+					arg.setMappedName(null);
+				}
 			}
 
 			for (FieldInstance field : cls.getFields()) {
@@ -450,44 +574,69 @@ public class Matcher {
 	}
 
 	public boolean saveMappings(Path file, MappingFormat format) throws IOException {
-		List<ClassInstance> classes = extractorB.getClasses().values().stream()
-				.filter(ClassInstance::hasMappedName)
+		List<ClassInstance> classes = env.getClassesB().stream()
 				.sorted(Comparator.comparing(ClassInstance::getId))
 				.collect(Collectors.toList());
 		if (classes.isEmpty()) return false;
 
 		try (MappingWriter writer = new MappingWriter(file, format)) {
 			for (ClassInstance cls : classes) {
-				String name = cls.getName();
-				String mappedName = cls.getMappedName();
+				String clsName = cls.getName();
+				String mappedClsName = cls.getMappedName(false);
 
-				writer.acceptClass(name, mappedName);
+				if (mappedClsName == null && cls.getMappedComment() == null) {
+					boolean found = false;
 
-				if (cls.getMappedComment() != null) writer.acceptClassComment(name, cls.getMappedComment());
+					for (MethodInstance m : cls.getMethods()) {
+						if (outputMethodMapping(m)) {
+							found = true;
+							break;
+						}
+					}
+
+					if (!found) {
+						for (FieldInstance f : cls.getFields()) {
+							if (outputFieldMapping(f)) {
+								found = true;
+								break;
+							}
+						}
+					}
+
+					if (!found) continue; // no data for the class, skip
+				}
+
+				writer.acceptClass(clsName, mappedClsName);
+
+				if (cls.getMappedComment() != null) writer.acceptClassComment(clsName, cls.getMappedComment());
 
 				Stream.of(cls.getMethods())
-				.filter(MemberInstance::hasMappedName)
-				.sorted(Comparator.<MemberInstance<?>, String>comparing(m -> m.getOrigName()).thenComparing(MemberInstance::getDesc))
+				.filter(Matcher::outputMethodMapping)
+				.sorted(Comparator.<MemberInstance<?>, String>comparing(MemberInstance::getName).thenComparing(MemberInstance::getDesc))
 				.forEachOrdered(m -> {
+					String name = m.getName();
 					String desc = m.getDesc();
-					writer.acceptMethod(name, m.getOrigName(), desc, mappedName, m.getMappedName(), getMappedDesc(m));
+					writer.acceptMethod(clsName, name, desc, mappedClsName, m.getMappedName(false), getMappedDesc(m));
 
-					if (m.getMappedComment() != null) writer.acceptMethodComment(name, m.getOrigName(), desc, m.getMappedComment());
+					String comment = m.getMappedComment();
+					if (comment != null) writer.acceptMethodComment(clsName, name, desc, comment);
 
-					for (int i = 0; i < m.getArgs().size(); i++) {
-						String argName = m.getMappedArgName(i);
-						if (argName != null) writer.acceptMethodArg(name, m.getOrigName(), desc, i, argName);
+					for (MethodVarInstance arg : m.getArgs()) {
+						String argName = arg.getMappedName(false);
+						if (argName != null) writer.acceptMethodArg(clsName, name, desc, arg.getIndex(), arg.getLvtIndex(), argName);
 					}
 				});
 
 				Stream.of(cls.getFields())
-				.filter(MemberInstance::hasMappedName)
-				.sorted(Comparator.<MemberInstance<?>, String>comparing(m -> m.getOrigName()).thenComparing(MemberInstance::getDesc))
+				.filter(Matcher::outputFieldMapping)
+				.sorted(Comparator.<MemberInstance<?>, String>comparing(MemberInstance::getName).thenComparing(MemberInstance::getDesc))
 				.forEachOrdered(m -> {
+					String name = m.getName();
 					String desc = m.getDesc();
-					writer.acceptField(name, m.getOrigName(), desc, mappedName, m.getMappedName(), getMappedDesc(m));
+					writer.acceptField(clsName, name, desc, mappedClsName, m.getMappedName(false), getMappedDesc(m));
 
-					if (m.getMappedComment() != null) writer.acceptMethodComment(name, m.getOrigName(), desc, m.getMappedComment());
+					String comment = m.getMappedComment();
+					if (comment != null) writer.acceptMethodComment(clsName, name, desc, comment);
 				});
 			}
 		} catch (UncheckedIOException e) {
@@ -497,11 +646,19 @@ public class Matcher {
 		return true;
 	}
 
+	private static boolean outputMethodMapping(MethodInstance method) {
+		return method.hasMappedName() || method.getMappedComment() != null || method.hasMappedArg();
+	}
+
+	private static boolean outputFieldMapping(FieldInstance field) {
+		return field.hasMappedName() || field.getMappedComment() != null;
+	}
+
 	private static String getMappedDesc(MethodInstance member) {
 		String ret = "(";
 
-		for (ClassInstance arg : member.getArgs()) {
-			ret += getMappedDesc(arg);
+		for (MethodVarInstance arg : member.getArgs()) {
+			ret += getMappedDesc(arg.getType());
 		}
 
 		ret += ")" + getMappedDesc(member.getRetType());
@@ -514,27 +671,25 @@ public class Matcher {
 	}
 
 	private static String getMappedDesc(ClassInstance cls) {
-		if (!cls.hasMappedName()) {
+		String mappedName = cls.getMappedName(false);
+
+		if (mappedName == null) {
 			return cls.getId();
 		} else if (cls.isArray()) {
 			return cls.getId().substring(0, cls.getId().lastIndexOf('[') + 1) + getMappedDesc(cls.getElementClass());
 		} else {
-			return "L"+cls.getMappedName()+";";
+			return "L"+mappedName+";";
 		}
-	}
-
-	public byte[] serializeClass(ClassInstance cls, boolean isA, boolean mapped) {
-		ClassFeatureExtractor extractor = isA ? extractorA : extractorB;
-
-		return extractor.serializeClass(cls, mapped);
 	}
 
 	public void match(ClassInstance a, ClassInstance b) {
 		if (a == null) throw new NullPointerException("null class A");
 		if (b == null) throw new NullPointerException("null class B");
+		if (a.getArrayDimensions() != b.getArrayDimensions()) throw new IllegalArgumentException("the classes don't have the same amount of array dimensions");
 		if (a.getMatch() == b) return;
 
-		System.out.println("match class "+a+" -> "+b+(a.getMappedName() != null ? " ("+a.getMappedName()+")" : ""));
+		String mappedName = a.getMappedName(false);
+		System.out.println("match class "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (a.getMatch() != null) {
 			a.getMatch().setMatch(null);
@@ -548,6 +703,46 @@ public class Matcher {
 
 		a.setMatch(b);
 		b.setMatch(a);
+
+		// match array classes
+
+		if (a.isArray()) {
+			ClassInstance elemA = a.getElementClass();
+
+			if (!elemA.hasMatch()) match(elemA, b.getElementClass());
+		} else {
+			for (ClassInstance arrayA : a.getArrays()) {
+				int dims = arrayA.getArrayDimensions();
+
+				for (ClassInstance arrayB : b.getArrays()) {
+					if (arrayB.hasMatch() || arrayB.getArrayDimensions() != dims) continue;
+
+					assert arrayA.getElementClass() == a && arrayB.getElementClass() == b;
+
+					match(arrayA, arrayB);
+					break;
+				}
+			}
+		}
+
+		// match methods that are matched via parents/children
+
+		for (MethodInstance src : a.getMethods()) {
+			MethodInstance matchedSrc = src.getMatchedHierarchyMember();
+			if (matchedSrc == null) continue;
+
+			Set<MethodInstance> dstHierarchyMembers = matchedSrc.getMatch().getAllHierarchyMembers();
+			if (dstHierarchyMembers.size() <= 1) continue;
+
+			for (MethodInstance dst : b.getMethods()) {
+				if (dstHierarchyMembers.contains(dst)) {
+					match(src, dst);
+					break;
+				}
+			}
+		}
+
+		env.getCache().clear();
 	}
 
 	private static void unmatchMembers(ClassInstance cls) {
@@ -555,6 +750,13 @@ public class Matcher {
 			if (m.getMatch() != null) {
 				m.getMatch().setMatch(null);
 				m.setMatch(null);
+
+				for (MethodVarInstance arg : m.getArgs()) {
+					if (arg.getMatch() != null) {
+						arg.getMatch().setMatch(null);
+						arg.setMatch(null);
+					}
+				}
 			}
 		}
 
@@ -572,67 +774,191 @@ public class Matcher {
 		if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
 		if (a.getMatch() == b) return;
 
-		System.out.println("match method "+a+" -> "+b+(a.getMappedName() != null ? " ("+a.getMappedName()+")" : ""));
+		String mappedName = a.getMappedName(false);
+		System.out.println("match method "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
 		if (b.getMatch() != null) b.getMatch().setMatch(null);
+		// TODO: unmatch vars
 
 		a.setMatch(b);
 		b.setMatch(a);
+
+		// match parent/child methods
+
+		Set<MethodInstance> srcHierarchyMembers = a.getAllHierarchyMembers();
+		if (srcHierarchyMembers.size() <= 1) return;
+
+		IClassEnv reqEnv = a.getCls().getEnv();
+		Set<MethodInstance> dstHierarchyMembers = null;
+
+		for (MethodInstance src : srcHierarchyMembers) {
+			if (src.hasMatch() || !src.getCls().hasMatch() || src.getCls().getEnv() != reqEnv) continue;
+
+			if (dstHierarchyMembers == null) dstHierarchyMembers = b.getAllHierarchyMembers();
+
+			for (MethodInstance dst : src.getCls().getMatch().getMethods()) {
+				if (dstHierarchyMembers.contains(dst)) {
+					match(src, dst);
+					break;
+				}
+			}
+		}
+
+		env.getCache().clear();
 	}
 
 	public void match(FieldInstance a, FieldInstance b) {
-		if (a == null) throw new NullPointerException("null method A");
-		if (b == null) throw new NullPointerException("null method B");
+		if (a == null) throw new NullPointerException("null field A");
+		if (b == null) throw new NullPointerException("null field B");
 		if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
 		if (a.getMatch() == b) return;
 
-		System.out.println("match field "+a+" -> "+b+(a.getMappedName() != null ? " ("+a.getMappedName()+")" : ""));
+		String mappedName = a.getMappedName(false);
+		System.out.println("match field "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
 		if (b.getMatch() != null) b.getMatch().setMatch(null);
 
 		a.setMatch(b);
 		b.setMatch(a);
+
+		env.getCache().clear();
+	}
+
+	public void match(MethodVarInstance a, MethodVarInstance b) {
+		if (a == null) throw new NullPointerException("null method var A");
+		if (b == null) throw new NullPointerException("null method var B");
+		if (a.getMethod().getMatch() != b.getMethod()) throw new IllegalArgumentException("the method vars don't belong to the same method");
+		if (a.isArg() != b.isArg()) throw new IllegalArgumentException("the method vars are not of the same kind");
+		if (a.getMatch() == b) return;
+
+		String mappedName = a.getMappedName(false);
+		System.out.println("match method arg "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
+
+		if (a.getMatch() != null) a.getMatch().setMatch(null);
+		if (b.getMatch() != null) b.getMatch().setMatch(null);
+
+		a.setMatch(b);
+		b.setMatch(a);
+
+		env.getCache().clear();
 	}
 
 	public void unmatch(ClassInstance cls) {
 		if (cls == null) throw new NullPointerException("null class");
 		if (cls.getMatch() == null) return;
 
-		System.out.println("unmatch class "+cls+" (was "+cls.getMatch()+")"+(cls.getMappedName() != null ? " ("+cls.getMappedName()+")" : ""));
+		String mappedName = cls.getMappedName(false);
+		System.out.println("unmatch class "+cls+" (was "+cls.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
+
+		cls.getMatch().setMatch(null);
+		cls.setMatch(null);
 
 		unmatchMembers(cls);
-		cls.setMatch(null);
+
+		if (cls.isArray()) {
+			unmatch(cls.getElementClass());
+		} else {
+			for (ClassInstance array : cls.getArrays()) {
+				unmatch(array);
+			}
+		}
+
+		env.getCache().clear();
 	}
 
 	public void unmatch(MemberInstance<?> m) {
-		if (m == null) throw new NullPointerException("null class");
+		if (m == null) throw new NullPointerException("null member");
 		if (m.getMatch() == null) return;
 
-		System.out.println("unmatch member "+m+" (was "+m.getMatch()+")"+(m.getMappedName() != null ? " ("+m.getMappedName()+")" : ""));
+		String mappedName = m.getMappedName(false);
+		System.out.println("unmatch member "+m+" (was "+m.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
+
+		if (m instanceof MethodInstance) {
+			for (MethodVarInstance arg : ((MethodInstance) m).getArgs()) {
+				unmatch(arg);
+			}
+		}
 
 		m.getMatch().setMatch(null);
 		m.setMatch(null);
+
+		if (m instanceof MethodInstance) {
+			for (MemberInstance<?> member : m.getAllHierarchyMembers()) {
+				unmatch(member);
+			}
+		}
+
+		env.getCache().clear();
 	}
 
-	public boolean autoMatchClasses(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		double absThreshold = normalizedAbsThreshold * ClassClassifier.getMaxScore();
+	public void unmatch(MethodVarInstance a) {
+		if (a == null) throw new NullPointerException("null method var");
+		if (a.getMatch() == null) return;
 
-		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && cls.isNameObfuscated() && cls.getMatch() == null;
+		String mappedName = a.getMappedName(false);
+		System.out.println("unmatch method var "+a+" (was "+a.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
 
-		List<ClassInstance> classes = extractorA.getClasses().values().stream()
+		a.getMatch().setMatch(null);
+		a.setMatch(null);
+
+		env.getCache().clear();
+	}
+
+	public void autoMatchAll(DoubleConsumer progressReceiver) {
+		if (autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)) {
+			autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+		}
+
+		autoMatchLevel(ClassifierLevel.Intermediate, progressReceiver);
+		autoMatchLevel(ClassifierLevel.Full, progressReceiver);
+		autoMatchLevel(ClassifierLevel.Extra, progressReceiver);
+
+		boolean matchedAny;
+
+		do {
+			matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+		} while (matchedAny);
+
+		env.getCache().clear();
+	}
+
+	private void autoMatchLevel(ClassifierLevel level, DoubleConsumer progressReceiver) {
+		boolean matchedAny;
+		boolean matchedClassesBefore = true;
+
+		do {
+			matchedAny = autoMatchMethods(level, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
+			matchedAny |= autoMatchFields(level, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
+
+			if (!matchedAny && !matchedClassesBefore) {
+				break;
+			}
+
+			matchedAny |= matchedClassesBefore = autoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+		} while (matchedAny);
+	}
+
+	public boolean autoMatchClasses(DoubleConsumer progressReceiver) {
+		return autoMatchClasses(autoMatchLevel, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
+	}
+
+	public boolean autoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
+		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && cls.isNameObfuscated(false) && cls.getMatch() == null;
+
+		List<ClassInstance> classes = env.getClassesA().stream()
 				.filter(filter)
 				.collect(Collectors.toList());
 
-		ClassInstance[] cmpClasses = extractorB.getClasses().values().stream()
+		ClassInstance[] cmpClasses = env.getClassesB().stream()
 				.filter(filter)
 				.collect(Collectors.toList()).toArray(new ClassInstance[0]);
 
 		Map<ClassInstance, ClassInstance> matches = new ConcurrentHashMap<>(classes.size());
 
 		runInParallel(classes, cls -> {
-			List<RankResult<ClassInstance>> ranking = ClassClassifier.rank(cls, cmpClasses, this);
+			List<RankResult<ClassInstance>> ranking = ClassClassifier.rank(cls, cmpClasses, level, env);
 
 			if (checkRank(ranking, absThreshold, relThreshold)) {
 				ClassInstance match = ranking.get(0).getSubject();
@@ -647,7 +973,7 @@ public class Matcher {
 			match(entry.getKey(), entry.getValue());
 		}
 
-		System.out.println("Auto matched "+matches.size()+" classes ("+(classes.size() - matches.size())+" unmatched, "+extractorA.getClasses().size()+" total)");
+		System.out.println("Auto matched "+matches.size()+" classes ("+(classes.size() - matches.size())+" unmatched, "+env.getClassesA().size()+" total)");
 
 		return !matches.isEmpty();
 	}
@@ -669,11 +995,13 @@ public class Matcher {
 		});
 	}
 
-	public boolean autoMatchMethods(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		double absThreshold = normalizedAbsThreshold * MethodClassifier.getMaxScore();
+	public boolean autoMatchMethods(DoubleConsumer progressReceiver) {
+		return autoMatchMethods(autoMatchLevel, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
+	}
 
+	public boolean autoMatchMethods(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		AtomicInteger totalUnmatched = new AtomicInteger();
-		Map<MethodInstance, MethodInstance> matches = match(absThreshold, relThreshold, cls -> cls.getMethods(), MethodClassifier::rank, progressReceiver, totalUnmatched);
+		Map<MethodInstance, MethodInstance> matches = match(level, absThreshold, relThreshold, cls -> cls.getMethods(), MethodClassifier::rank, progressReceiver, totalUnmatched);
 
 		for (Map.Entry<MethodInstance, MethodInstance> entry : matches.entrySet()) {
 			match(entry.getKey(), entry.getValue());
@@ -684,11 +1012,13 @@ public class Matcher {
 		return !matches.isEmpty();
 	}
 
-	public boolean autoMatchFields(double normalizedAbsThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		double absThreshold = normalizedAbsThreshold * FieldClassifier.getMaxScore();
+	public boolean autoMatchFields(DoubleConsumer progressReceiver) {
+		return autoMatchFields(autoMatchLevel, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
+	}
 
+	public boolean autoMatchFields(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		AtomicInteger totalUnmatched = new AtomicInteger();
-		Map<FieldInstance, FieldInstance> matches = match(absThreshold, relThreshold, cls -> cls.getFields(), FieldClassifier::rank, progressReceiver, totalUnmatched);
+		Map<FieldInstance, FieldInstance> matches = match(level, absThreshold, relThreshold, cls -> cls.getFields(), FieldClassifier::rank, progressReceiver, totalUnmatched);
 
 		for (Map.Entry<FieldInstance, FieldInstance> entry : matches.entrySet()) {
 			match(entry.getKey(), entry.getValue());
@@ -699,23 +1029,12 @@ public class Matcher {
 		return !matches.isEmpty();
 	}
 
-	private <T extends MemberInstance<T>> Map<T, T> match(double absThreshold, double relThreshold,
+	private <T extends MemberInstance<T>> Map<T, T> match(ClassifierLevel level, double absThreshold, double relThreshold,
 			Function<ClassInstance, T[]> memberGetter, IRanker<T> ranker,
 			DoubleConsumer progressReceiver, AtomicInteger totalUnmatched) {
-		List<ClassInstance> classes = extractorA.getClasses().values().stream()
+		List<ClassInstance> classes = env.getClassesA().stream()
 				.filter(cls -> cls.getUri() != null && cls.getMatch() != null && memberGetter.apply(cls).length > 0)
 				.filter(cls -> {
-					boolean found = false;
-
-					for (T member : memberGetter.apply(cls)) {
-						if (member.getMatch() == null) {
-							found = true;
-							break;
-						}
-					}
-
-					if (!found) return false;
-
 					for (T member : memberGetter.apply(cls)) {
 						if (member.getMatch() == null) return true;
 					}
@@ -733,7 +1052,7 @@ public class Matcher {
 			for (T member : memberGetter.apply(cls)) {
 				if (member.getMatch() != null) continue;
 
-				List<RankResult<T>> ranking = ranker.rank(member, memberGetter.apply(cls.getMatch()), this);
+				List<RankResult<T>> ranking = ranker.rank(member, memberGetter.apply(cls.getMatch()), level, env);
 
 				if (checkRank(ranking, absThreshold, relThreshold)) {
 					T match = ranking.get(0).getSubject();
@@ -752,7 +1071,64 @@ public class Matcher {
 		return ret;
 	}
 
-	private static boolean checkRank(List<? extends RankResult<?>> ranking, double absThreshold, double relThreshold) {
+	public boolean autoMatchMethodArgs(DoubleConsumer progressReceiver) {
+		return autoMatchMethodArgs(autoMatchLevel, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+	}
+
+	public boolean autoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
+		List<MethodInstance> methods = env.getClassesA().stream()
+				.filter(cls -> cls.getUri() != null && cls.getMatch() != null && cls.getMethods().length > 0)
+				.flatMap(cls -> Stream.<MethodInstance>of(cls.getMethods()))
+				.filter(m -> m.getMatch() != null && m.getArgs().length > 0)
+				.filter(m -> {
+					for (MethodVarInstance a : m.getArgs()) {
+						if (a.getMatch() == null) return true;
+					}
+
+					return false;
+				})
+				.collect(Collectors.toList());
+		Map<MethodVarInstance, MethodVarInstance> matches;
+		AtomicInteger totalUnmatched = new AtomicInteger();
+
+		if (methods.isEmpty()) {
+			matches = Collections.emptyMap();
+		} else {
+			matches = new ConcurrentHashMap<>(512);
+
+			runInParallel(methods, m -> {
+				int unmatched = 0;
+
+				for (MethodVarInstance arg : m.getArgs()) {
+					if (arg.getMatch() != null) continue;
+
+					List<RankResult<MethodVarInstance>> ranking = MethodArgClassifier.rank(arg, m.getMatch().getArgs(), level, env);
+
+					if (checkRank(ranking, absThreshold, relThreshold)) {
+						MethodVarInstance match = ranking.get(0).getSubject();
+
+						matches.put(arg, match);
+					} else {
+						unmatched++;
+					}
+				}
+
+				if (unmatched > 0) totalUnmatched.addAndGet(unmatched);
+			}, progressReceiver);
+
+			sanitizeMatches(matches);
+		}
+
+		for (Map.Entry<MethodVarInstance, MethodVarInstance> entry : matches.entrySet()) {
+			match(entry.getKey(), entry.getValue());
+		}
+
+		System.out.println("Auto matched "+matches.size()+" method args ("+totalUnmatched.get()+" unmatched)");
+
+		return !matches.isEmpty();
+	}
+
+	public static boolean checkRank(List<? extends RankResult<?>> ranking, double absThreshold, double relThreshold) {
 		if (ranking.isEmpty()) return false;
 		if (ranking.get(0).getScore() < absThreshold) return false;
 
@@ -778,15 +1154,20 @@ public class Matcher {
 		}
 	}
 
-	public MatchingStatus getStatus() {
-		int totalClassCount = extractorA.getClasses().size();
+	public MatchingStatus getStatus(boolean inputsOnly) {
+		int totalClassCount = 0;
 		int matchedClassCount = 0;
 		int totalMethodCount = 0;
 		int matchedMethodCount = 0;
+		int totalMethodArgCount = 0;
+		int matchedMethodArgCount = 0;
 		int totalFieldCount = 0;
 		int matchedFieldCount = 0;
 
-		for (ClassInstance cls : extractorA.getClasses().values()) {
+		for (ClassInstance cls : env.getClassesA()) {
+			if (inputsOnly && !cls.isInput()) continue;
+
+			totalClassCount++;
 			if (cls.getMatch() != null) matchedClassCount++;
 
 			for (MethodInstance method : cls.getMethods()) {
@@ -794,6 +1175,12 @@ public class Matcher {
 					totalMethodCount++;
 
 					if (method.getMatch() != null) matchedMethodCount++;
+
+					for (MethodVarInstance arg : method.getArgs()) {
+						totalMethodArgCount++;
+
+						if (arg.getMatch() != null) matchedMethodArgCount++;
+					}
 				}
 			}
 
@@ -806,53 +1193,116 @@ public class Matcher {
 			}
 		}
 
-		return new MatchingStatus(totalClassCount, matchedClassCount, totalMethodCount, matchedMethodCount, totalFieldCount, matchedFieldCount);
+		return new MatchingStatus(totalClassCount, matchedClassCount, totalMethodCount, matchedMethodCount, totalMethodArgCount, matchedMethodArgCount, totalFieldCount, matchedFieldCount);
 	}
 
-	public String decompile(ClassInstance cls, boolean mapped) {
-		ClassFeatureExtractor extractor;
+	public boolean propagateNames(DoubleConsumer progressReceiver) {
+		int total = env.getClassesB().size();
+		int current = 0;
+		Set<MethodInstance> checked = Util.newIdentityHashSet();
+		int propagatedMethodNames = 0;
+		int propagatedArgNames = 0;
 
-		if (extractorA.getClasses().get(cls.getId()) == cls) {
-			extractor = extractorA;
-		} else if (extractorB.getClasses().get(cls.getId()) == cls) {
-			extractor = extractorB;
-		} else {
-			throw new IllegalArgumentException("unknown class: "+cls);
+		for (ClassInstance cls : env.getClassesB()) {
+			if (cls.getMethods().length > 0) {
+				for (MethodInstance method : cls.getMethods()) {
+					if (method.getAllHierarchyMembers().size() <= 1) continue;
+					if (checked.contains(method)) continue;
+
+					String name = method.getMappedName(false);
+					if (name != null && method.hasAllArgsMapped()) continue;
+
+					checked.addAll(method.getAllHierarchyMembers());
+
+					// collect names from all hierarchy members
+
+					final int argCount = method.getArgs().length;
+					String[] argNames = new String[argCount];
+					int missingArgNames = argCount;
+
+					collectLoop: for (MethodInstance m : method.getAllHierarchyMembers()) {
+						if (name == null && (name = m.getMappedName(false)) != null) {
+							if (missingArgNames == 0) break;
+						}
+
+						if (missingArgNames > 0) {
+							assert m.getArgs().length == argCount;
+
+							for (int i = 0; i < argCount; i++) {
+								if (argNames[i] == null && (argNames[i] = m.getArg(i).getMappedName(false)) != null) {
+									missingArgNames--;
+
+									if (name != null && missingArgNames == 0) break collectLoop;
+								}
+							}
+						}
+					}
+
+					if (name == null && missingArgNames == argCount) continue; // nothing found
+
+					// apply names to all hierarchy members that don't have any yet
+
+					for (MethodInstance m : method.getAllHierarchyMembers()) {
+						if (name != null && !m.hasMappedName()) {
+							m.setMappedName(name);
+							propagatedMethodNames++;
+						}
+
+						for (int i = 0; i < argCount; i++) {
+							MethodVarInstance arg;
+
+							if (argNames[i] != null && (arg = m.getArg(i)).getMappedName(false) == null) {
+								arg.setMappedName(argNames[i]);
+								propagatedArgNames++;
+							}
+						}
+					}
+				}
+			}
+
+			if (((++current & (1 << 4) - 1)) == 0) {
+				progressReceiver.accept((double) current / total);
+			}
 		}
 
-		return CfrIf.decompile(cls, extractor, mapped);
-	}
+		System.out.printf("Propagated %d method names, %d method arg names.", propagatedMethodNames, propagatedArgNames);
 
-	private static List<ClassInstance> getClasses(ClassFeatureExtractor extractor) {
-		return extractor.getClasses().values().stream()
-				.filter(cls -> cls.getUri() != null)
-				.sorted(Comparator.comparing(ClassInstance::toString))
-				.collect(Collectors.toList());
+		return propagatedMethodNames > 0 || propagatedArgNames > 0;
 	}
 
 	public static class MatchingStatus {
 		MatchingStatus(int totalClassCount, int matchedClassCount,
 				int totalMethodCount, int matchedMethodCount,
+				int totalMethodArgCount, int matchedMethodArgCount,
 				int totalFieldCount, int matchedFieldCount) {
 			this.totalClassCount = totalClassCount;
 			this.matchedClassCount = matchedClassCount;
 			this.totalMethodCount = totalMethodCount;
 			this.matchedMethodCount = matchedMethodCount;
+			this.totalMethodArgCount = totalMethodArgCount;
+			this.matchedMethodArgCount = matchedMethodArgCount;
 			this.totalFieldCount = totalFieldCount;
 			this.matchedFieldCount = matchedFieldCount;
 		}
 
-		final int totalClassCount;
-		final int matchedClassCount;
-		final int totalMethodCount;
-		final int matchedMethodCount;
-		final int totalFieldCount;
-		final int matchedFieldCount;
+		public final int totalClassCount;
+		public final int matchedClassCount;
+		public final int totalMethodCount;
+		public final int matchedMethodCount;
+		public final int totalMethodArgCount;
+		public final int matchedMethodArgCount;
+		public final int totalFieldCount;
+		public final int matchedFieldCount;
 	}
 
-	private final Map<String, ClassInstance> sharedClasses;
-	private final List<FileSystem> openFileSystems = new ArrayList<>();
-	private final Map<String, Path> classPathIndex = new HashMap<>();
-	private final ClassFeatureExtractor extractorA;
-	private final ClassFeatureExtractor extractorB;
+	private final ClassEnvironment env;
+	private final ClassifierLevel autoMatchLevel = ClassifierLevel.Full;
+	private final double absClassAutoMatchThreshold = 0.85;
+	private final double relClassAutoMatchThreshold = 0.085;
+	private final double absMethodAutoMatchThreshold = 0.85;
+	private final double relMethodAutoMatchThreshold = 0.085;
+	private final double absFieldAutoMatchThreshold = 0.85;
+	private final double relFieldAutoMatchThreshold = 0.085;
+	private final double absMethodArgAutoMatchThreshold = 0.85;
+	private final double relMethodArgAutoMatchThreshold = 0.085;
 }

@@ -1,21 +1,28 @@
 package matcher.classifier;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import matcher.Matcher;
 import matcher.Util;
+import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
+import matcher.type.MethodVarInstance;
 
 public class ClassClassifier {
 	public static void init() {
@@ -33,44 +40,54 @@ public class ClassClassifier {
 		addClassifier(similarMethods, 10);
 		addClassifier(outReferences, 6);
 		addClassifier(inReferences, 6);
-		addClassifier(methodOutReferences, 5);
-		addClassifier(methodInReferences, 6);
+		addClassifier(methodOutReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(methodInReferences, 6, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(fieldReadReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(fieldWriteReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		addClassifier(stringConstants, 8);
 		addClassifier(numericConstants, 6);
+		addClassifier(membersFull, 10, ClassifierLevel.Full, ClassifierLevel.Extra);
+		addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
 
-	private static void addClassifier(IClassifier<ClassInstance> classifier, double weight) {
-		classifiers.put(classifier, weight);
-		maxScore += weight;
+	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
+		if (levels.length == 0) levels = ClassifierLevel.ALL;
+
+		classifier.weight = weight;
+
+		for (ClassifierLevel level : levels) {
+			classifiers.computeIfAbsent(level, ignore -> new ArrayList<>()).add(classifier);
+			maxScore.put(level, getMaxScore(level) + weight);
+		}
 	}
 
-	public static double getMaxScore() {
-		return maxScore;
+	private static double getMaxScore(ClassifierLevel level) {
+		return maxScore.getOrDefault(level, 0.);
 	}
 
-	public static List<RankResult<ClassInstance>> rank(ClassInstance srcClass, ClassInstance[] dstClasses, Matcher matcher) {
-		return ClassifierUtil.rank(srcClass, dstClasses, classifiers, ClassifierUtil::checkPotentialEquality, matcher);
+	public static List<RankResult<ClassInstance>> rank(ClassInstance srcClass, ClassInstance[] dstClasses, ClassifierLevel level, ClassEnvironment env) {
+		return ClassifierUtil.rank(srcClass, dstClasses, classifiers.getOrDefault(level, Collections.emptyList()), getMaxScore(level), ClassifierUtil::checkPotentialEquality, env);
 	}
 
-	private static final Map<IClassifier<ClassInstance>, Double> classifiers = new IdentityHashMap<>();
-	private static double maxScore;
+	private static final Map<ClassifierLevel, List<IClassifier<ClassInstance>>> classifiers = new EnumMap<>(ClassifierLevel.class);
+	private static final Map<ClassifierLevel, Double> maxScore = new EnumMap<>(ClassifierLevel.class);
 
 	private static AbstractClassifier classTypeCheck = new AbstractClassifier("class type check") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
-			int mask = (Opcodes.ACC_ENUM | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION) | Opcodes.ACC_ABSTRACT;
-			int resultA = clsA.getAsmNode().access & mask;
-			int resultB = clsB.getAsmNode().access & mask;
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
+			int mask = Opcodes.ACC_ENUM | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION | Opcodes.ACC_ABSTRACT;
+			int resultA = clsA.getAccess() & mask;
+			int resultB = clsB.getAccess() & mask;
 
-			assert Integer.bitCount(resultA) <= 2 && Integer.bitCount(resultB) <= 2;
+			//assert Integer.bitCount(resultA) <= 3 && Integer.bitCount(resultB) <= 3;
 
-			return 1 - Integer.bitCount(resultA ^ resultB) / 3.;
+			return 1 - Integer.bitCount(resultA ^ resultB) / 4.;
 		}
 	};
 
 	private static AbstractClassifier hierarchyDepth = new AbstractClassifier("hierarchy depth") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			int countA = 0;
 			int countB = 0;
 
@@ -91,14 +108,14 @@ public class ClassClassifier {
 
 	private static AbstractClassifier hierarchySiblings = new AbstractClassifier("hierarchy siblings") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			return ClassifierUtil.compareCounts(clsA.getSuperClass().getChildClasses().size(), clsB.getSuperClass().getChildClasses().size());
 		}
 	};
 
 	private static AbstractClassifier parentClass = new AbstractClassifier("parent class") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			if (clsA.getSuperClass() == null && clsB.getSuperClass() == null) return 1;
 			if (clsA.getSuperClass() == null || clsB.getSuperClass() == null) return 0;
 
@@ -108,28 +125,28 @@ public class ClassClassifier {
 
 	private static AbstractClassifier childClasses = new AbstractClassifier("child classes") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			return ClassifierUtil.compareClassSets(clsA.getChildClasses(), clsB.getChildClasses(), true);
 		}
 	};
 
 	private static AbstractClassifier interfaces = new AbstractClassifier("interfaces") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			return ClassifierUtil.compareClassSets(clsA.getInterfaces(), clsB.getInterfaces(), true);
 		}
 	};
 
 	private static AbstractClassifier implementers = new AbstractClassifier("implementers") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			return ClassifierUtil.compareClassSets(clsA.getImplementers(), clsB.getImplementers(), true);
 		}
 	};
 
 	private static AbstractClassifier outerClass = new AbstractClassifier("outer class") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			ClassInstance outerA = clsA.getOuterClass();
 			ClassInstance outerB = clsB.getOuterClass();
 
@@ -142,7 +159,7 @@ public class ClassClassifier {
 
 	private static AbstractClassifier innerClasses = new AbstractClassifier("inner classes") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			Set<ClassInstance> innerA = clsA.getInnerClasses();
 			Set<ClassInstance> innerB = clsB.getInnerClasses();
 
@@ -155,21 +172,21 @@ public class ClassClassifier {
 
 	private static AbstractClassifier methodCount = new AbstractClassifier("method count") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			return ClassifierUtil.compareCounts(clsA.getMethods().length, clsB.getMethods().length);
 		}
 	};
 
 	private static AbstractClassifier fieldCount = new AbstractClassifier("field count") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			return ClassifierUtil.compareCounts(clsA.getFields().length, clsB.getFields().length);
 		}
 	};
 
 	private static AbstractClassifier similarMethods = new AbstractClassifier("similar methods") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			if (clsA.getMethods().length == 0 && clsB.getMethods().length == 0) return 1;
 			if (clsA.getMethods().length == 0 || clsB.getMethods().length == 0) return 0;
 
@@ -183,11 +200,14 @@ public class ClassClassifier {
 					mBLoop: for (MethodInstance methodB : methodsB) {
 						if (!ClassifierUtil.checkPotentialEquality(methodA, methodB)) continue;
 						if (!ClassifierUtil.checkPotentialEquality(methodA.getRetType(), methodB.getRetType())) continue;
-						if (methodB.getArgs().size() != methodA.getArgs().size()) continue;
 
-						for (int arg = 0; arg < methodA.getArgs().size(); arg++) {
-							ClassInstance argA = methodA.getArgs().get(arg);
-							ClassInstance argB = methodB.getArgs().get(arg);
+						MethodVarInstance[] argsA = methodA.getArgs();
+						MethodVarInstance[] argsB = methodB.getArgs();
+						if (argsA.length != argsB.length) continue;
+
+						for (int i = 0; i < argsA.length; i++) {
+							ClassInstance argA = argsA[i].getType();
+							ClassInstance argB = argsB[i].getType();
 
 							if (!ClassifierUtil.checkPotentialEquality(argA, argB)) {
 								continue mBLoop;
@@ -223,7 +243,7 @@ public class ClassClassifier {
 
 	private static AbstractClassifier outReferences = new AbstractClassifier("out references") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			Set<ClassInstance> refsA = getOutRefs(clsA);
 			Set<ClassInstance> refsB = getOutRefs(clsB);
 
@@ -247,7 +267,7 @@ public class ClassClassifier {
 
 	private static AbstractClassifier inReferences = new AbstractClassifier("in references") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			Set<ClassInstance> refsA = getInRefs(clsA);
 			Set<ClassInstance> refsB = getInRefs(clsB);
 
@@ -271,7 +291,7 @@ public class ClassClassifier {
 
 	private static AbstractClassifier methodOutReferences = new AbstractClassifier("method out references") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			Set<MethodInstance> refsA = getMethodOutRefs(clsA);
 			Set<MethodInstance> refsB = getMethodOutRefs(clsB);
 
@@ -291,7 +311,7 @@ public class ClassClassifier {
 
 	private static AbstractClassifier methodInReferences = new AbstractClassifier("method in references") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			Set<MethodInstance> refsA = getMethodInRefs(clsA);
 			Set<MethodInstance> refsB = getMethodInRefs(clsB);
 
@@ -309,41 +329,56 @@ public class ClassClassifier {
 		return ret;
 	}
 
-	private static AbstractClassifier stringConstants = new AbstractClassifier("string constants") {
+	private static AbstractClassifier fieldReadReferences = new AbstractClassifier("field read references") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
-			Set<String> stringsA = extractStrings(clsA);
-			Set<String> stringsB = extractStrings(clsB);
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
+			Set<FieldInstance> refsA = getFieldReadRefs(clsA);
+			Set<FieldInstance> refsB = getFieldReadRefs(clsB);
 
-			return ClassifierUtil.compareSets(stringsA, stringsB, false);
+			return ClassifierUtil.compareFieldSets(refsA, refsB, false);
 		}
 	};
 
-	private static Set<String> extractStrings(ClassInstance cls) {
-		Set<String> ret = new HashSet<>();
+	private static Set<FieldInstance> getFieldReadRefs(ClassInstance cls) {
+		Set<FieldInstance> ret = Util.newIdentityHashSet();
 
 		for (MethodInstance method : cls.getMethods()) {
-			MethodNode asmNode = method.getAsmNode();
-			if (asmNode == null) continue;
-
-			ClassifierUtil.extractStrings(asmNode, ret);
-		}
-
-		for (FieldInstance field : cls.getFields()) {
-			FieldNode asmNode = field.getAsmNode();
-			if (asmNode == null) continue;
-
-			if (asmNode.value instanceof String) {
-				ret.add((String) asmNode.value);
-			}
+			ret.addAll(method.getFieldReadRefs());
 		}
 
 		return ret;
 	}
 
+	private static AbstractClassifier fieldWriteReferences = new AbstractClassifier("field write references") {
+		@Override
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
+			Set<FieldInstance> refsA = getFieldWriteRefs(clsA);
+			Set<FieldInstance> refsB = getFieldWriteRefs(clsB);
+
+			return ClassifierUtil.compareFieldSets(refsA, refsB, false);
+		}
+	};
+
+	private static Set<FieldInstance> getFieldWriteRefs(ClassInstance cls) {
+		Set<FieldInstance> ret = Util.newIdentityHashSet();
+
+		for (MethodInstance method : cls.getMethods()) {
+			ret.addAll(method.getFieldWriteRefs());
+		}
+
+		return ret;
+	}
+
+	private static AbstractClassifier stringConstants = new AbstractClassifier("string constants") {
+		@Override
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
+			return ClassifierUtil.compareSets(clsA.getStrings(), clsB.getStrings(), true);
+		}
+	};
+
 	private static AbstractClassifier numericConstants = new AbstractClassifier("numeric constants") {
 		@Override
-		public double getScore(ClassInstance clsA, ClassInstance clsB, Matcher matcher) {
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			Set<Integer> intsA = new HashSet<>();
 			Set<Integer> intsB = new HashSet<>();
 			Set<Long> longsA = new HashSet<>();
@@ -360,6 +395,98 @@ public class ClassClassifier {
 					+ ClassifierUtil.compareSets(longsA, longsB, false)
 					+ ClassifierUtil.compareSets(floatsA, floatsB, false)
 					+ ClassifierUtil.compareSets(doublesA, doublesB, false)) / 4;
+		}
+	};
+
+	private static AbstractClassifier membersFull = new AbstractClassifier("members full") {
+		@Override
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
+			/*if (clsA.getName().equals("agl") && clsB.getName().equals("aht")) {
+				System.out.println();
+			}*/
+
+			final double absThreshold = 0.8;
+			final double relThreshold = 0.08;
+			final ClassifierLevel level = ClassifierLevel.Full;
+			double match = 0;
+
+			if (clsA.getMethods().length > 0 && clsB.getMethods().length > 0) {
+				for (MethodInstance methodA : clsA.getMethods()) {
+					List<RankResult<MethodInstance>> ranking = MethodClassifier.rank(methodA, clsB.getMethods(), level, env);
+					if (Matcher.checkRank(ranking, absThreshold, relThreshold)) match += ranking.get(0).getScore();
+				}
+			}
+
+			if (clsA.getFields().length > 0 && clsB.getFields().length > 0) {
+				for (FieldInstance fieldA : clsA.getFields()) {
+					List<RankResult<FieldInstance>> ranking = FieldClassifier.rank(fieldA, clsB.getFields(), level, env);
+					if (Matcher.checkRank(ranking, absThreshold, relThreshold)) match += ranking.get(0).getScore();
+				}
+			}
+
+			int methods = Math.max(clsA.getMethods().length, clsB.getMethods().length);
+			int fields = Math.max(clsA.getFields().length, clsB.getFields().length);
+
+			if (methods == 0 && fields == 0) {
+				return 1;
+			} else {
+				assert match <= methods + fields;
+
+				return match / (methods + fields);
+			}
+		}
+	};
+
+	private static AbstractClassifier inRefsBci = new AbstractClassifier("in refs (bci)") {
+		@Override
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
+			int matched = 0;
+			int mismatched = 0;
+
+			for (MethodInstance src : clsA.getMethodTypeRefs()) {
+				if (src.getCls() == clsA) continue;
+
+				MethodInstance dst = src.getMatch();
+
+				if (dst == null || !clsB.getMethodTypeRefs().contains(dst)) {
+					mismatched++;
+					continue;
+				}
+
+				int[] map = ClassifierUtil.mapInsns(src, dst);
+				if (map == null) continue;
+
+				InsnList ilA = src.getAsmNode().instructions;
+				InsnList ilB = dst.getAsmNode().instructions;
+
+				for (int srcIdx = 0; srcIdx < map.length; srcIdx++) {
+					if (map[srcIdx] < 0) continue;
+
+					AbstractInsnNode in = ilA.get(srcIdx);
+					if (in.getType() != AbstractInsnNode.METHOD_INSN) continue;
+
+					MethodInsnNode min = (MethodInsnNode) in;
+					ClassInstance owner = env.getClsByNameA(min.owner);
+
+					if (owner != clsA) continue;
+
+					in = ilB.get(map[srcIdx]);
+					min = (MethodInsnNode) in;
+					owner = env.getClsByNameB(min.owner);
+
+					if (owner != clsB) {
+						mismatched++;
+					} else {
+						matched++;
+					}
+				}
+			}
+
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
 		}
 	};
 
@@ -391,9 +518,10 @@ public class ClassClassifier {
 
 		@Override
 		public double getWeight() {
-			return classifiers.get(this);
+			return weight;
 		}
 
 		private final String name;
+		private double weight;
 	}
 }

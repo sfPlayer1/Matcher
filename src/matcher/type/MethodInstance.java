@@ -1,69 +1,156 @@
 package matcher.type;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import matcher.Util;
 
 public class MethodInstance extends MemberInstance<MethodInstance> {
-	MethodInstance(ClassInstance cls, String origName, String desc, MethodNode asmNode, int position, ClassFeatureExtractor extractor) {
-		super(cls, getId(origName, desc), origName, !origName.equals("<clinit>") && !origName.equals("<init>"), position);
+	/**
+	 * Create a shared unknown method.
+	 */
+	MethodInstance(ClassInstance cls, String origName, String desc, boolean isStatic) {
+		this(cls, origName, desc, null, false, -1, isStatic);
+	}
+
+	/**
+	 * Create a known method.
+	 */
+	MethodInstance(ClassInstance cls, String origName, String desc, MethodNode asmNode, boolean nameObfuscated, int position) {
+		this(cls, origName, desc, asmNode, nameObfuscated, position, (asmNode.access & Opcodes.ACC_STATIC) != 0);
+	}
+
+	private MethodInstance(ClassInstance cls, String origName, String desc, MethodNode asmNode, boolean nameObfuscated, int position, boolean isStatic) {
+		super(cls, getId(origName, desc), origName, nameObfuscated, position, isStatic);
 
 		this.asmNode = asmNode;
-
-		Type[] argTypes = Type.getArgumentTypes(desc);
-		List<ClassInstance> args;
-
-		if (argTypes.length == 0) {
-			args = Collections.emptyList();
-		} else {
-			args = new ArrayList<>();
-
-			for (Type type : argTypes) {
-				ClassInstance typeCls = extractor.getCreateClassInstance(type.getDescriptor());
-				args.add(typeCls);
-				classRefs.add(typeCls);
-				typeCls.methodTypeRefs.add(this);
-			}
-		}
-
-		this.args = args;
-		this.retType = extractor.getCreateClassInstance(Type.getReturnType(desc).getDescriptor());
+		this.args = gatherArgs(this, desc);
+		//this.vars = gatherVars(this);
+		this.retType = cls.getEnv().getCreateClassInstance(Type.getReturnType(desc).getDescriptor());
 		classRefs.add(retType);
 		retType.methodTypeRefs.add(this);
 	}
 
+	private static MethodVarInstance[] gatherArgs(MethodInstance method, String desc) {
+		Type[] argTypes = Type.getArgumentTypes(desc);
+		if (argTypes.length == 0) return emptyVars;
+
+		MethodVarInstance[] args = new MethodVarInstance[argTypes.length];
+		List<LocalVariableNode> locals = method.asmNode != null ? method.asmNode.localVariables : null;
+		InsnList il = method.asmNode != null ? method.asmNode.instructions : null;
+		AbstractInsnNode firstInsn = method.asmNode != null ? il.getFirst() : null;
+		int lvtIdx = method.isStatic ? 0 : 1;
+
+		for (int i = 0; i < argTypes.length; i++) {
+			Type asmType = argTypes[i];
+			ClassInstance type = method.cls.getEnv().getCreateClassInstance(asmType.getDescriptor());
+			int asmIndex = -1;
+			int startInsn = -1;
+			int endInsn = -1;
+			String name = null;
+
+			if (locals != null) {
+				for (int j = 0; j < locals.size(); j++) {
+					LocalVariableNode n = locals.get(j);
+
+					if (n.index == lvtIdx && n.start == firstInsn) {
+						assert n.desc.equals(type.id);
+
+						asmIndex = j;
+						startInsn = il.indexOf(n.start);
+						endInsn = il.indexOf(n.end);
+						name = n.name;
+
+						break;
+					}
+				}
+			}
+
+			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvtIdx, asmIndex, type, startInsn, endInsn, name, name == null || method.nameObfuscated || method.cls.nameObfuscated);
+			args[i] = arg;
+
+			method.classRefs.add(type);
+			type.methodTypeRefs.add(method);
+
+			lvtIdx += type.getSlotSize();
+		}
+
+		return args;
+	}
+
+	/*private static MethodVarInstance[] gatherVars(MethodInstance method) {
+		MethodNode asmNode = method.asmNode;
+		if (asmNode == null) return emptyVars;
+		if (asmNode.localVariables == null) return null;
+		if (asmNode.localVariables.isEmpty()) return emptyVars;
+
+		InsnList il = asmNode.instructions;
+		AbstractInsnNode firstInsn = il.getFirst();
+		List<MethodVarInstance> ret = new ArrayList<>();
+
+		for (int i = 0; i < asmNode.localVariables.size(); i++) {
+			LocalVariableNode n = asmNode.localVariables.get(i);
+
+			if (n.start == firstInsn) { // check if it's an arg
+				if (n.index == 0 && !method.isStatic) continue;
+
+				boolean found = false;
+
+				for (MethodArgInstance arg : method.args) {
+					if (arg.lvtIndex == n.index) {
+						found = true;
+						break;
+					}
+				}
+
+				if (found) continue;
+			}
+
+			assert n.name != null;
+			ret.add(new MethodVarInstance(method, false, ret.size(), n.index, i,
+					method.getEnv().getCreateClassInstance(n.desc), il.indexOf(n.start), il.indexOf(n.end),
+					n.name, method.nameObfuscated || method.cls.nameObfuscated));
+		}
+
+		return ret.isEmpty() ? emptyVars : ret.toArray(new MethodVarInstance[0]);
+	}*/
+
 	@Override
-	public String getName() {
-		String ret = origName+"(";
+	public String getDisplayName(boolean full, boolean mapped) {
+		StringBuilder ret = new StringBuilder(64);
+		ret.append(super.getDisplayName(full, mapped));
+		ret.append('(');
 		boolean first = true;
 
-		for (ClassInstance arg : args) {
+		for (MethodVarInstance arg : args) {
 			if (first) {
 				first = false;
 			} else {
-				ret += ", ";
+				ret.append(", ");
 			}
 
-			ret += arg.getName();
+			ret.append(arg.getType().getDisplayName(true, mapped));
 		}
 
-		ret += ")"+retType.getName();
+		ret.append(')');
+		ret.append(retType.getDisplayName(true, mapped));
 
-		return ret;
+		return ret.toString();
 	}
 
 	@Override
 	public String getDesc() {
 		String ret = "(";
 
-		for (ClassInstance arg : args) {
-			ret += arg.id;
+		for (MethodVarInstance arg : args) {
+			ret += arg.getType().id;
 		}
 
 		ret += ")" + retType.getId();
@@ -80,12 +167,62 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		return asmNode;
 	}
 
-	public List<ClassInstance> getArgs() {
+	public MethodVarInstance getArg(int index) {
+		if (index < 0 || index >= args.length) throw new IllegalArgumentException("invalid arg index: "+index);
+
+		return args[index];
+	}
+
+	public MethodVarInstance getArg(String id) {
+		return getArg(Integer.parseInt(id));
+	}
+
+	public MethodVarInstance getVar(String id) {
+		throw new UnsupportedOperationException(); // TODO: implement
+	}
+
+	public MethodVarInstance getVar(String id, boolean isArg) {
+		return isArg ? getArg(id) : getVar(id);
+	}
+
+	public MethodVarInstance[] getArgs() {
 		return args;
+	}
+
+	public MethodVarInstance[] getVars() {
+		return vars;
+	}
+
+	public boolean hasMappedArg() {
+		for (MethodVarInstance arg : args) {
+			if (arg.getMappedName(false) != null) return true;
+		}
+
+		return false;
+	}
+
+	public boolean hasAllArgsMapped() {
+		for (MethodVarInstance arg : args) {
+			if (arg.getMappedName(false) == null) return false;
+		}
+
+		return true;
 	}
 
 	public ClassInstance getRetType() {
 		return retType;
+	}
+
+	@Override
+	public int getAccess() {
+		if (asmNode == null) {
+			int ret = Opcodes.ACC_PUBLIC;
+			if (isStatic) ret |= Opcodes.ACC_STATIC;
+
+			return ret;
+		} else {
+			return asmNode.access;
+		}
 	}
 
 	public Set<MethodInstance> getRefsIn() {
@@ -108,48 +245,20 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		return classRefs;
 	}
 
-	public String getMappedArgName(int idx) {
-		if (idx < 0 || idx >= args.size()) throw new IllegalArgumentException("invalid arg idx: "+idx);
-		if (mappedArgNames == null) return null;
-
-		return mappedArgNames[idx];
-	}
-
-	public void setMappedArgName(int idx, String name) {
-		if (idx < 0 || idx >= args.size()) throw new IllegalArgumentException("invalid arg idx: "+idx);
-
-		if (name != null) {
-			if (mappedArgNames == null) mappedArgNames = new String[args.size()];
-
-			mappedArgNames[idx] = name;
-		} else if (mappedArgNames != null) {
-			mappedArgNames[idx] = null;
-
-			for (int i = 0; i < mappedArgNames.length; i++) {
-				if (mappedArgNames[i] != null) return;
-			}
-
-			mappedArgNames = null;
-		}
-	}
-
-	public void clearMappedArgNames() {
-		mappedArgNames = null;
-	}
-
 	static String getId(String name, String desc) {
 		return name+desc;
 	}
 
+	private static final MethodVarInstance[] emptyVars = new MethodVarInstance[0];
+
 	final MethodNode asmNode;
-	final List<ClassInstance> args;
+	final MethodVarInstance[] args;
 	final ClassInstance retType;
+	MethodVarInstance[] vars;
 
 	final Set<MethodInstance> refsIn = Util.newIdentityHashSet();
 	final Set<MethodInstance> refsOut = Util.newIdentityHashSet();
 	final Set<FieldInstance> fieldReadRefs = Util.newIdentityHashSet();
 	final Set<FieldInstance> fieldWriteRefs = Util.newIdentityHashSet();
 	final Set<ClassInstance> classRefs = Util.newIdentityHashSet();
-
-	String[] mappedArgNames;
 }
