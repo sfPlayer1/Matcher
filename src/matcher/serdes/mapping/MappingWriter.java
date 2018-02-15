@@ -1,4 +1,4 @@
-package matcher.mapping;
+package matcher.serdes.mapping;
 
 import java.io.BufferedWriter;
 import java.io.Closeable;

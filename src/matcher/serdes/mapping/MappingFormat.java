@@ -1,4 +1,4 @@
-package matcher.mapping;
+package matcher.serdes.mapping;
 
 public enum MappingFormat {
 	TINY("Tiny", "tiny"),

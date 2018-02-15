@@ -37,7 +37,8 @@ import javafx.stage.Window;
 import matcher.ProjectConfig;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
-import matcher.mapping.MappingFormat;
+import matcher.serdes.MatchesIo;
+import matcher.serdes.mapping.MappingFormat;
 import matcher.type.MatchType;
 
 public class FileMenu extends Menu {
@@ -154,7 +155,7 @@ public class FileMenu extends Menu {
 			gui.onProjectChange();
 
 			gui.runProgressTask("Initializing files...",
-					progressReceiver -> gui.getMatcher().readMatches(file, paths, progressReceiver),
+					progressReceiver -> MatchesIo.read(file, paths, gui.getMatcher(), progressReceiver),
 					() -> gui.onProjectChange(),
 					Throwable::printStackTrace);
 		});
@@ -251,10 +252,13 @@ public class FileMenu extends Menu {
 			}
 
 			File file = fileChooser.showSaveDialog(window);
-			path = file == null ? null : file.toPath();
+			if (file == null) return;
+
+			path = file.toPath();
 			ext = fileChooser.getSelectedExtensionFilter().getDescription();
 		} else {
 			path = Gui.requestDir("Save mapping dir", window);
+			if (path == null) return;
 
 			if (Files.exists(path) && !isDirEmpty(path)) { // reusing existing dir, clear out after confirmation
 				if (!gui.requestConfirmation("Save Confirmation", "Replace existing data", "The selected save location is not empty.\nDo you want to clear and reuse it?")) return;
@@ -273,8 +277,6 @@ public class FileMenu extends Menu {
 
 			ext = null;
 		}
-
-		if (path == null) return;
 
 		MappingFormat format = getFormat(path);
 
@@ -378,7 +380,7 @@ public class FileMenu extends Menu {
 		Path file = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (file == null) return;
 
-		gui.getMatcher().readMatches(file, null, progress ->  {});
+		MatchesIo.read(file, null, gui.getMatcher(), progress -> {});
 		gui.onMatchChange(EnumSet.allOf(MatchType.class));
 	}
 
@@ -401,7 +403,7 @@ public class FileMenu extends Menu {
 				Files.deleteIfExists(path);
 			}
 
-			if (!gui.getMatcher().saveMatches(path)) {
+			if (!MatchesIo.write(gui.getMatcher(), path)) {
 				gui.showAlert(AlertType.WARNING, "Matches save warning", "No matches to save", "There are currently no matched classes, so saving was aborted.");
 			}
 		} catch (IOException e) {

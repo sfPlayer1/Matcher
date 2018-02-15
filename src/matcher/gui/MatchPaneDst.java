@@ -2,6 +2,7 @@ package matcher.gui;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -45,7 +46,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 		classList.setCellFactory(new MatchableListCellFactory<ClassInstance>());
 		classList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-			if (oldValue == newValue) return;
+			if (suppressChangeEvents || oldValue == newValue) return;
 
 			onClassSelect(newValue != null ? newValue.getSubject() : null);
 		});
@@ -56,7 +57,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 		memberList.setCellFactory(new MatchableListCellFactory<MemberInstance<?>>());
 		memberList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-			if (oldValue == newValue) return;
+			if (suppressChangeEvents || oldValue == newValue) return;
 
 			boolean wasMethod = oldValue != null && oldValue.getSubject() instanceof MethodInstance;
 			boolean wasField = oldValue != null && oldValue.getSubject() instanceof FieldInstance;
@@ -162,6 +163,21 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	public void onViewChange() {
 		cmpClasses = gui.getEnv().getDisplayClassesB(!gui.isShowNonInputs());
 
+		suppressChangeEvents = true;
+
+		Comparator<RankResult<? extends IMatchable<?>>> cmp;
+
+		if (gui.isSortMatchesAlphabetically()) {
+			cmp = getNameComparator();
+		} else {
+			cmp = getScoreComparator();
+		}
+
+		memberList.getItems().sort(cmp);
+		classList.getItems().sort(cmp);
+
+		suppressChangeEvents = false;
+
 		IFwdGuiComponent.super.onViewChange();
 	}
 
@@ -189,6 +205,14 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		return components;
 	}
 
+	private static Comparator<RankResult<? extends IMatchable<?>>> getNameComparator() {
+		return Comparator.comparing(r -> r.getSubject().getName());
+	}
+
+	private static Comparator<RankResult<? extends IMatchable<?>>> getScoreComparator() {
+		return Comparator.<RankResult<? extends IMatchable<?>>>comparingDouble(r -> r.getScore()).reversed();
+	}
+
 	private class SrcListener implements IGuiComponent {
 		@Override
 		public void onClassSelect(ClassInstance cls) {
@@ -205,6 +229,18 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				if (exc != null) {
 					exc.printStackTrace();
 				} else if (cClassId == classId) {
+					RankResult<ClassInstance> best;
+
+					if (!res.isEmpty()) {
+						best = res.get(0);
+
+						if (gui.isSortMatchesAlphabetically()) {
+							res.sort(getNameComparator());
+						}
+					} else {
+						best = null;
+					}
+
 					classList.getItems().setAll(res);
 
 					/*if (prevMatchSelection != null) { // reselect the previously selected entry
@@ -217,7 +253,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 					}*/
 
 					if (classList.getSelectionModel().isEmpty()) {
-						classList.getSelectionModel().selectFirst();
+						classList.getSelectionModel().select(best);
 					}
 				}
 			});
@@ -256,6 +292,18 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				if (exc != null) {
 					exc.printStackTrace();
 				} else if (cMemberId == memberId) {
+					RankResult<MemberInstance<?>> best;
+
+					if (!res.isEmpty()) {
+						best = (RankResult<MemberInstance<?>>) res.get(0);
+
+						if (gui.isSortMatchesAlphabetically()) {
+							res.sort(getNameComparator());
+						}
+					} else {
+						best = null;
+					}
+
 					memberList.getItems().setAll((List<RankResult<MemberInstance<?>>>) res);
 
 					/*if (prevMatchSelection != null) { // reselect the previously selected entry
@@ -268,7 +316,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 					}*/
 
 					if (memberList.getSelectionModel().isEmpty()) {
-						memberList.getSelectionModel().selectFirst();
+						memberList.getSelectionModel().select(best);
 					}
 				}
 			});
@@ -285,4 +333,6 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	private final ListView<RankResult<MemberInstance<?>>> memberList = new ListView<>();
 	private final SrcListener srcListener = new SrcListener();
 	private List<ClassInstance> cmpClasses;
+
+	private boolean suppressChangeEvents;
 }

@@ -305,11 +305,7 @@ public class ClassifierUtil {
 
 			if (!a.bsm.equals(b.bsm)) return false;
 
-			if (a.bsm.getTag() == Opcodes.H_INVOKESTATIC
-					&& a.bsm.getOwner().equals("java/lang/invoke/LambdaMetafactory")
-					&& a.bsm.getName().equals("metafactory")
-					&& a.bsm.getDesc().equals("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;")
-					&& !a.bsm.isInterface()) {
+			if (Util.isJavaLambdaMetafactory(a.bsm)) {
 				Handle implA = (Handle) a.bsmArgs[1];
 				Handle implB = (Handle) b.bsmArgs[1];
 

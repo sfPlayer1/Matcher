@@ -49,7 +49,16 @@ public class ViewMenu extends Menu {
 
 		getItems().add(new SeparatorMenuItem());
 
-		CheckMenuItem checkMenuItem = new CheckMenuItem("Show non-inputs");
+		CheckMenuItem checkMenuItem = new CheckMenuItem("Sort matches alphabetically");
+		checkMenuItem.setSelected(gui.isSortMatchesAlphabetically());
+		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setSortMatchesAlphabetically(newValue);
+		});
+		getItems().add(checkMenuItem);
+
+		getItems().add(new SeparatorMenuItem());
+
+		checkMenuItem = new CheckMenuItem("Show non-inputs");
 		checkMenuItem.setSelected(gui.isShowNonInputs());
 		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
 			if (newValue != null) gui.setShowNonInputs(newValue);

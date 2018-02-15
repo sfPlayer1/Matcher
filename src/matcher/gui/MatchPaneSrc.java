@@ -42,8 +42,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			}
 		});
 		classList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-			if (suppressChangeEvents) return;
-			if (oldValue == newValue) return;
+			if (suppressChangeEvents || oldValue == newValue) return;
 
 			onClassSelect(newValue);
 		});
@@ -59,8 +58,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			}
 		});
 		memberList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-			if (suppressChangeEvents) return;
-			if (oldValue == newValue) return;
+			if (suppressChangeEvents || oldValue == newValue) return;
 
 			boolean wasMethod = oldValue instanceof MethodInstance;
 			boolean wasField = oldValue instanceof FieldInstance;

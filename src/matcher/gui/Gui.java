@@ -113,6 +113,20 @@ public class Gui extends Application {
 		}
 	}
 
+	public boolean isSortMatchesAlphabetically() {
+		return sortMatchesAlphabetically;
+	}
+
+	public void setSortMatchesAlphabetically(boolean sortMatchesAlphabetically) {
+		if (this.sortMatchesAlphabetically == sortMatchesAlphabetically) return;
+
+		this.sortMatchesAlphabetically = sortMatchesAlphabetically;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange();
+		}
+	}
+
 	public boolean isShowNonInputs() {
 		return showNonInputs;
 	}
@@ -269,6 +283,7 @@ public class Gui extends Application {
 	private final Collection<IGuiComponent> components = new ArrayList<>();
 
 	private SortKey sortKey = SortKey.Name;
+	private boolean sortMatchesAlphabetically;
 	private boolean showNonInputs;
 
 	private static File lastChooserFile;

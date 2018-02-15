@@ -147,17 +147,23 @@ public class Util {
 			1, 21, 8 };
 
 	public static Handle getTargetHandle(Handle bsm, Object[] bsmArgs) {
-		if (bsm.getTag() == Opcodes.H_INVOKESTATIC
-				&& bsm.getOwner().equals("java/lang/invoke/LambdaMetafactory")
-				&& bsm.getName().equals("metafactory")
-				&& bsm.getDesc().equals("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;")
-				&& !bsm.isInterface()) {
+		if (isJavaLambdaMetafactory(bsm)) {
 			return (Handle) bsmArgs[1];
 		} else {
 			System.out.printf("unknown invokedynamic bsm: %s/%s%s (tag=%d iif=%b)%n", bsm.getOwner(), bsm.getName(), bsm.getDesc(), bsm.getTag(), bsm.isInterface());
 
 			return null;
 		}
+	}
+
+	public static boolean isJavaLambdaMetafactory(Handle bsm) {
+		return bsm.getTag() == Opcodes.H_INVOKESTATIC
+				&& bsm.getOwner().equals("java/lang/invoke/LambdaMetafactory")
+				&& (bsm.getName().equals("metafactory")
+						&& bsm.getDesc().equals("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;")
+						|| bsm.getName().equals("altMetafactory")
+						&& bsm.getDesc().equals("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"))
+				&& !bsm.isInterface();
 	}
 
 	public static final Object asmNodeSync = new Object();

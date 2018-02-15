@@ -1,4 +1,4 @@
-package matcher.mapping;
+package matcher.serdes.mapping;
 
 import java.io.IOException;
 import java.io.Writer;

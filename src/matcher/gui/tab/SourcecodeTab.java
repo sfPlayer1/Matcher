@@ -1,16 +1,24 @@
 package matcher.gui.tab;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.Reader;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Set;
 
 import javafx.scene.control.Tab;
-import javafx.scene.control.TextArea;
+import javafx.scene.web.WebView;
 import matcher.gui.Gui;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
-import matcher.srcremap.SrcRemapper;
-import matcher.srcremap.SrcRemapper.ParseException;
+import matcher.srcprocess.SrcDecorator;
+import matcher.srcprocess.SrcDecorator.SrcParseException;
 import matcher.type.ClassInstance;
 import matcher.type.MatchType;
 
@@ -25,9 +33,8 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	}
 
 	private void init() {
-		text.setEditable(false);
-
-		setContent(text);
+		displayText("no class selected");
+		setContent(webView);
 	}
 
 	@Override
@@ -48,18 +55,18 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 		final int cDecompId = ++decompId;
 
 		if (cls == null) {
-			text.setText("");
+			displayText("no class selected");
 			return;
 		}
 
-		double prevScroll = text.getScrollTop();
+		//double prevScroll = text.getScrollTop();
 
 		if (!isRefresh) {
-			text.setText("decompiling...");
+			displayText("decompiling...");
 		}
 
 		//Gui.runAsyncTask(() -> gui.getEnv().decompile(cls, true))
-		Gui.runAsyncTask(() -> SrcRemapper.decorate(gui.getEnv().decompile(cls, true), cls, true))
+		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(cls, true), cls, true))
 		.whenComplete((res, exc) -> {
 			if (cDecompId == decompId) {
 				if (exc != null) {
@@ -68,19 +75,19 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 					StringWriter sw = new StringWriter();
 					exc.printStackTrace(new PrintWriter(sw));
 
-					if (exc instanceof ParseException) {
-						text.setText("parse error: "+sw.toString()+"decompiled source:\n"+((ParseException) exc).source);
+					if (exc instanceof SrcParseException) {
+						displayText("parse error: "+sw.toString()+"decompiled source:\n"+((SrcParseException) exc).source);
 					} else {
-						text.setText("decompile error: "+sw.toString());
+						displayText("decompile error: "+sw.toString());
 					}
 
 				} else {
-					boolean fixScroll = isRefresh && Math.abs(text.getScrollTop() - prevScroll) < 1;
-					System.out.println("fix scroll: "+fixScroll+", to "+text.getScrollTop());
+					//boolean fixScroll = isRefresh && Math.abs(text.getScrollTop() - prevScroll) < 1;
+					//System.out.println("fix scroll: "+fixScroll+", to "+text.getScrollTop());
 
-					text.setText(res);
+					displayText(res);
 
-					if (fixScroll) text.setScrollTop(prevScroll);
+					//if (fixScroll) text.setScrollTop(prevScroll);
 				}
 			} else if (exc != null) {
 				exc.printStackTrace();
@@ -88,9 +95,38 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 		});
 	}
 
+	private void displayText(String text) {
+		webView.getEngine().loadContent(template.replace("%text%", text));
+	}
+
+	private static String readTemplate(String name) {
+		char[] buffer = new char[4000];
+		int offset = 0;
+
+		try (InputStream is = SourcecodeTab.class.getClassLoader().getResourceAsStream(name)) {
+			if (is == null) throw new FileNotFoundException(name);
+
+			Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
+			int len;
+
+			while ((len = reader.read(buffer, offset, buffer.length - offset)) != -1) {
+				offset += len;
+
+				if (offset == buffer.length) buffer = Arrays.copyOf(buffer, buffer.length * 2);
+			}
+
+			return new String(buffer, 0, offset);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private static final String template = readTemplate("ui/SourceCodeTemplate.htm");
+
 	private final Gui gui;
 	private final ISelectionProvider selectionProvider;
-	private final TextArea text = new TextArea();
+	//private final TextArea text = new TextArea();
+	private final WebView webView = new WebView();
 
 	private int decompId;
 }
