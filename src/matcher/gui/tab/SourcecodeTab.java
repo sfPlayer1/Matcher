@@ -97,7 +97,6 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 						displayText("decompile error: "+sw.toString());
 					}
 				} else {
-					System.out.println(res);
 					double prevScroll = isRefresh ? getScrollTop() : 0;
 
 					displayText(res);
