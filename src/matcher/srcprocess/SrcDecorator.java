@@ -17,6 +17,7 @@ import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.comments.BlockComment;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
@@ -176,8 +177,8 @@ public class SrcDecorator {
 		public void visit(FieldDeclaration n, TypeResolver resolver) {
 			List<String> comments = null;
 
-			for (int i = 0; i < n.getVariables().size(); i++) {
-				FieldInstance f = resolver.getField(n, i);
+			for (VariableDeclarator var : n.getVariables()) {
+				FieldInstance f = resolver.getField(var);
 				//System.out.println("fld "+v.getName().getIdentifier()+" = "+f+" at "+v.getRange());
 
 				if (f != null) {

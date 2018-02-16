@@ -1,6 +1,7 @@
 package matcher.gui.tab;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.objectweb.asm.tree.ClassNode;
@@ -110,7 +111,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		String ret = c.getDisplayName(true, false);
 		String mapped = c.getDisplayName(true, true);
 
-		if (ret.equals(mapped)) {
+		if (Objects.equals(ret, mapped)) {
 			return ret;
 		} else {
 			return ret+" - "+mapped;

@@ -9,18 +9,24 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Queue;
 import java.util.Set;
 
+import javafx.concurrent.Worker.State;
 import javafx.scene.control.Tab;
 import javafx.scene.web.WebView;
 import matcher.gui.Gui;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
+import matcher.srcprocess.HtmlUtil;
 import matcher.srcprocess.SrcDecorator;
 import matcher.srcprocess.SrcDecorator.SrcParseException;
 import matcher.type.ClassInstance;
+import matcher.type.FieldInstance;
 import matcher.type.MatchType;
+import matcher.type.MethodInstance;
 
 public class SourcecodeTab extends Tab implements IGuiComponent {
 	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider) {
@@ -28,6 +34,16 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 
 		this.gui = gui;
 		this.selectionProvider = selectionProvider;
+
+		webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue == State.SUCCEEDED) {
+				Runnable r;
+
+				while ((r = pendingWebViewTasks.poll()) != null) {
+					r.run();
+				}
+			}
+		});
 
 		init();
 	}
@@ -52,14 +68,14 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	}
 
 	private void update(ClassInstance cls, boolean isRefresh) {
+		pendingWebViewTasks.clear();
+
 		final int cDecompId = ++decompId;
 
 		if (cls == null) {
 			displayText("no class selected");
 			return;
 		}
-
-		//double prevScroll = text.getScrollTop();
 
 		if (!isRefresh) {
 			displayText("decompiling...");
@@ -80,14 +96,15 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 					} else {
 						displayText("decompile error: "+sw.toString());
 					}
-
 				} else {
-					//boolean fixScroll = isRefresh && Math.abs(text.getScrollTop() - prevScroll) < 1;
-					//System.out.println("fix scroll: "+fixScroll+", to "+text.getScrollTop());
+					System.out.println(res);
+					double prevScroll = isRefresh ? getScrollTop() : 0;
 
 					displayText(res);
 
-					//if (fixScroll) text.setScrollTop(prevScroll);
+					if (isRefresh && prevScroll > 0) {
+						addWebViewTask(() -> webView.getEngine().executeScript("document.body.scrollTop = "+prevScroll));
+					}
 				}
 			} else if (exc != null) {
 				exc.printStackTrace();
@@ -95,8 +112,41 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 		});
 	}
 
+	@Override
+	public void onMethodSelect(MethodInstance method) {
+		if (method != null) jumpTo(HtmlUtil.getId(method));
+	}
+
+	@Override
+	public void onFieldSelect(FieldInstance field) {
+		if (field != null) jumpTo(HtmlUtil.getId(field));
+	}
+
+	private void jumpTo(String anchorId) {
+		addWebViewTask(() -> webView.getEngine().executeScript("var anchorElem = document.getElementById('"+anchorId+"'); if (anchorElem !== null) document.body.scrollTop = anchorElem.getBoundingClientRect().top + window.scrollY;"));
+	}
+
 	private void displayText(String text) {
 		webView.getEngine().loadContent(template.replace("%text%", text));
+	}
+
+	private double getScrollTop() {
+		Object result;
+
+		if (webView.getEngine().getLoadWorker().getState() == State.SUCCEEDED
+				&& (result = webView.getEngine().executeScript("document.body.scrollTop")) instanceof Number) {
+			return ((Number) result).doubleValue();
+		} else {
+			return 0;
+		}
+	}
+
+	private void addWebViewTask(Runnable r) {
+		if (webView.getEngine().getLoadWorker().getState() == State.SUCCEEDED) {
+			r.run();
+		} else {
+			pendingWebViewTasks.add(r);
+		}
 	}
 
 	private static String readTemplate(String name) {
@@ -127,6 +177,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	private final ISelectionProvider selectionProvider;
 	//private final TextArea text = new TextArea();
 	private final WebView webView = new WebView();
+	private final Queue<Runnable> pendingWebViewTasks = new ArrayDeque<>();
 
 	private int decompId;
 }

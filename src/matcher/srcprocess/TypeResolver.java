@@ -11,8 +11,8 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.EnumConstantDeclaration;
 import com.github.javaparser.ast.body.EnumDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
@@ -112,14 +112,22 @@ class TypeResolver {
 		return mapped ? cls.getMappedMethod(name, desc) : cls.getMethod(name, desc);
 	}
 
-	public FieldInstance getField(FieldDeclaration fieldDecl, int var) {
-		ClassInstance cls = getCls(fieldDecl);
+	public FieldInstance getField(VariableDeclarator var) {
+		ClassInstance cls = getCls(var);
 		if (cls == null) return null;
 
-		VariableDeclarator varDecl = fieldDecl.getVariable(var);
+		String name = var.getName().getIdentifier();
+		String desc = toDesc(var.getType());
 
-		String name = varDecl.getName().getIdentifier();
-		String desc = toDesc(varDecl.getType());
+		return mapped ? cls.getMappedField(name, desc) : cls.getField(name, desc);
+	}
+
+	public FieldInstance getField(EnumConstantDeclaration var) {
+		ClassInstance cls = getCls(var);
+		if (cls == null) return null;
+
+		String name = var.getName().getIdentifier();
+		String desc = mapped && !cls.isPrimitive() ? "L"+cls.getMappedName(true)+";" : cls.getId();
 
 		return mapped ? cls.getMappedField(name, desc) : cls.getField(name, desc);
 	}

@@ -121,6 +121,7 @@ import com.github.javaparser.printer.PrettyPrintVisitor;
 import com.github.javaparser.printer.PrettyPrinterConfiguration;
 import com.github.javaparser.printer.SourcePrinter;
 
+import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
 
 public class HtmlPrinter implements VoidVisitor<Void> {
@@ -537,6 +538,9 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 	public void visit(final FieldDeclaration n, final Void arg) {
 		printOrphanCommentsBeforeThisChildNode(n);
 
+		boolean singleVar = n.getVariables().size() == 1;
+		boolean hasSingleField = singleVar && fieldStart(n.getVariable(0));
+
 		printJavaComment(n.getComment(), arg);
 		printMemberAnnotations(n.getAnnotations(), arg);
 		printModifiers(n.getModifiers());
@@ -547,13 +551,35 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		printer.print(" ");
 		for (final Iterator<VariableDeclarator> i = n.getVariables().iterator(); i.hasNext(); ) {
 			final VariableDeclarator var = i.next();
+
+			boolean hasField = !singleVar && fieldStart(var);
+
 			var.accept(this, arg);
+
+			if (hasField) printer.print("</span>");
+
 			if (i.hasNext()) {
 				printer.print(", ");
 			}
 		}
 
 		printer.print(";");
+
+		if (hasSingleField) printer.print("</span>");
+	}
+
+	private boolean fieldStart(VariableDeclarator var) {
+		FieldInstance field = typeResolver.getField(var);
+
+		if (field != null) {
+			printer.print("<span id=\"");
+			printer.print(HtmlUtil.getId(field));
+			printer.print("\">");
+
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -852,8 +878,8 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		MethodInstance method = typeResolver.getMethod(n);
 
 		if (method != null) {
-			printer.print("<span id=\"method-");
-			printer.print(escapeId(method.getId()));
+			printer.print("<span id=\"");
+			printer.print(HtmlUtil.getId(method));
 			printer.print("\">");
 		}
 
@@ -902,8 +928,8 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		MethodInstance method = typeResolver.getMethod(n);
 
 		if (method != null) {
-			printer.print("<span id=\"method-");
-			printer.print(escapeId(method.getId()));
+			printer.print("<span id=\"");
+			printer.print(HtmlUtil.getId(method));
 			printer.print("\">");
 		}
 
@@ -1185,6 +1211,14 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 
 	@Override
 	public void visit(final EnumConstantDeclaration n, final Void arg) {
+		FieldInstance field = typeResolver.getField(n);
+
+		if (field != null) {
+			printer.print("<span id=\"");
+			printer.print(HtmlUtil.getId(field));
+			printer.print("\">");
+		}
+
 		printJavaComment(n.getComment(), arg);
 		printMemberAnnotations(n.getAnnotations(), arg);
 		n.getName().accept(this, arg);
@@ -1200,6 +1234,8 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 			printer.unindent();
 			printer.println("}");
 		}
+
+		if (field != null) printer.print("</span>");
 	}
 
 	@Override
@@ -1729,38 +1765,6 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 					ret.append("&gt;");
 				} else {
 					ret.append("&amp;");
-				}
-
-				retEnd = i + 1;
-			}
-		}
-
-		if (ret == null) {
-			return str;
-		} else {
-			ret.append(str, retEnd, str.length());
-
-			return ret.toString();
-		}
-	}
-
-	private static String escapeId(String str) {
-		StringBuilder ret = null;
-		int retEnd = 0;
-
-		for (int i = 0, max = str.length(); i < max; i++) {
-			char c = str.charAt(i);
-
-			if ((c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' && c != '_' && c != '.') { // use : as an escape identifier
-				if (ret == null) ret = new StringBuilder(max * 2);
-
-				ret.append(str, retEnd, i);
-
-				ret.append(':');
-
-				for (int j = 0; j < 4; j++) {
-					int v = (c >>> ((3 - j) * 4)) & 0xf;
-					ret.append("0123456789abcdef".charAt(v));
 				}
 
 				retEnd = i + 1;
