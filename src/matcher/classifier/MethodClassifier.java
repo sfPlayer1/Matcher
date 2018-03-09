@@ -51,11 +51,15 @@ public class MethodClassifier {
 		}
 	}
 
-	private static double getMaxScore(ClassifierLevel level) {
+	public static double getMaxScore(ClassifierLevel level) {
 		return maxScore.getOrDefault(level, 0.);
 	}
 
 	public static List<RankResult<MethodInstance>> rank(MethodInstance src, MethodInstance[] dsts, ClassifierLevel level, ClassEnvironment env) {
+		return rank(src, dsts, level, env, Double.POSITIVE_INFINITY);
+	}
+
+	public static List<RankResult<MethodInstance>> rank(MethodInstance src, MethodInstance[] dsts, ClassifierLevel level, ClassEnvironment env, double maxMismatch) {
 		if (src.getMatch() != null) { // already matched,  limit dsts to the match
 			if (!Arrays.asList(dsts).contains(src.getMatch())) {
 				return Collections.emptyList();
@@ -85,7 +89,7 @@ public class MethodClassifier {
 			}
 		}
 
-		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), getMaxScore(level), ClassifierUtil::checkPotentialEquality, env);
+		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), ClassifierUtil::checkPotentialEquality, env, maxMismatch);
 	}
 
 	private static final Map<ClassifierLevel, List<IClassifier<MethodInstance>>> classifiers = new EnumMap<>(ClassifierLevel.class);

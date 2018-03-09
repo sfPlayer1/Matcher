@@ -684,12 +684,14 @@ public class Matcher {
 				.filter(filter)
 				.collect(Collectors.toList()).toArray(new ClassInstance[0]);
 
+		double maxScore = ClassClassifier.getMaxScore(level);
+		double maxMismatch = maxScore - getRawScore(absThreshold * (1 - relThreshold), maxScore);
 		Map<ClassInstance, ClassInstance> matches = new ConcurrentHashMap<>(classes.size());
 
 		runInParallel(classes, cls -> {
-			List<RankResult<ClassInstance>> ranking = ClassClassifier.rank(cls, cmpClasses, level, env);
+			List<RankResult<ClassInstance>> ranking = ClassClassifier.rank(cls, cmpClasses, level, env, maxMismatch);
 
-			if (checkRank(ranking, absThreshold, relThreshold)) {
+			if (checkRank(ranking, absThreshold, relThreshold, maxScore)) {
 				ClassInstance match = ranking.get(0).getSubject();
 
 				matches.put(cls, match);
@@ -707,7 +709,7 @@ public class Matcher {
 		return !matches.isEmpty();
 	}
 
-	private <T, C> void runInParallel(List<T> workSet, Consumer<T> worker, DoubleConsumer progressReceiver) {
+	private static <T, C> void runInParallel(List<T> workSet, Consumer<T> worker, DoubleConsumer progressReceiver) {
 		if (workSet.isEmpty()) return;
 
 		AtomicInteger itemsDone = new AtomicInteger();
@@ -740,7 +742,9 @@ public class Matcher {
 
 	public boolean autoMatchMethods(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		AtomicInteger totalUnmatched = new AtomicInteger();
-		Map<MethodInstance, MethodInstance> matches = match(level, absThreshold, relThreshold, cls -> cls.getMethods(), MethodClassifier::rank, progressReceiver, totalUnmatched);
+		Map<MethodInstance, MethodInstance> matches = match(level, absThreshold, relThreshold,
+				cls -> cls.getMethods(), MethodClassifier::rank, MethodClassifier.getMaxScore(level),
+				progressReceiver, totalUnmatched);
 
 		for (Map.Entry<MethodInstance, MethodInstance> entry : matches.entrySet()) {
 			match(entry.getKey(), entry.getValue());
@@ -757,7 +761,11 @@ public class Matcher {
 
 	public boolean autoMatchFields(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		AtomicInteger totalUnmatched = new AtomicInteger();
-		Map<FieldInstance, FieldInstance> matches = match(level, absThreshold, relThreshold, cls -> cls.getFields(), FieldClassifier::rank, progressReceiver, totalUnmatched);
+		double maxScore = FieldClassifier.getMaxScore(level);
+
+		Map<FieldInstance, FieldInstance> matches = match(level, absThreshold, relThreshold,
+				cls -> cls.getFields(), FieldClassifier::rank, maxScore,
+				progressReceiver, totalUnmatched);
 
 		for (Map.Entry<FieldInstance, FieldInstance> entry : matches.entrySet()) {
 			match(entry.getKey(), entry.getValue());
@@ -769,7 +777,7 @@ public class Matcher {
 	}
 
 	private <T extends MemberInstance<T>> Map<T, T> match(ClassifierLevel level, double absThreshold, double relThreshold,
-			Function<ClassInstance, T[]> memberGetter, IRanker<T> ranker,
+			Function<ClassInstance, T[]> memberGetter, IRanker<T> ranker, double maxScore,
 			DoubleConsumer progressReceiver, AtomicInteger totalUnmatched) {
 		List<ClassInstance> classes = env.getClassesA().stream()
 				.filter(cls -> cls.getUri() != null && cls.getMatch() != null && memberGetter.apply(cls).length > 0)
@@ -783,6 +791,7 @@ public class Matcher {
 				.collect(Collectors.toList());
 		if (classes.isEmpty()) return Collections.emptyMap();
 
+		double maxMismatch = maxScore - getRawScore(absThreshold * (1 - relThreshold), maxScore);
 		Map<T, T> ret = new ConcurrentHashMap<>(512);
 
 		runInParallel(classes, cls -> {
@@ -791,9 +800,9 @@ public class Matcher {
 			for (T member : memberGetter.apply(cls)) {
 				if (member.getMatch() != null) continue;
 
-				List<RankResult<T>> ranking = ranker.rank(member, memberGetter.apply(cls.getMatch()), level, env);
+				List<RankResult<T>> ranking = ranker.rank(member, memberGetter.apply(cls.getMatch()), level, env, maxMismatch);
 
-				if (checkRank(ranking, absThreshold, relThreshold)) {
+				if (checkRank(ranking, absThreshold, relThreshold, maxScore)) {
 					T match = ranking.get(0).getSubject();
 
 					ret.put(member, match);
@@ -833,6 +842,8 @@ public class Matcher {
 		if (methods.isEmpty()) {
 			matches = Collections.emptyMap();
 		} else {
+			double maxScore = MethodArgClassifier.getMaxScore(level);
+			double maxMismatch = maxScore - getRawScore(absThreshold * (1 - relThreshold), maxScore);
 			matches = new ConcurrentHashMap<>(512);
 
 			runInParallel(methods, m -> {
@@ -841,9 +852,9 @@ public class Matcher {
 				for (MethodVarInstance arg : m.getArgs()) {
 					if (arg.getMatch() != null) continue;
 
-					List<RankResult<MethodVarInstance>> ranking = MethodArgClassifier.rank(arg, m.getMatch().getArgs(), level, env);
+					List<RankResult<MethodVarInstance>> ranking = MethodArgClassifier.rank(arg, m.getMatch().getArgs(), level, env, maxMismatch);
 
-					if (checkRank(ranking, absThreshold, relThreshold)) {
+					if (checkRank(ranking, absThreshold, relThreshold, maxScore)) {
 						MethodVarInstance match = ranking.get(0).getSubject();
 
 						matches.put(arg, match);
@@ -867,15 +878,29 @@ public class Matcher {
 		return !matches.isEmpty();
 	}
 
-	public static boolean checkRank(List<? extends RankResult<?>> ranking, double absThreshold, double relThreshold) {
+	public static boolean checkRank(List<? extends RankResult<?>> ranking, double absThreshold, double relThreshold, double maxScore) {
 		if (ranking.isEmpty()) return false;
-		if (ranking.get(0).getScore() < absThreshold) return false;
+
+		double score = getScore(ranking.get(0).getScore(), maxScore);
+		if (score < absThreshold) return false;
 
 		if (ranking.size() == 1) {
 			return true;
 		} else {
-			return ranking.get(1).getScore() < ranking.get(0).getScore() * (1 - relThreshold);
+			double nextScore = getScore(ranking.get(1).getScore(), maxScore);
+
+			return nextScore < score * (1 - relThreshold);
 		}
+	}
+
+	public static double getScore(double rawScore, double maxScore) {
+		double ret = rawScore / maxScore;
+
+		return ret * ret;
+	}
+
+	private static double getRawScore(double score, double maxScore) {
+		return Math.sqrt(score) * maxScore;
 	}
 
 	private static <T> void sanitizeMatches(Map<T, T> matches) {

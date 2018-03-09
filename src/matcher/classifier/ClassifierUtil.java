@@ -601,35 +601,38 @@ public class ClassifierUtil {
 		int apply(T list);
 	}
 
-	public static <T extends IMatchable<T>> List<RankResult<T>> rank(T src, T[] dsts, Collection<IClassifier<T>> classifiers, double totalWeight, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env) {
+	public static <T extends IMatchable<T>> List<RankResult<T>> rank(T src, T[] dsts, Collection<IClassifier<T>> classifiers, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env, double maxMismatch) {
 		List<RankResult<T>> ret = new ArrayList<>(dsts.length);
 
-		for (T dst : dsts) {
+		dstLoop: for (T dst : dsts) {
 			assert src.getEnv() != dst.getEnv();
 
 			if (!potentialEqualityCheck.test(src, dst)) continue;
 
 			double score = 0;
+			double mismatch = 0;
 			List<ClassifierResult<T>> results = new ArrayList<>(classifiers.size());
 
 			for (IClassifier<T> classifier : classifiers) {
 				double cScore = classifier.getScore(src, dst, env);
 				assert cScore > -epsilon && cScore < 1 + epsilon : "invalid score from "+classifier.getName()+": "+cScore;
 
-				score += cScore * classifier.getWeight();
+				double weight = classifier.getWeight();
+				double weightedScore = cScore * weight;
+
+				mismatch += weight - weightedScore;
+				if (mismatch >= maxMismatch) continue dstLoop;
+
+				score += weightedScore;
 				results.add(new ClassifierResult<>(classifier, cScore));
 			}
 
-			ret.add(new RankResult<>(dst, adjustTotalScore(score / totalWeight), results));
+			ret.add(new RankResult<>(dst, score, results));
 		}
 
 		ret.sort(Comparator.<RankResult<T>, Double>comparing(RankResult::getScore).reversed());
 
 		return ret;
-	}
-
-	private static double adjustTotalScore(double score) {
-		return score * score;
 	}
 
 	public static void extractStrings(InsnList il, Set<String> out) {

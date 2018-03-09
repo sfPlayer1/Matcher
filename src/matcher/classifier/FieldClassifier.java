@@ -45,12 +45,16 @@ public class FieldClassifier {
 		}
 	}
 
-	private static double getMaxScore(ClassifierLevel level) {
+	public static double getMaxScore(ClassifierLevel level) {
 		return maxScore.getOrDefault(level, 0.);
 	}
 
 	public static List<RankResult<FieldInstance>> rank(FieldInstance src, FieldInstance[] dsts, ClassifierLevel level, ClassEnvironment env) {
-		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), getMaxScore(level), ClassifierUtil::checkPotentialEquality, env);
+		return rank(src, dsts, level, env, Double.POSITIVE_INFINITY);
+	}
+
+	public static List<RankResult<FieldInstance>> rank(FieldInstance src, FieldInstance[] dsts, ClassifierLevel level, ClassEnvironment env, double maxMismatch) {
+		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), ClassifierUtil::checkPotentialEquality, env, maxMismatch);
 	}
 
 	private static final Map<ClassifierLevel, List<IClassifier<FieldInstance>>> classifiers = new IdentityHashMap<>();

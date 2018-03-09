@@ -26,12 +26,12 @@ public class MethodArgClassifier {
 		}
 	}
 
-	private static double getMaxScore(ClassifierLevel level) {
+	public static double getMaxScore(ClassifierLevel level) {
 		return maxScore.getOrDefault(level, 0.);
 	}
 
-	public static List<RankResult<MethodVarInstance>> rank(MethodVarInstance src, MethodVarInstance[] dsts, ClassifierLevel level, ClassEnvironment env) {
-		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), getMaxScore(level), ClassifierUtil::checkPotentialEquality, env);
+	public static List<RankResult<MethodVarInstance>> rank(MethodVarInstance src, MethodVarInstance[] dsts, ClassifierLevel level, ClassEnvironment env, double maxMismatch) {
+		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), ClassifierUtil::checkPotentialEquality, env, maxMismatch);
 	}
 
 	private static final Map<ClassifierLevel, List<IClassifier<MethodVarInstance>>> classifiers = new EnumMap<>(ClassifierLevel.class);

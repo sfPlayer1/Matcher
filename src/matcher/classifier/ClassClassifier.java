@@ -40,12 +40,12 @@ public class ClassClassifier {
 		addClassifier(similarMethods, 10);
 		addClassifier(outReferences, 6);
 		addClassifier(inReferences, 6);
+		addClassifier(stringConstants, 8);
+		addClassifier(numericConstants, 6);
 		addClassifier(methodOutReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		addClassifier(methodInReferences, 6, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		addClassifier(fieldReadReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		addClassifier(fieldWriteReferences, 5, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
-		addClassifier(stringConstants, 8);
-		addClassifier(numericConstants, 6);
 		addClassifier(membersFull, 10, ClassifierLevel.Full, ClassifierLevel.Extra);
 		addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
@@ -61,12 +61,16 @@ public class ClassClassifier {
 		}
 	}
 
-	private static double getMaxScore(ClassifierLevel level) {
+	public static double getMaxScore(ClassifierLevel level) {
 		return maxScore.getOrDefault(level, 0.);
 	}
 
-	public static List<RankResult<ClassInstance>> rank(ClassInstance srcClass, ClassInstance[] dstClasses, ClassifierLevel level, ClassEnvironment env) {
-		return ClassifierUtil.rank(srcClass, dstClasses, classifiers.getOrDefault(level, Collections.emptyList()), getMaxScore(level), ClassifierUtil::checkPotentialEquality, env);
+	public static List<RankResult<ClassInstance>> rank(ClassInstance src, ClassInstance[] dsts, ClassifierLevel level, ClassEnvironment env) {
+		return rank(src, dsts, level, env, Double.POSITIVE_INFINITY);
+	}
+
+	public static List<RankResult<ClassInstance>> rank(ClassInstance src, ClassInstance[] dsts, ClassifierLevel level, ClassEnvironment env, double maxMismatch) {
+		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), ClassifierUtil::checkPotentialEquality, env, maxMismatch);
 	}
 
 	private static final Map<ClassifierLevel, List<IClassifier<ClassInstance>>> classifiers = new EnumMap<>(ClassifierLevel.class);
@@ -411,16 +415,20 @@ public class ClassClassifier {
 			double match = 0;
 
 			if (clsA.getMethods().length > 0 && clsB.getMethods().length > 0) {
+				double maxScore = MethodClassifier.getMaxScore(level);
+
 				for (MethodInstance methodA : clsA.getMethods()) {
 					List<RankResult<MethodInstance>> ranking = MethodClassifier.rank(methodA, clsB.getMethods(), level, env);
-					if (Matcher.checkRank(ranking, absThreshold, relThreshold)) match += ranking.get(0).getScore();
+					if (Matcher.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += Matcher.getScore(ranking.get(0).getScore(), maxScore);
 				}
 			}
 
 			if (clsA.getFields().length > 0 && clsB.getFields().length > 0) {
+				double maxScore = FieldClassifier.getMaxScore(level);
+
 				for (FieldInstance fieldA : clsA.getFields()) {
 					List<RankResult<FieldInstance>> ranking = FieldClassifier.rank(fieldA, clsB.getFields(), level, env);
-					if (Matcher.checkRank(ranking, absThreshold, relThreshold)) match += ranking.get(0).getScore();
+					if (Matcher.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += Matcher.getScore(ranking.get(0).getScore(), maxScore);
 				}
 			}
 
