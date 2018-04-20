@@ -65,12 +65,12 @@ public class ClassClassifier {
 		return maxScore.getOrDefault(level, 0.);
 	}
 
-	public static List<RankResult<ClassInstance>> rank(ClassInstance src, ClassInstance[] dsts, ClassifierLevel level, ClassEnvironment env) {
-		return rank(src, dsts, level, env, Double.POSITIVE_INFINITY);
-	}
-
 	public static List<RankResult<ClassInstance>> rank(ClassInstance src, ClassInstance[] dsts, ClassifierLevel level, ClassEnvironment env, double maxMismatch) {
 		return ClassifierUtil.rank(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), ClassifierUtil::checkPotentialEquality, env, maxMismatch);
+	}
+
+	public static List<RankResult<ClassInstance>> rankParallel(ClassInstance src, ClassInstance[] dsts, ClassifierLevel level, ClassEnvironment env, double maxMismatch) {
+		return ClassifierUtil.rankParallel(src, dsts, classifiers.getOrDefault(level, Collections.emptyList()), ClassifierUtil::checkPotentialEquality, env, maxMismatch);
 	}
 
 	private static final Map<ClassifierLevel, List<IClassifier<ClassInstance>>> classifiers = new EnumMap<>(ClassifierLevel.class);

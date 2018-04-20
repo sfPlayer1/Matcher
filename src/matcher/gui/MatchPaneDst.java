@@ -224,7 +224,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			if (cls == null) return;
 			if (cmpClasses == null) return;
 
-			Gui.runAsyncTask(() -> ClassClassifier.rank(cls, cmpClasses.toArray(new ClassInstance[0]), gui.getMatcher().getAutoMatchLevel(), gui.getEnv()))
+			Gui.runAsyncTask(() -> ClassClassifier.rankParallel(cls, cmpClasses.toArray(new ClassInstance[0]), gui.getMatcher().getAutoMatchLevel(), gui.getEnv(), Double.POSITIVE_INFINITY))
 			.whenComplete((res, exc) -> {
 				if (exc != null) {
 					exc.printStackTrace();
