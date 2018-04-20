@@ -248,7 +248,9 @@ public class FileMenu extends Menu {
 			fileChooser.setTitle("Save mapping file");
 
 			for (MappingFormat format : MappingFormat.values()) {
-				fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.name, "*."+format.fileExt));
+				if (format.hasSingleFile()) {
+					fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.name, "*."+format.fileExt));
+				}
 			}
 
 			File file = fileChooser.showSaveDialog(window);
