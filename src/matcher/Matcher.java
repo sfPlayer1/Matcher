@@ -34,6 +34,8 @@ import matcher.classifier.IRanker;
 import matcher.classifier.MethodArgClassifier;
 import matcher.classifier.MethodClassifier;
 import matcher.classifier.RankResult;
+import matcher.config.Config;
+import matcher.config.ProjectConfig;
 import matcher.serdes.mapping.IMappingAcceptor;
 import matcher.serdes.mapping.MappingFormat;
 import matcher.serdes.mapping.MappingReader;
@@ -101,7 +103,8 @@ public class Matcher {
 
 		ProjectConfig config = new ProjectConfig(pathsA, pathsB, classPathA, classPathB, sharedClassPath, false);
 		if (!config.isValid()) throw new IOException("invalid config");
-		config.saveAsLast();
+		Config.setProjectConfig(config);
+		Config.saveAsLast();
 
 		reset();
 		init(config, progressReceiver);
@@ -365,7 +368,7 @@ public class Matcher {
 					writer.acceptField(clsName, name, desc, mappedClsName, m.getMappedName(false), getMappedDesc(m));
 
 					String comment = m.getMappedComment();
-					if (comment != null) writer.acceptMethodComment(clsName, name, desc, comment);
+					if (comment != null) writer.acceptFieldComment(clsName, name, desc, comment);
 				});
 			}
 		} catch (UncheckedIOException e) {

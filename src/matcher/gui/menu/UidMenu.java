@@ -18,7 +18,8 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import matcher.Matcher;
-import matcher.ProjectConfig;
+import matcher.config.Config;
+import matcher.config.UidConfig;
 import matcher.gui.Gui;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
@@ -63,9 +64,7 @@ public class UidMenu extends Menu {
 	}
 
 	private void setup() {
-		ProjectConfig config = ProjectConfig.getLast();
-
-		Dialog<ProjectConfig> dialog = new Dialog<>();
+		Dialog<UidConfig> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
 		dialog.setTitle("UID Setup");
@@ -73,28 +72,28 @@ public class UidMenu extends Menu {
 
 		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
 
-		UidSetupPane setupPane = new UidSetupPane(config, dialog.getOwner(), okButton);
-		dialog.getDialogPane().setContent(setupPane);
-		dialog.setResultConverter(button -> button == ButtonType.OK ? config : null);
+		UidSetupPane content = new UidSetupPane(Config.getUidConfig(), dialog.getOwner(), okButton);
+		dialog.getDialogPane().setContent(content);
+		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
 		dialog.showAndWait().ifPresent(newConfig -> {
-			setupPane.updateConfig();
-
 			if (!newConfig.isValid()) return;
 
-			newConfig.saveAsLast();
+			Config.setUidConfig(newConfig);
+			Config.saveAsLast();
 		});
 	}
 
 	private void importMatches(DoubleConsumer progressConsumer) {
-		ProjectConfig config = ProjectConfig.getLast(); // TODO: keep around
+		UidConfig config = Config.getUidConfig();
+		if (!config.isValid()) return;
 
 		try {
 			HttpURLConnection conn = (HttpURLConnection) new URL("https",
-					config.getUidAddress().getHostString(),
-					config.getUidAddress().getPort(),
-					String.format("/%s/matches/%s/%s", config.getUidProject(), config.getUidVersionA(), config.getUidVersionB())).openConnection();
-			conn.setRequestProperty("X-Token", config.getUidToken());
+					config.getAddress().getHostString(),
+					config.getAddress().getPort(),
+					String.format("/%s/matches/%s/%s", config.getProject(), config.getVersionA(), config.getVersionB())).openConnection();
+			conn.setRequestProperty("X-Token", config.getToken());
 
 			progressConsumer.accept(0.5);
 
@@ -182,15 +181,16 @@ public class UidMenu extends Menu {
 	}
 
 	private void submitMatches(DoubleConsumer progressConsumer) {
-		ProjectConfig config = ProjectConfig.getLast(); // TODO: keep around
+		UidConfig config = Config.getUidConfig();
+		if (!config.isValid()) return;
 
 		try {
 			HttpURLConnection conn = (HttpURLConnection) new URL("https",
-					config.getUidAddress().getHostString(),
-					config.getUidAddress().getPort(),
-					String.format("/%s/link/%s/%s", config.getUidProject(), config.getUidVersionA(), config.getUidVersionB())).openConnection();
+					config.getAddress().getHostString(),
+					config.getAddress().getPort(),
+					String.format("/%s/link/%s/%s", config.getProject(), config.getVersionA(), config.getVersionB())).openConnection();
 			conn.setRequestMethod("POST");
-			conn.setRequestProperty("X-Token", config.getUidToken());
+			conn.setRequestProperty("X-Token", config.getToken());
 			conn.setDoOutput(true);
 
 			List<IMatchable<?>> requested = new ArrayList<>();

@@ -27,15 +27,21 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
-import matcher.ProjectConfig;
+import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
 
 public class NewProjectPane extends GridPane {
 	NewProjectPane(ProjectConfig config, Window window, Node okButton) {
-		this.config = config;
 		this.window = window;
 		this.okButton = okButton;
+
+		pathsA = FXCollections.observableArrayList(config.getPathsA());
+		pathsB = FXCollections.observableArrayList(config.getPathsB());
+		classPathA = FXCollections.observableArrayList(config.getClassPathA());
+		classPathB = FXCollections.observableArrayList(config.getClassPathB());
+		sharedClassPath = FXCollections.observableArrayList(config.getSharedClassPath());
+		inputsBeforeClassPath = config.hasInputsBeforeClassPath();
 
 		init();
 	}
@@ -55,12 +61,6 @@ public class NewProjectPane extends GridPane {
 		RowConstraints rowConstraintShared = new RowConstraints();
 		rowConstraintShared.setVgrow(Priority.SOMETIMES);
 		getRowConstraints().addAll(rowConstraintInput, rowConstraintClassPath, rowConstraintButtons, rowConstraintShared);
-
-		ObservableList<Path> pathsA = FXCollections.observableList(config.getPathsA());
-		ObservableList<Path> pathsB = FXCollections.observableList(config.getPathsB());
-		classPathA = FXCollections.observableList(config.getClassPathA());
-		classPathB = FXCollections.observableList(config.getClassPathB());
-		sharedClassPath = FXCollections.observableList(config.getSharedClassPath());
 
 		add(createFilesSelectionPane("Inputs A", pathsA, window, false, false), 0, 0);
 		add(createFilesSelectionPane("Inputs B", pathsB, window, false, false), 1, 0);
@@ -87,7 +87,7 @@ public class NewProjectPane extends GridPane {
 		add(createFilesSelectionPane("Shared class path", sharedClassPath, window, true, true), 0, 3, 2, 1);
 		// TODO: config.inputsBeforeClassPath
 
-		ListChangeListener<Path> listChangeListener = change -> okButton.setDisable(!config.isValid());
+		ListChangeListener<Path> listChangeListener = change -> okButton.setDisable(!createConfig().isValid());
 
 		pathsA.addListener(listChangeListener);
 		pathsB.addListener(listChangeListener);
@@ -254,10 +254,22 @@ public class NewProjectPane extends GridPane {
 		return Arrays.asList(new FileChooser.ExtensionFilter("Java archive", "*.jar"));
 	}
 
-	private final ProjectConfig config;
+	public ProjectConfig createConfig() {
+		return new ProjectConfig(new ArrayList<>(pathsA),
+				new ArrayList<>(pathsB),
+				new ArrayList<>(classPathA),
+				new ArrayList<>(classPathB),
+				new ArrayList<>(sharedClassPath),
+				inputsBeforeClassPath);
+	}
+
 	private final Window window;
 	private final Node okButton;
-	private ObservableList<Path> classPathA;
-	private ObservableList<Path> classPathB;
-	private ObservableList<Path> sharedClassPath;
+
+	private final ObservableList<Path> pathsA;
+	private final ObservableList<Path> pathsB;
+	private final ObservableList<Path> classPathA;
+	private final ObservableList<Path> classPathB;
+	private final ObservableList<Path> sharedClassPath;
+	private final boolean inputsBeforeClassPath;
 }

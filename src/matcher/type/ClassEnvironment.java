@@ -30,10 +30,10 @@ import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import matcher.CfrIf;
-import matcher.ProjectConfig;
 import matcher.Util;
 import matcher.classifier.ClassifierUtil;
 import matcher.classifier.MatchingCache;
+import matcher.config.ProjectConfig;
 
 public class ClassEnvironment implements IClassEnv {
 	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {

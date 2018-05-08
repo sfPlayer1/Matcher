@@ -612,9 +612,10 @@ public class MappingReader {
 				case 'n': ret.append("\n"); break;
 				case 'r': ret.append("\r"); break;
 				case '\\': ret.append("\\"); break;
-				default: throw new IOException("invalid escape sequence: "+str);
+				default: throw new IOException("invalid escape sequence: \\"+str.charAt(i + 1)+" ("+str+")");
 				}
 
+				i++;
 				start = i + 1;
 			}
 		}

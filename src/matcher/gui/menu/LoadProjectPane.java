@@ -1,12 +1,14 @@
 package matcher.gui.menu;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -24,7 +26,7 @@ public class LoadProjectPane extends VBox {
 	LoadProjectPane(List<Path> paths, Window window, Node okButton) {
 		super(GuiConstants.padding);
 
-		this.paths = paths;
+		this.paths = FXCollections.observableArrayList(paths);
 		this.window = window;
 		this.okButton = okButton;
 
@@ -80,7 +82,11 @@ public class LoadProjectPane extends VBox {
 		selectChangeListener.onChanged(null);
 	}
 
-	private final List<Path> paths;
+	public List<Path> createConfig() {
+		return new ArrayList<>(paths);
+	}
+
+	private final ObservableList<Path> paths;
 	private final Window window;
 	private final Node okButton;
 }

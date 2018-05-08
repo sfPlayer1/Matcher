@@ -34,7 +34,8 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
-import matcher.ProjectConfig;
+import matcher.config.Config;
+import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
 import matcher.serdes.MatchesIo;
@@ -103,8 +104,6 @@ public class FileMenu extends Menu {
 	}
 
 	private void newProject() {
-		ProjectConfig config = ProjectConfig.getLast();
-
 		Dialog<ProjectConfig> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
@@ -112,14 +111,16 @@ public class FileMenu extends Menu {
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
 		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
+		NewProjectPane content = new NewProjectPane(Config.getProjectConfig(), dialog.getOwner(), okButton);
 
-		dialog.getDialogPane().setContent(new NewProjectPane(config, dialog.getOwner(), okButton));
-		dialog.setResultConverter(button -> button == ButtonType.OK ? config : null);
+		dialog.getDialogPane().setContent(content);
+		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
 		dialog.showAndWait().ifPresent(newConfig -> {
 			if (!newConfig.isValid()) return;
 
-			newConfig.saveAsLast();
+			Config.setProjectConfig(newConfig);
+			Config.saveAsLast();
 
 			gui.getMatcher().reset();
 			gui.onProjectChange();
@@ -135,8 +136,6 @@ public class FileMenu extends Menu {
 		Path file = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (file == null) return;
 
-		List<Path> paths = new ArrayList<>();
-
 		Dialog<List<Path>> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
@@ -145,17 +144,21 @@ public class FileMenu extends Menu {
 
 		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
 
-		dialog.getDialogPane().setContent(new LoadProjectPane(paths, dialog.getOwner(), okButton));
-		dialog.setResultConverter(button -> button == ButtonType.OK ? paths : null);
+		LoadProjectPane content = new LoadProjectPane(Config.getInputDirs(), dialog.getOwner(), okButton);
+		dialog.getDialogPane().setContent(content);
+		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
 		dialog.showAndWait().ifPresent(newConfig -> {
-			if (paths.isEmpty()) return;
+			if (newConfig.isEmpty()) return;
+
+			Config.setInputDirs(newConfig);
+			Config.saveAsLast();
 
 			gui.getMatcher().reset();
 			gui.onProjectChange();
 
 			gui.runProgressTask("Initializing files...",
-					progressReceiver -> MatchesIo.read(file, paths, gui.getMatcher(), progressReceiver),
+					progressReceiver -> MatchesIo.read(file, newConfig, gui.getMatcher(), progressReceiver),
 					() -> gui.onProjectChange(),
 					Throwable::printStackTrace);
 		});
