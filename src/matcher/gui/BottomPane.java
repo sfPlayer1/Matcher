@@ -173,17 +173,17 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		if (!canMatchPerfectMembers(clsA)) return;
 
 		ClassInstance clsB = clsA.getMatch();
-		final double minScore = 1 - 1e-6;
+
+		final double minMethodScore = MethodClassifier.getMaxScore(ClassifierLevel.Full) - 1e-6;
 		Map<MethodInstance, MethodInstance> matchedMethods = new IdentityHashMap<>();
 		boolean matchedAnyMethods = false;
-		boolean matchedAnyFields = false;
 
 		for (MethodInstance m : clsA.getMethods()) {
 			if (m.hasMatch()) continue;
 
 			List<RankResult<MethodInstance>> results = MethodClassifier.rank(m, clsB.getMethods(), ClassifierLevel.Full, gui.getEnv());
 
-			if (!results.isEmpty() && results.get(0).getScore() >= minScore && (results.size() == 1 || results.get(1).getScore() < minScore)) {
+			if (!results.isEmpty() && results.get(0).getScore() >= minMethodScore && (results.size() == 1 || results.get(1).getScore() < minMethodScore)) {
 				MethodInstance match = results.get(0).getSubject();
 				MethodInstance prev = matchedMethods.putIfAbsent(match, m);
 				if (prev != null) matchedMethods.put(match, null);
@@ -197,14 +197,16 @@ public class BottomPane extends StackPane implements IGuiComponent {
 			matchedAnyMethods = true;
 		}
 
+		final double minFieldScore = FieldClassifier.getMaxScore(ClassifierLevel.Full) - 1e-6;
 		Map<FieldInstance, FieldInstance> matchedFields = new IdentityHashMap<>();
+		boolean matchedAnyFields = false;
 
 		for (FieldInstance m : clsA.getFields()) {
 			if (m.hasMatch()) continue;
 
 			List<RankResult<FieldInstance>> results = FieldClassifier.rank(m, clsB.getFields(), ClassifierLevel.Full, gui.getEnv());
 
-			if (!results.isEmpty() && results.get(0).getScore() >= minScore && (results.size() == 1 || results.get(1).getScore() < minScore)) {
+			if (!results.isEmpty() && results.get(0).getScore() >= minFieldScore && (results.size() == 1 || results.get(1).getScore() < minFieldScore)) {
 				FieldInstance match = results.get(0).getSubject();
 				FieldInstance prev = matchedFields.putIfAbsent(match, m);
 				if (prev != null) matchedFields.put(match, null);
