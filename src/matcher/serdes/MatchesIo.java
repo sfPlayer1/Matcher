@@ -47,6 +47,7 @@ public class MatchesIo {
 					state = ParserState.HEADER;
 				} else if (state != ParserState.CONTENT && line.startsWith("\t")) {
 					if (line.startsWith("\t\t")) {
+						// class path entry: >>size>hash>filename or >>filename
 						List<InputFile> inputFiles;
 
 						switch (state) {
@@ -70,12 +71,23 @@ public class MatchesIo {
 						}
 
 						int pos = line.indexOf('\t', 2);
-						if (pos == -1 || pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
-						long size = Long.parseLong(line.substring(2, pos));
-						int pos2 = line.indexOf('\t', pos + 1);
-						if (pos2 == -1 || pos2 == pos + 1 || pos2 + 1 >= line.length()) throw new IOException("invalid matches file");
-						byte[] hash = Base64.getDecoder().decode(line.substring(pos + 1, pos2));
-						inputFiles.add(new InputFile(line.substring(pos2 + 1), size, hash));
+						long size;
+						byte[] hash;
+
+						if (pos == -1) {
+							size = -1;
+							hash = null;
+							pos = 2;
+						} else {
+							if (pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
+							size = Long.parseLong(line.substring(2, pos));
+							int pos2 = line.indexOf('\t', pos + 1);
+							if (pos2 == -1 || pos2 == pos + 1 || pos2 + 1 >= line.length()) throw new IOException("invalid matches file");
+							hash = Base64.getDecoder().decode(line.substring(pos + 1, pos2));
+							pos = pos2 + 1;
+						}
+
+						inputFiles.add(new InputFile(line.substring(pos), size, hash));
 					} else {
 						switch (line.substring(1, line.length() - 1)) {
 						case "a":

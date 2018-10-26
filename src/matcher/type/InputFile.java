@@ -46,9 +46,9 @@ public class InputFile {
 			if (this.path != null) return Files.isSameFile(path, this.path);
 
 			if (!getSanitizedFileName(path).equals(fileName)) return false;
-			if (Files.size(path) != size) return false;
+			if (size != -1 && Files.size(path) != size) return false;
 
-			return Arrays.equals(sha256, hash(path));
+			return sha256 == null || Arrays.equals(sha256, hash(path));
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
