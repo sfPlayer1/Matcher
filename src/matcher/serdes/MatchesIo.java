@@ -251,10 +251,12 @@ public class MatchesIo {
 
 	private static void writeMethods(MethodInstance[] methods, Writer out) throws IOException {
 		for (MethodInstance method : methods) {
+			if (method.getMatch() == null) continue;
+
 			writeMemberMain(method, out, true);
 
 			for (MethodVarInstance arg : method.getArgs()) {
-				if (arg.getMatch() == null) return;
+				if (arg.getMatch() == null) continue;
 
 				out.write("\t\tma\t");
 				out.write(Integer.toString(arg.getIndex()));
@@ -267,13 +269,13 @@ public class MatchesIo {
 
 	private static void writeFields(FieldInstance[] fields, Writer out) throws IOException {
 		for (FieldInstance field : fields) {
+			if (field.getMatch() == null) continue;
+
 			writeMemberMain(field, out, false);
 		}
 	}
 
 	private static void writeMemberMain(MemberInstance<?> member, Writer out, boolean isMethod) throws IOException {
-		if (member.getMatch() == null) return;
-
 		out.write('\t');
 		out.write(isMethod ? 'm' : 'f');
 		out.write('\t');
