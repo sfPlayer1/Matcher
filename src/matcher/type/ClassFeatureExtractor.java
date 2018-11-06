@@ -257,7 +257,7 @@ public class ClassFeatureExtractor implements IClassEnv {
 		method.classRefs.add(dst.cls);
 	}
 
-	private void processClassC(ClassInstance cls) {
+	private static void processClassC(ClassInstance cls) {
 		Queue<ClassInstance> toCheck = new ArrayDeque<>();
 		Set<ClassInstance> checked = Util.newIdentityHashSet();
 
@@ -266,17 +266,11 @@ public class ClassFeatureExtractor implements IClassEnv {
 			toCheck.clear();
 			checked.clear();
 		}
-
-		for (FieldInstance field : cls.fields) {
-			processField(field, toCheck, checked);
-			toCheck.clear();
-			checked.clear();
-		}
 	}
 
-	private void processMethod(MethodInstance method, Queue<ClassInstance> toCheck, Set<ClassInstance> checked) {
+	private static void processMethod(MethodInstance method, Queue<ClassInstance> toCheck, Set<ClassInstance> checked) {
 		if (method.origName.equals("<init>") || method.origName.equals("<clinit>")) return;
-		if (method.asmNode != null && isHierarchyBarrier(method.asmNode.access)) return;
+		if (isHierarchyBarrier(method)) return;
 
 		if (method.cls.superClass != null) toCheck.add(method.cls.superClass);
 		toCheck.addAll(method.cls.interfaces);
@@ -287,12 +281,9 @@ public class ClassFeatureExtractor implements IClassEnv {
 
 			MethodInstance m = cls.getMethod(method.id);
 
-
-			if (m != null) {
-				if (m.asmNode == null || !isHierarchyBarrier(m.asmNode.access)) {
-					method.addParent(m);
-					m.addChild(method);
-				}
+			if (m != null && !isHierarchyBarrier(m)) { // skips over private or static methods
+				method.addParent(m);
+				m.addChild(method);
 			} else {
 				if (cls.superClass != null) toCheck.add(cls.superClass);
 				toCheck.addAll(cls.interfaces);
@@ -300,58 +291,31 @@ public class ClassFeatureExtractor implements IClassEnv {
 		}
 	}
 
-	private void processField(FieldInstance field, Queue<ClassInstance> toCheck, Set<ClassInstance> checked) {
-		if (field.asmNode != null && isHierarchyBarrier(field.asmNode.access)) return;
-
-		if (field.cls.superClass != null) toCheck.add(field.cls.superClass);
-		toCheck.addAll(field.cls.interfaces);
-		ClassInstance cls;
-
-		while ((cls = toCheck.poll()) != null) {
-			if (!checked.add(cls)) continue;
-
-			FieldInstance f = cls.getField(field.id);
-
-			// TODO: check for resolution barriers (private etc.)
-
-			if (f != null) {
-				if (f.asmNode == null || !isHierarchyBarrier(f.asmNode.access)) {
-					field.addParent(f);
-					f.addChild(field);
-				}
-			} else {
-				if (cls.superClass != null) toCheck.add(cls.superClass);
-				toCheck.addAll(cls.interfaces);
-			}
-		}
-	}
-
-	private static boolean isHierarchyBarrier(int access) {
-		return (access & (Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC)) != 0;
+	private static boolean isHierarchyBarrier(MethodInstance method) {
+		return (method.getAccess() & (Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC)) != 0;
 	}
 
 	/**
 	 * 3rd processing pass, in depth analysis.
 	 */
 	private void processClassD(ClassInstance cls, CommonClasses common) {
-		Queue<MethodInstance> toCheckM = new ArrayDeque<>();
-		Set<MethodInstance> checkedM = Util.newIdentityHashSet();
+		Queue<MethodInstance> toCheck = new ArrayDeque<>();
+		Set<MethodInstance> checked = Util.newIdentityHashSet();
 
 		for (MethodInstance method : cls.getMethods()) {
-			processMemberD(method, toCheckM, checkedM);
-			toCheckM.clear();
-			checkedM.clear();
+			if (isHierarchyBarrier(method)) {
+				method.hierarchyMembers = Collections.singleton(method);
+			} else {
+				processVirtuakMethodHierarchy(method, toCheck, checked);
+				toCheck.clear();
+				checked.clear();
+			}
 
 			//Analysis.analyzeMethod(method, common);
 		}
 
-		Queue<FieldInstance> toCheckF = new ArrayDeque<>();
-		Set<FieldInstance> checkedF = Util.newIdentityHashSet();
-
 		for (FieldInstance field : cls.getFields()) {
-			processMemberD(field, toCheckF, checkedF);
-			toCheckF.clear();
-			checkedF.clear();
+			field.hierarchyMembers = Collections.singleton(field);
 
 			if (field.writeRefs.size() == 1) {
 				Analysis.checkInitializer(field, this);
@@ -359,43 +323,37 @@ public class ClassFeatureExtractor implements IClassEnv {
 		}
 	}
 
-	private <T extends MemberInstance<T>> void processMemberD(T member, Queue<T> toCheck, Set<T> checked) {
-		assert member.getCls().getEnv() == this;
+	private void processVirtuakMethodHierarchy(MethodInstance method, Queue<MethodInstance> toCheck, Set<MethodInstance> checked) {
+		assert method.getCls().getEnv() == this;
 
-		if (member.hierarchyMembers != null) return;
+		if (method.hierarchyMembers != null) return; // already processed
 
-		toCheck.add(member);
-		checked.add(member);
+		toCheck.add(method);
+		checked.add(method);
 
 		boolean nameObf = true;
-		T m = null;
 
-		while ((m = toCheck.poll()) != null) {
-			/*if (m.getCls().getId().equals("Lave;") && m.getId().equals("v()Lank;")
-					|| m.getCls().getId().equals("Lavb;") && m.getId().equals("v()Lank;")) {
-				System.out.println();
-			}*/
-
-			if (m.hierarchyMembers != null) {
-				checked.addAll(m.hierarchyMembers);
+		while ((method = toCheck.poll()) != null) {
+			if (method.hierarchyMembers != null) {
+				checked.addAll(method.hierarchyMembers);
 			} else {
-				for (T cm : m.getParents()) {
-					if (checked.add(cm)) toCheck.add(cm);
+				for (MethodInstance m : method.getParents()) {
+					if (checked.add(m)) toCheck.add(m);
 				}
 
-				for (T cm : m.getChildren()) {
-					if (checked.add(cm)) toCheck.add(cm);
+				for (MethodInstance m : method.getChildren()) {
+					if (checked.add(m)) toCheck.add(m);
 				}
 			}
 
-			nameObf &= m.nameObfuscated;
+			nameObf &= method.nameObfuscated;
 		}
 
-		Set<T> members = Util.newIdentityHashSet(checked);
+		Set<MethodInstance> hierarchyMembers = Util.newIdentityHashSet(checked);
 
-		for (T cm : checked) {
-			cm.hierarchyMembers = members;
-			cm.nameObfuscated &= nameObf;
+		for (MethodInstance m : checked) {
+			m.hierarchyMembers = hierarchyMembers;
+			m.nameObfuscated &= nameObf;
 		}
 	}
 
