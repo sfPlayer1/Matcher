@@ -99,7 +99,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 				} else {
 					double prevScroll = isRefresh ? getScrollTop() : 0;
 
-					displayText(res);
+					displayHtml(res);
 
 					if (isRefresh && prevScroll > 0) {
 						addWebViewTask(() -> webView.getEngine().executeScript("document.body.scrollTop = "+prevScroll));
@@ -126,7 +126,11 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	}
 
 	private void displayText(String text) {
-		webView.getEngine().loadContent(template.replace("%text%", text));
+		displayHtml(HtmlUtil.escape(text));
+	}
+
+	private void displayHtml(String html) {
+		webView.getEngine().loadContent(template.replace("%text%", html));
 	}
 
 	private double getScrollTop() {

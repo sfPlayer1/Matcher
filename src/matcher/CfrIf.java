@@ -13,6 +13,7 @@ import org.benf.cfr.reader.entities.ClassFile;
 import org.benf.cfr.reader.entities.Method;
 import org.benf.cfr.reader.state.DCCommonState;
 import org.benf.cfr.reader.state.TypeUsageCollector;
+import org.benf.cfr.reader.state.TypeUsageCollectorImpl;
 import org.benf.cfr.reader.state.TypeUsageInformation;
 import org.benf.cfr.reader.util.getopt.GetOptParser;
 import org.benf.cfr.reader.util.getopt.Options;
@@ -26,7 +27,7 @@ import matcher.type.ClassInstance;
 public class CfrIf {
 	public static synchronized String decompile(ClassInstance cls, ClassFeatureExtractor extractor, boolean mapped) {
 		String name = (mapped ? cls.getMappedName(true) : cls.getName()) + ".class";
-		Options options = new GetOptParser().parse(new String[] { name }, OptionsImpl.getFactory());
+		Options options = new GetOptParser().parse(new String[] { name }, OptionsImpl.getFactory()).getSecond();
 		ClassFileSource source = new ClassFileSource() {
 			@Override
 			public void informAnalysisRelativePathDetail(String usePath, String specPath) {
@@ -89,7 +90,7 @@ public class CfrIf {
 		classFile = state.getClassFile(classFile.getClassType());
 		classFile.analyseTop(state);
 
-		TypeUsageCollector typeUsageCollector = new TypeUsageCollector(classFile);
+		TypeUsageCollector typeUsageCollector = new TypeUsageCollectorImpl(classFile);
 		classFile.collectTypeUsages(typeUsageCollector);
 
 		StringDumper dumper = new StringDumper(typeUsageCollector.getTypeUsageInformation(), options);

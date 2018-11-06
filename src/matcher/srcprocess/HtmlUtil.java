@@ -43,4 +43,37 @@ public class HtmlUtil {
 			return ret.toString();
 		}
 	}
+
+	public static String escape(String str) {
+		StringBuilder ret = null;
+		int retEnd = 0;
+
+		for (int i = 0, max = str.length(); i < max; i++) {
+			char c = str.charAt(i);
+
+			if (c == '<' || c == '>' || c == '&') {
+				if (ret == null) ret = new StringBuilder(max * 2);
+
+				ret.append(str, retEnd, i);
+
+				if (c == '<') {
+					ret.append("&lt;");
+				} else if (c == '>') {
+					ret.append("&gt;");
+				} else {
+					ret.append("&amp;");
+				}
+
+				retEnd = i + 1;
+			}
+		}
+
+		if (ret == null) {
+			return str;
+		} else {
+			ret.append(str, retEnd, str.length());
+
+			return ret.toString();
+		}
+	}
 }
