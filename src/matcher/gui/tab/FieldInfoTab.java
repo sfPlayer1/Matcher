@@ -1,5 +1,9 @@
 package matcher.gui.tab;
 
+import static matcher.gui.tab.ClassInfoTab.nullToMissing;
+
+import java.util.Collection;
+
 import org.objectweb.asm.tree.FieldNode;
 
 import javafx.geometry.Insets;
@@ -10,16 +14,20 @@ import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
 import matcher.Util;
 import matcher.Util.AFElementType;
+import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
 import matcher.type.FieldInstance;
+import matcher.type.IMatchable;
 
 public class FieldInfoTab extends Tab implements IGuiComponent {
-	public FieldInfoTab(ISelectionProvider selectionProvider) {
+	public FieldInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("field info");
 
+		this.gui = gui;
 		this.selectionProvider = selectionProvider;
+		this.unmatchedTmp = unmatchedTmp;
 
 		init();
 	}
@@ -33,6 +41,9 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 
 		row = addRow("Owner", ownerLabel, grid, row);
 		row = addRow("Name", nameLabel, grid, row);
+		row = addRow("Tmp name", tmpNameLabel, grid, row);
+		row = addRow("Mapped name", mappedNameLabel, grid, row);
+		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Type", typeLabel, grid, row);
 		row = addRow("Access", accessLabel, grid, row);
 		row = addRow("Signature", sigLabel, grid, row);
@@ -70,6 +81,9 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 		if (field == null) {
 			ownerLabel.setText("-");
 			nameLabel.setText("-");
+			tmpNameLabel.setText("-");
+			mappedNameLabel.setText("-");
+			nameObfLabel.setText("-");
 			typeLabel.setText("-");
 			accessLabel.setText("-");
 			sigLabel.setText("-");
@@ -79,26 +93,42 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 			writeRefLabel.setText("-");
 			mapCommentLabel.setText("-");
 		} else {
-			ownerLabel.setText(ClassInfoTab.getName(field.getCls()));
-			nameLabel.setText(ClassInfoTab.getName(field));
-			typeLabel.setText(ClassInfoTab.getName(field.getType()));
+			ownerLabel.setText(getName(field.getCls()));
+			nameLabel.setText(field.getName());
+			tmpNameLabel.setText(nullToMissing(field.getTmpName(unmatchedTmp)));
+			mappedNameLabel.setText(nullToMissing(field.getMappedName()));
+			nameObfLabel.setText(Boolean.toString(field.isNameObfuscated(false)));
+			typeLabel.setText(getName(field.getType()));
 			accessLabel.setText(Util.formatAccessFlags(field.getAccess(), AFElementType.Method));
 
 			FieldNode asmNode = field.getAsmNode();
 			sigLabel.setText(asmNode == null || asmNode.signature == null ? "-" : asmNode.signature);
 
-			parentLabel.setText(!field.getParents().isEmpty() ? ClassInfoTab.format(field.getParents()) : "-");
-			childLabel.setText(!field.isFinal() ? ClassInfoTab.format(field.getChildren()) : "-");
-			readRefLabel.setText(ClassInfoTab.format(field.getReadRefs()));
-			writeRefLabel.setText(ClassInfoTab.format(field.getWriteRefs()));
+			parentLabel.setText(!field.getParents().isEmpty() ? format(field.getParents()) : "-");
+			childLabel.setText(!field.isFinal() ? format(field.getChildren()) : "-");
+			readRefLabel.setText(format(field.getReadRefs()));
+			writeRefLabel.setText(format(field.getWriteRefs()));
 			mapCommentLabel.setText(field.getMappedComment() != null ? field.getMappedComment() : "-");
 		}
 	}
 
+	private String format(Collection<? extends IMatchable<?>> c) {
+		return ClassInfoTab.format(c, gui.isTmpNamed(), unmatchedTmp);
+	}
+
+	private String getName(IMatchable<?> m) {
+		return ClassInfoTab.getName(m, gui.isTmpNamed(), unmatchedTmp);
+	}
+
+	private final Gui gui;
 	private final ISelectionProvider selectionProvider;
+	private final boolean unmatchedTmp;
 
 	private final Label ownerLabel = new Label();
 	private final Label nameLabel = new Label();
+	private final Label tmpNameLabel = new Label();
+	private final Label mappedNameLabel = new Label();
+	private final Label nameObfLabel = new Label();
 	private final Label typeLabel = new Label();
 	private final Label accessLabel = new Label();
 	private final Label sigLabel = new Label();

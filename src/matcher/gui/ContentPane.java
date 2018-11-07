@@ -24,7 +24,7 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 	private void init(ISelectionProvider selectionProvider) {
 		// source tab
 
-		SourcecodeTab scTab = new SourcecodeTab(gui, selectionProvider);
+		SourcecodeTab scTab = new SourcecodeTab(gui, selectionProvider, isSource);
 		components.add(scTab);
 		getTabs().add(scTab);
 
@@ -36,19 +36,19 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 
 		// info tab
 
-		ClassInfoTab iTab = new ClassInfoTab(selectionProvider);
+		ClassInfoTab iTab = new ClassInfoTab(gui, selectionProvider, isSource);
 		components.add(iTab);
 		getTabs().add(iTab);
 
 		// method info tab
 
-		MethodInfoTab mITab = new MethodInfoTab(selectionProvider);
+		MethodInfoTab mITab = new MethodInfoTab(gui, selectionProvider, isSource);
 		components.add(mITab);
 		getTabs().add(mITab);
 
 		// field info tab
 
-		FieldInfoTab fITab = new FieldInfoTab(selectionProvider);
+		FieldInfoTab fITab = new FieldInfoTab(gui, selectionProvider, isSource);
 		components.add(fITab);
 		getTabs().add(fITab);
 

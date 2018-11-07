@@ -151,16 +151,16 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		return true;
 	}
 
-	private static abstract class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<T> {
+	private abstract class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<T> {
 		@Override
 		protected String getText(T item) {
-			String name = item.getName();
-			String mappedName = item.getMappedName(false);
+			String name = item.getName(false, gui.isTmpNamed(), true);
+			String mappedName = item.getName(true, gui.isTmpNamed(), true);
 
-			if (mappedName == null || name.equals(mappedName)) {
-				return getName(item);
+			if (name.equals(mappedName)) {
+				return name;
 			} else {
-				return getName(item)+" - "+item.getDisplayName(false, true);
+				return name+" - "+mappedName;
 			}
 		}
 
@@ -176,10 +176,6 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		}
 
 		protected abstract boolean isFullyMatched(T item);
-	}
-
-	private static String getName(IMatchable<?> m) {
-		return m.getDisplayName(false, false);
 	}
 
 	@Override
@@ -262,11 +258,11 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private Comparator<ClassInstance> getClassComparator() {
 		switch (gui.getSortKey()) {
 		case Name:
-			return Comparator.comparing(MatchPaneSrc::getName);
+			return Comparator.comparing(this::getName);
 		case MappedName:
-			return Comparator.<ClassInstance, String>comparing(MatchPaneSrc::getMappedName, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(MatchPaneSrc::getName);
+			return Comparator.<ClassInstance, String>comparing(MatchPaneSrc::getMappedName, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(this::getName);
 		case MatchStatus:
-			return clsMatchStatusComparator.thenComparing(MatchPaneSrc::getName);
+			return clsMatchStatusComparator.thenComparing(this::getName);
 		}
 
 		throw new IllegalStateException("unhandled sort key: "+gui.getSortKey());
@@ -275,18 +271,22 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private Comparator<MemberInstance<?>> getMemberComparator() {
 		switch (gui.getSortKey()) {
 		case Name:
-			return memberTypeComparator.thenComparing(MatchPaneSrc::getName);
+			return memberTypeComparator.thenComparing(this::getName);
 		case MappedName:
-			return memberTypeComparator.thenComparing(MatchPaneSrc::getMappedName, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(MatchPaneSrc::getName);
+			return memberTypeComparator.thenComparing(MatchPaneSrc::getMappedName, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(this::getName);
 		case MatchStatus:
-			return memberMatchStatusComparator.thenComparing(memberTypeComparator).thenComparing(MatchPaneSrc::getName);
+			return memberMatchStatusComparator.thenComparing(memberTypeComparator).thenComparing(this::getName);
 		}
 
 		throw new IllegalStateException("unhandled sort key: "+gui.getSortKey());
 	}
 
+	private String getName(IMatchable<?> m) {
+		return m.getDisplayName(false, false, gui.isTmpNamed(), true);
+	}
+
 	private static String getMappedName(IMatchable<?> m) {
-		String ret = m.getMappedName(false);
+		String ret = m.getMappedName();
 		if (ret != null) return ret;
 		if (!m.isNameObfuscated(false)) return m.getName();
 

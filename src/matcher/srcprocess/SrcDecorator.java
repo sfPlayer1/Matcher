@@ -1,9 +1,5 @@
 package matcher.srcprocess;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,20 +23,11 @@ import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
 
 public class SrcDecorator {
-	public static void main(String[] args) {
-		try {
-			decorate(new String(Files.readAllBytes(Paths.get("/home/m/tmp/test.java")), StandardCharsets.UTF_8), null, true);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
-	public static String decorate(String src, ClassInstance cls, boolean mapped) {
+	public static String decorate(String src, ClassInstance cls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		if (cls.getOuterClass() != null) {
 			// replace <outer>.<inner> with <outer>$<inner> since . is not a legal identifier within class names and thus gets rejected by JavaParser
 
-			String name = mapped ? cls.getMappedName(true) : cls.getName();
+			String name = cls.getName(mapped, tmpNamed, unmatchedTmp);
 			int pos = name.indexOf('$');
 
 			if (pos != -1) {
@@ -72,7 +59,7 @@ public class SrcDecorator {
 		}
 
 		TypeResolver resolver = new TypeResolver();
-		resolver.setup(cls, mapped, cu);
+		resolver.setup(cls, mapped, tmpNamed, unmatchedTmp, cu);
 
 		cu.accept(remapVisitor, resolver);
 

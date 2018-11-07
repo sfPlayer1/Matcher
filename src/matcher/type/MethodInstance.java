@@ -123,9 +123,9 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 	}*/
 
 	@Override
-	public String getDisplayName(boolean full, boolean mapped) {
+	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		StringBuilder ret = new StringBuilder(64);
-		ret.append(super.getDisplayName(full, mapped));
+		ret.append(super.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
 		ret.append('(');
 		boolean first = true;
 
@@ -136,11 +136,11 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 				ret.append(", ");
 			}
 
-			ret.append(arg.getType().getDisplayName(true, mapped));
+			ret.append(arg.getType().getDisplayName(true, mapped, tmpNamed, unmatchedTmp));
 		}
 
 		ret.append(')');
-		ret.append(retType.getDisplayName(true, mapped));
+		ret.append(retType.getDisplayName(true, mapped, tmpNamed, unmatchedTmp));
 
 		return ret.toString();
 	}
@@ -195,7 +195,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 
 	public boolean hasMappedArg() {
 		for (MethodVarInstance arg : args) {
-			if (arg.getMappedName(false) != null) return true;
+			if (arg.getMappedName() != null) return true;
 		}
 
 		return false;
@@ -203,7 +203,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 
 	public boolean hasAllArgsMapped() {
 		for (MethodVarInstance arg : args) {
-			if (arg.getMappedName(false) == null) return false;
+			if (arg.getMappedName() == null) return false;
 		}
 
 		return true;

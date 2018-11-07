@@ -87,34 +87,19 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	}
 
 	@Override
-	public String getDisplayName(boolean full, boolean mapped) {
+	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean localOnly) {
 		int dims = getArrayDimensions();
+		String mappedName = getName(mapped, tmpNamed, localOnly).replace('/', '.');
 
 		if (dims == 0) {
-			if (!mapped) {
-				return getName().replace('/', '.');
-			} else {
-				return getMappedName(true).replace('/', '.');
-			}
+			return mappedName;
 		} else {
-			StringBuilder ret;
-			String mappedName;
+			StringBuilder ret = new StringBuilder(mappedName.length() + dims);
 
-			if (!mapped || (mappedName = getMappedName(false)) == null) {
-				ret = new StringBuilder(id.length() + dims);
-
-				if (id.charAt(dims) == 'L') {
-					ret.append(id, dims + 1, id.length() - 1);
-				} else {
-					ret.append(id, dims, id.length());
-				}
-			} else {
-				ret = new StringBuilder(mappedName.length() + dims * 2);
-				ret.append(mappedName);
-			}
-
-			for (int i = 0; i < ret.length(); i++) {
-				if (ret.charAt(i) == '/') ret.setCharAt(i, '.');
+			if (mappedName.endsWith(";")) { // reference, e.g. [Lx;
+				ret.append(mappedName, dims + 1, mappedName.length() - 1);
+			} else { // primitive, e.g. [LZ
+				ret.append(mappedName, dims, mappedName.length());
 			}
 
 			for (int i = 0; i < dims; i++) {
@@ -283,79 +268,74 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		}
 	}
 
-	public MethodInstance getMappedMethod(String name, String desc) {
+	public MethodInstance getMethod(String name, String desc, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		MethodInstance ret = null;
 
-		for (int pass = 0; pass < 2 && ret == null; pass++) { // 1st pass: accept only fully mapped, 2nd pass: accept any
-			methodLoop: for (MethodInstance method : methods) {
-				String mappedName = method.getMappedName(false);
+		methodLoop: for (MethodInstance method : methods) {
+			String mappedName = method.getName(mapped, tmpNamed, unmatchedTmp);
 
-				if (mappedName != null && !name.equals(mappedName)
-						|| mappedName == null && (pass == 0 && method.nameObfuscated || !name.equals(method.origName))) {
-					continue;
-				}
-
-				if (desc != null) {
-					assert desc.startsWith("(");
-					int idx = 0;
-					int pos = 1;
-					boolean last = false;
-
-					do {
-						char c = desc.charAt(pos);
-						ClassInstance match;
-
-						if (c == ')') {
-							if (idx != method.args.length) continue methodLoop;
-							last = true;
-							pos++;
-							c = desc.charAt(pos);
-							match = method.retType;
-						} else {
-							if (idx >= method.args.length) continue methodLoop;
-							match = method.args[idx].type;
-						}
-
-						int start = pos;
-						int dims;
-
-						if (c == '[') { // array cls
-							dims = 1;
-							while ((c = desc.charAt(++pos)) == '[') dims++;
-						} else {
-							dims = 0;
-						}
-
-						if (match.getArrayDimensions() != dims) continue methodLoop;
-
-						int end;
-
-						if (c != 'L') { // primitive cls
-							end = pos + 1;
-						} else {
-							end = desc.indexOf(';', pos + 1) + 1;
-							assert end != 0;
-						}
-
-						String clsMappedName = match.getMappedName(false);
-
-						if (clsMappedName == null) {
-							if (pass == 0 && match.nameObfuscated || match.id.length() != end - start || !desc.startsWith(match.id, start)) continue methodLoop;
-						} else if (c != 'L') {
-							if (clsMappedName.length() != end - pos || !desc.startsWith(clsMappedName, pos)) continue methodLoop;
-						} else {
-							if (clsMappedName.length() != end - pos - 2 || !desc.startsWith(clsMappedName, pos + 1)) continue methodLoop;
-						}
-
-						pos = end;
-						idx++;
-					} while (!last);
-				}
-
-				if (ret != null) return null; // non-unique
-
-				ret = method;
+			if (mappedName != null && !name.equals(mappedName)) {
+				continue;
 			}
+
+			if (desc != null) {
+				assert desc.startsWith("(");
+				int idx = 0;
+				int pos = 1;
+				boolean last = false;
+
+				do {
+					char c = desc.charAt(pos);
+					ClassInstance match;
+
+					if (c == ')') {
+						if (idx != method.args.length) continue methodLoop;
+						last = true;
+						pos++;
+						c = desc.charAt(pos);
+						match = method.retType;
+					} else {
+						if (idx >= method.args.length) continue methodLoop;
+						match = method.args[idx].type;
+					}
+
+					int start = pos;
+					int dims;
+
+					if (c == '[') { // array cls
+						dims = 1;
+						while ((c = desc.charAt(++pos)) == '[') dims++;
+					} else {
+						dims = 0;
+					}
+
+					if (match.getArrayDimensions() != dims) continue methodLoop;
+
+					int end;
+
+					if (c != 'L') { // primitive cls
+						end = pos + 1;
+					} else {
+						end = desc.indexOf(';', pos + 1) + 1;
+						assert end != 0;
+					}
+
+					String clsMappedName = match.getName(mapped, tmpNamed, unmatchedTmp);
+
+					if (c != 'L') {
+						if (clsMappedName.length() != end - pos || !desc.startsWith(clsMappedName, pos)) continue methodLoop;
+					} else {
+						if (clsMappedName.length() != end - pos - 2 || !desc.startsWith(clsMappedName, pos + 1)) continue methodLoop;
+					}
+
+					pos = end;
+					idx++;
+				} while (!last);
+			}
+
+			if (ret != null) return null; // non-unique
+
+			ret = method;
 		}
 
 		return ret;
@@ -379,32 +359,31 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		}
 	}
 
-	public FieldInstance getMappedField(String name, String desc) {
+	public FieldInstance getField(String name, String desc, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		if (!mapped && !tmpNamed || desc != null && !desc.endsWith(";")) return getField(name, desc);
+
 		FieldInstance ret = null;
 
-		for (int pass = 0; pass < 2 && ret == null; pass++) { // 1st pass: accept only fully mapped, 2nd pass: accept any
-			for (FieldInstance field : fields) {
-				String mappedName = field.getMappedName(false);
+		for (FieldInstance field : fields) {
+			String mappedName = field.getName(mapped, tmpNamed, unmatchedTmp);
 
-				if (mappedName != null && !name.equals(mappedName)
-						|| mappedName == null && (pass == 0 && field.nameObfuscated || !name.equals(field.origName))) {
-					continue;
-				}
-
-				if (desc != null) {
-					String clsMappedName = field.type.getMappedName(false);
-
-					if (clsMappedName == null) {
-						if (pass == 0 && field.type.nameObfuscated || !desc.equals(field.type.id)) continue;
-					} else {
-						if (desc.length() != clsMappedName.length() + 2 || !desc.startsWith(clsMappedName, 1)) continue;
-					}
-				}
-
-				if (ret != null) return null; // non-unique
-
-				ret = field;
+			if (!name.equals(mappedName)) {
+				continue;
 			}
+
+			if (desc != null) {
+				String clsMappedName = field.type.getName(mapped, tmpNamed, unmatchedTmp);
+
+				if (desc.endsWith(";")) {
+					if (!desc.equals(clsMappedName)) continue;
+				} else {
+					if (desc.length() != clsMappedName.length() + 2 || !desc.startsWith(clsMappedName, 1)) continue;
+				}
+			}
+
+			if (ret != null) return null; // non-unique
+
+			ret = field;
 		}
 
 		return ret;
@@ -639,6 +618,29 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		return matchedClass == this;
 	}
 
+	@Override
+	public String getTmpName(boolean localOnly) {
+		String ret;
+
+		if (!localOnly && matchedClass != null && (ret = matchedClass.getTmpName(true)) != null) {
+			return ret;
+		}
+
+		if (tmpName != null) {
+			return tmpName;
+		} else if (elementClass != null) {
+			ret = elementClass.getTmpName(localOnly);
+
+			return elementClass.isPrimitive() || elementClass.isArray() ? "["+ret : "[L"+ret+";";
+		} else {
+			return null;
+		}
+	}
+
+	public void setTmpName(String tmpName) {
+		this.tmpName = tmpName;
+	}
+
 	public boolean hasMappedName() {
 		return mappedName != null
 				|| matchedClass != null && matchedClass.mappedName != null
@@ -646,15 +648,16 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	}
 
 	@Override
-	public String getMappedName(boolean defaultToUnmapped) {
+	public String getMappedName() {
 		if (mappedName != null) {
 			return mappedName;
 		} else if (matchedClass != null && matchedClass.mappedName != null) {
 			return matchedClass.mappedName;
 		} else if (elementClass != null) {
-			return elementClass.getMappedName(defaultToUnmapped);
-		} else if (defaultToUnmapped) {
-			return getName();
+			String ret = elementClass.getMappedName();
+			if (ret == null) return null;
+
+			return elementClass.isPrimitive() || elementClass.isArray() ? "["+ret : "[L"+ret+";";
 		} else {
 			return null;
 		}
@@ -789,7 +792,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 
 	@Override
 	public String toString() {
-		return getDisplayName(true, false);
+		return getDisplayName(true, false, false, true);
 	}
 
 	void addMethod(MethodInstance method) {
@@ -857,7 +860,9 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 
 	final Set<String> strings = new HashSet<>();
 
-	String mappedName;
-	String mappedComment;
-	ClassInstance matchedClass;
+	private String tmpName;
+
+	private String mappedName;
+	private String mappedComment;
+	private ClassInstance matchedClass;
 }

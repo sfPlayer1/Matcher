@@ -9,8 +9,11 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class AsmRemapper extends Remapper {
-	public AsmRemapper(IClassEnv env) {
+	public AsmRemapper(IClassEnv env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		this.env = env;
+		this.mapped = mapped;
+		this.tmpNamed = tmpNamed;
+		this.unmatchedTmp = unmatchedTmp;
 	}
 
 	@Override
@@ -18,7 +21,7 @@ public class AsmRemapper extends Remapper {
 		ClassInstance cls = env.getClsByName(typeName);
 		if (cls == null) return typeName;
 
-		return cls.getMappedName(true);
+		return cls.getName(mapped, tmpNamed, unmatchedTmp);
 	}
 
 	@Override
@@ -29,7 +32,7 @@ public class AsmRemapper extends Remapper {
 		FieldInstance field = cls.resolveField(name, desc);
 		if (field == null) return name;
 
-		return field.getMappedName(true);
+		return field.getName(mapped, tmpNamed, unmatchedTmp);
 	}
 
 	@Override
@@ -44,7 +47,7 @@ public class AsmRemapper extends Remapper {
 			return name;
 		}
 
-		return method.getMappedName(true);
+		return method.getName(mapped, tmpNamed, unmatchedTmp);
 	}
 
 	public String mapMethodName(String owner, String name, String desc, boolean itf) {
@@ -54,7 +57,7 @@ public class AsmRemapper extends Remapper {
 		MethodInstance method = cls.resolveMethod(name, desc, itf);
 		if (method == null) return name;
 
-		return method.getMappedName(true);
+		return method.getName(mapped, tmpNamed, unmatchedTmp);
 	}
 
 	public String mapArbitraryInvokeDynamicMethodName(String owner, String name) {
@@ -64,7 +67,7 @@ public class AsmRemapper extends Remapper {
 		MethodInstance method = cls.getMethod(name, null);
 		if (method == null) return name;
 
-		return method.getMappedName(true);
+		return method.getName(mapped, tmpNamed, unmatchedTmp);
 	}
 
 	public String mapLocalVariableName(String className, String methodName, String methodDesc, String name, String desc, int lvtIndex, int startInsn, int endInsn) {
@@ -78,7 +81,7 @@ public class AsmRemapper extends Remapper {
 			if (var.getLvtIndex() == lvtIndex && var.getEndInsn() > startInsn && var.getStartInsn() < endInsn) {
 				assert var.getType().getId().equals(desc);
 
-				return var.getMappedName(true);
+				return var.getName(mapped, tmpNamed, unmatchedTmp);
 			}
 		}
 
@@ -86,4 +89,7 @@ public class AsmRemapper extends Remapper {
 	}
 
 	private final IClassEnv env;
+	private final boolean mapped;
+	private final boolean tmpNamed;
+	private final boolean unmatchedTmp;
 }

@@ -24,16 +24,18 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.DoubleConsumer;
 
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import matcher.CfrIf;
 import matcher.Util;
 import matcher.classifier.ClassifierUtil;
 import matcher.classifier.MatchingCache;
 import matcher.config.ProjectConfig;
+import matcher.srcprocess.Cfr;
+import matcher.srcprocess.Decompiler;
 
 public class ClassEnvironment implements IClassEnv {
 	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
@@ -128,7 +130,7 @@ public class ClassEnvironment implements IClassEnv {
 	}
 
 	@Override
-	public ClassInstance getClsByMappedId(String id) {
+	public ClassInstance getClsById(String id, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		return getSharedClsById(id);
 	}
 
@@ -242,13 +244,13 @@ public class ClassEnvironment implements IClassEnv {
 		return extractorB.getInputFiles();
 	}
 
-	public byte[] serializeClass(ClassInstance cls, boolean isA, boolean mapped) {
+	public byte[] serializeClass(ClassInstance cls, boolean isA, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		ClassFeatureExtractor extractor = isA ? extractorA : extractorB;
 
-		return extractor.serializeClass(cls, mapped);
+		return extractor.serializeClass(cls, mapped, tmpNamed, unmatchedTmp);
 	}
 
-	public String decompile(ClassInstance cls, boolean mapped) {
+	public String decompile(ClassInstance cls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		ClassFeatureExtractor extractor;
 
 		if (extractorA.getClasses().get(cls.getId()) == cls) {
@@ -259,7 +261,7 @@ public class ClassEnvironment implements IClassEnv {
 			throw new IllegalArgumentException("unknown class: "+cls);
 		}
 
-		return CfrIf.decompile(cls, extractor, mapped);
+		return decompiler.decompile(cls, extractor, mapped, tmpNamed, unmatchedTmp);
 	}
 
 	@Override
@@ -373,11 +375,17 @@ public class ClassEnvironment implements IClassEnv {
 		Set<String> strings = cls.strings;
 
 		for (ClassNode cn : cls.getAsmNodes()) {
+			boolean isEnum = (cn.access & Opcodes.ACC_ENUM) != 0;
+
 			for (int i = 0; i < cn.methods.size(); i++) {
 				MethodNode mn = cn.methods.get(i);
 
 				if (cls.getMethod(mn.name, mn.desc) == null) {
-					boolean nameObfuscated = !cls.isShared() && !mn.name.equals("<clinit>") && !mn.name.equals("<init>");
+					boolean nameObfuscated = !cls.isShared()
+							&& !mn.name.equals("<clinit>")
+							&& !mn.name.equals("<init>")
+							&& (!isEnum || !isStandardEnumMethod(cn.name, mn));
+
 					cls.addMethod(new MethodInstance(cls, mn.name, mn.desc, mn, nameObfuscated, i));
 
 					ClassifierUtil.extractStrings(mn.instructions, strings);
@@ -409,6 +417,14 @@ public class ClassEnvironment implements IClassEnv {
 				if (cls.interfaces.add(ifCls)) ifCls.implementers.add(cls);
 			}
 		}
+	}
+
+	private static boolean isStandardEnumMethod(String clsName, MethodNode m) {
+		final int reqFlags = Opcodes.ACC_STATIC | Opcodes.ACC_PUBLIC;
+		if ((m.access & reqFlags) != reqFlags) return false;
+
+		return m.name.equals("values") && m.desc.startsWith("()[L") && m.desc.startsWith(clsName, 4) && m.desc.length() == clsName.length() + 5
+				|| m.name.equals("valueOf") && m.desc.startsWith("(Ljava/lang/String;)L") && m.desc.startsWith(clsName, 21) && m.desc.length() == clsName.length() + 22;
 	}
 
 	private static void detectOuterClass(ClassInstance cls, ClassNode cn) {
@@ -469,4 +485,5 @@ public class ClassEnvironment implements IClassEnv {
 	private final ClassFeatureExtractor extractorA = new ClassFeatureExtractor(this);
 	private final ClassFeatureExtractor extractorB = new ClassFeatureExtractor(this);
 	private final MatchingCache cache = new MatchingCache();
+	private final Decompiler decompiler = new Cfr();
 }

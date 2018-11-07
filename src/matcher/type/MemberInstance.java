@@ -26,6 +26,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 		return cls;
 	}
 
+	@Override
 	public String getId() {
 		return id;
 	}
@@ -36,17 +37,11 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	}
 
 	@Override
-	public String getDisplayName(boolean full, boolean mapped) {
-		String name;
-
-		if (!mapped) {
-			name = getName();
-		} else {
-			name = getMappedName(true);
-		}
+	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean localOnly) {
+		String name = getName(mapped, tmpNamed, localOnly);
 
 		if (full) {
-			return cls.getDisplayName(full, mapped) + "." + name;
+			return cls.getDisplayName(full, mapped, tmpNamed, localOnly) + "." + name;
 		} else {
 			return name;
 		}
@@ -134,18 +129,31 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 		return hierarchyMembers;
 	}
 
+	@Override
+	public String getTmpName(boolean unmatched) {
+		String ret;
+
+		if (!unmatched && matchedInstance != null && (ret = matchedInstance.getTmpName(true)) != null) {
+			return ret;
+		}
+
+		return tmpName;
+	}
+
+	public void setTmpName(String tmpName) {
+		this.tmpName = tmpName;
+	}
+
 	public boolean hasMappedName() {
 		return mappedName != null || matchedInstance != null && matchedInstance.mappedName != null;
 	}
 
 	@Override
-	public String getMappedName(boolean defaultToUnmapped) {
+	public String getMappedName() {
 		if (mappedName != null) {
 			return mappedName;
 		} else if (matchedInstance != null && matchedInstance.mappedName != null) {
 			return matchedInstance.mappedName;
-		} else if (defaultToUnmapped) {
-			return getName();
 		} else {
 			return null;
 		}
@@ -184,7 +192,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 
 	@Override
 	public String toString() {
-		return getDisplayName(true, false);
+		return getDisplayName(true, false, false, true);
 	}
 
 	final ClassInstance cls;
@@ -197,6 +205,8 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	private Set<T> parents = Collections.emptySet();
 	private Set<T> children = Collections.emptySet();
 	Set<T> hierarchyMembers;
+
+	private String tmpName;
 
 	String mappedName;
 	String mappedComment;

@@ -1,4 +1,4 @@
-package matcher;
+package matcher.srcprocess;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -24,9 +24,10 @@ import org.benf.cfr.reader.util.output.StreamDumper;
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
 
-public class CfrIf {
-	public static synchronized String decompile(ClassInstance cls, ClassFeatureExtractor extractor, boolean mapped) {
-		String name = (mapped ? cls.getMappedName(true) : cls.getName()) + ".class";
+public class Cfr implements Decompiler {
+	@Override
+	public synchronized String decompile(ClassInstance cls, ClassFeatureExtractor extractor, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		String name = cls.getName(mapped, tmpNamed, unmatchedTmp) + ".class";
 		Options options = new GetOptParser().parse(new String[] { name }, OptionsImpl.getFactory()).getSecond();
 		ClassFileSource source = new ClassFileSource() {
 			@Override
@@ -55,13 +56,7 @@ public class CfrIf {
 					clsName = file;
 				}
 
-				ClassInstance cls;
-
-				if (mapped) {
-					cls = extractor.getClsByMappedName(clsName);
-				} else {
-					cls = extractor.getClsByName(clsName);
-				}
+				ClassInstance cls = extractor.getClsByName(clsName, mapped, tmpNamed, unmatchedTmp);
 
 				if (cls == null || cls.getAsmNodes() == null) {
 					if (warnedMissing.add(clsName)) System.out.println("can't find class "+clsName+" for "+file);
@@ -69,7 +64,7 @@ public class CfrIf {
 					throw new IOException("can't find class "+clsName+" for "+file);
 				}
 
-				byte[] data = extractor.serializeClass(cls, mapped);
+				byte[] data = extractor.serializeClass(cls, mapped, tmpNamed, unmatchedTmp);
 
 				return Pair.make(data, file);
 			}

@@ -55,11 +55,7 @@ class Analysis {
 		MethodNode asmNode = method.getAsmNode();
 		if (asmNode == null || (asmNode.access & Opcodes.ACC_ABSTRACT) != 0 || asmNode.instructions.size() == 0) return;
 
-		if (method.getDisplayName(true, false).equals("yp.c()V")) {
-			System.out.println();
-		}
-
-		System.out.println(method.getDisplayName(true, false));
+		System.out.println(method.getDisplayName(true, false, false, true));
 		dump(asmNode);
 
 		StateRecorder rec = new StateRecorder(method, common);

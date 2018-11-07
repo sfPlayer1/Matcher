@@ -1,6 +1,7 @@
 package matcher.gui.tab;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 import org.objectweb.asm.tree.MethodNode;
@@ -13,17 +14,21 @@ import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
 import matcher.Util;
 import matcher.Util.AFElementType;
+import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
+import matcher.type.IMatchable;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class MethodInfoTab extends Tab implements IGuiComponent {
-	public MethodInfoTab(ISelectionProvider selectionProvider) {
+	public MethodInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("method info");
 
+		this.gui = gui;
 		this.selectionProvider = selectionProvider;
+		this.unmatchedTmp = unmatchedTmp;
 
 		init();
 	}
@@ -37,14 +42,17 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 
 		row = addRow("Owner", ownerLabel, grid, row);
 		row = addRow("Name", nameLabel, grid, row);
+		row = addRow("Tmp name", tmpNameLabel, grid, row);
+		row = addRow("Mapped name", mappedNameLabel, grid, row);
+		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Args", argLabel, grid, row);
-		row = addRow("Ret Type", retTypeLabel, grid, row);
+		row = addRow("Ret type", retTypeLabel, grid, row);
 		row = addRow("Access", accessLabel, grid, row);
 		row = addRow("Signature", sigLabel, grid, row);
 		row = addRow("Parents", parentLabel, grid, row);
 		row = addRow("Children", childLabel, grid, row);
-		row = addRow("Refs In", refMethodInLabel, grid, row);
-		row = addRow("Refs Out", refMethodOutLabel, grid, row);
+		row = addRow("Refs in", refMethodInLabel, grid, row);
+		row = addRow("Refs out", refMethodOutLabel, grid, row);
 		row = addRow("Fields read", refFieldReadLabel, grid, row);
 		row = addRow("Fields written", refFieldWriteLabel, grid, row);
 		row = addRow("Comment", mapCommentLabel, grid, row);
@@ -77,6 +85,9 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		if (method == null) {
 			ownerLabel.setText("-");
 			nameLabel.setText("-");
+			tmpNameLabel.setText("-");
+			mappedNameLabel.setText("-");
+			nameObfLabel.setText("-");
 			argLabel.setText("-");
 			retTypeLabel.setText("-");
 			accessLabel.setText("-");
@@ -89,34 +100,53 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			refFieldWriteLabel.setText("-");
 			mapCommentLabel.setText("-");
 		} else {
-			ownerLabel.setText(ClassInfoTab.getName(method.getCls()));
-			nameLabel.setText(ClassInfoTab.getName(method));
-			argLabel.setText(Arrays.stream(method.getArgs()).map(MethodInfoTab::getVarName).collect(Collectors.joining("\n")));
-			retTypeLabel.setText(ClassInfoTab.getName(method.getRetType()));
+			ownerLabel.setText(getName(method.getCls()));
+			String name = method.getDisplayName(false, false, false, true);
+			String tmpName = method.getDisplayName(false, false, true, unmatchedTmp);
+			String mappedName = method.getDisplayName(false, false, gui.isTmpNamed(), unmatchedTmp);
+			nameLabel.setText(name);
+			tmpNameLabel.setText(tmpName.equals(name) ? "-" : tmpName);
+			mappedNameLabel.setText(mappedName.equals(gui.isTmpNamed() ? tmpName : name) ? "-" : mappedName);
+			nameObfLabel.setText(Boolean.toString(method.isNameObfuscated(false)));
+			argLabel.setText(Arrays.stream(method.getArgs()).map(this::getVarName).collect(Collectors.joining("\n")));
+			retTypeLabel.setText(getName(method.getRetType()));
 			accessLabel.setText(Util.formatAccessFlags(method.getAccess(), AFElementType.Method));
 
 			MethodNode asmNode = method.getAsmNode();
 			sigLabel.setText(asmNode == null || asmNode.signature == null ? "-" : asmNode.signature);
 
 
-			parentLabel.setText(!method.getParents().isEmpty() ? ClassInfoTab.format(method.getParents()) : "-");
-			childLabel.setText(!method.isFinal() ? ClassInfoTab.format(method.getChildren()) : "-");
-			refMethodInLabel.setText(ClassInfoTab.format(method.getRefsIn()));
-			refMethodOutLabel.setText(ClassInfoTab.format(method.getRefsOut()));
-			refFieldReadLabel.setText(ClassInfoTab.format(method.getFieldReadRefs()));
-			refFieldWriteLabel.setText(ClassInfoTab.format(method.getFieldWriteRefs()));
+			parentLabel.setText(!method.getParents().isEmpty() ? format(method.getParents()) : "-");
+			childLabel.setText(!method.isFinal() ? format(method.getChildren()) : "-");
+			refMethodInLabel.setText(format(method.getRefsIn()));
+			refMethodOutLabel.setText(format(method.getRefsOut()));
+			refFieldReadLabel.setText(format(method.getFieldReadRefs()));
+			refFieldWriteLabel.setText(format(method.getFieldWriteRefs()));
 			mapCommentLabel.setText(method.getMappedComment() != null ? method.getMappedComment() : "-");
 		}
 	}
 
-	private static String getVarName(MethodVarInstance arg) {
-		return arg.getIndex()+": "+ClassInfoTab.getName(arg)+" ("+ClassInfoTab.getName(arg.getType())+")";
+	private String getVarName(MethodVarInstance arg) {
+		return arg.getIndex()+": "+getName(arg)+" ("+getName(arg.getType())+")";
 	}
 
+	private String format(Collection<? extends IMatchable<?>> c) {
+		return ClassInfoTab.format(c, gui.isTmpNamed(), unmatchedTmp);
+	}
+
+	private String getName(IMatchable<?> m) {
+		return ClassInfoTab.getName(m, gui.isTmpNamed(), unmatchedTmp);
+	}
+
+	private final Gui gui;
 	private final ISelectionProvider selectionProvider;
+	private final boolean unmatchedTmp;
 
 	private final Label ownerLabel = new Label();
 	private final Label nameLabel = new Label();
+	private final Label tmpNameLabel = new Label();
+	private final Label mappedNameLabel = new Label();
+	private final Label nameObfLabel = new Label();
 	private final Label argLabel = new Label();
 	private final Label retTypeLabel = new Label();
 	private final Label accessLabel = new Label();

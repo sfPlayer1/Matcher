@@ -31,10 +31,12 @@ import matcher.type.IMatchable;
 import matcher.type.MethodInstance;
 
 class TypeResolver {
-	public void setup(ClassInstance rootCls, boolean mapped, CompilationUnit cu) {
+	public void setup(ClassInstance rootCls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp, CompilationUnit cu) {
 		this.rootCls = rootCls;
 		this.env = rootCls.getEnv();
 		this.mapped = mapped;
+		this.tmpNamed = tmpNamed;
+		this.unmatchedTmp = unmatchedTmp;
 
 		if (cu.getPackageDeclaration().isPresent()) {
 			pkg = cu.getPackageDeclaration().get().getNameAsString().replace('.', '/');
@@ -109,7 +111,7 @@ class TypeResolver {
 			name = methodDecl.getName().getIdentifier();
 		}
 
-		return mapped ? cls.getMappedMethod(name, desc) : cls.getMethod(name, desc);
+		return cls.getMethod(name, desc, mapped, tmpNamed, unmatchedTmp);
 	}
 
 	public FieldInstance getField(VariableDeclarator var) {
@@ -119,7 +121,7 @@ class TypeResolver {
 		String name = var.getName().getIdentifier();
 		String desc = toDesc(var.getType());
 
-		return mapped ? cls.getMappedField(name, desc) : cls.getField(name, desc);
+		return cls.getField(name, desc, mapped, tmpNamed, unmatchedTmp);
 	}
 
 	public FieldInstance getField(EnumConstantDeclaration var) {
@@ -127,9 +129,9 @@ class TypeResolver {
 		if (cls == null) return null;
 
 		String name = var.getName().getIdentifier();
-		String desc = mapped && !cls.isPrimitive() ? "L"+cls.getMappedName(true)+";" : cls.getId();
+		String desc = !cls.isPrimitive() ? "L"+cls.getName(mapped, tmpNamed, unmatchedTmp)+";" : cls.getId();
 
-		return mapped ? cls.getMappedField(name, desc) : cls.getField(name, desc);
+		return cls.getField(name, desc, mapped, tmpNamed, unmatchedTmp);
 	}
 
 	private String toDesc(Type type) {
@@ -226,16 +228,18 @@ class TypeResolver {
 	}
 
 	public ClassInstance getClsByName(String name) {
-		return mapped ? env.getClsByMappedName(name) : env.getClsByName(name);
+		return env.getClsByName(name, mapped, tmpNamed, unmatchedTmp);
 	}
 
 	public String getName(IMatchable<?> e) {
-		return mapped ? e.getMappedName(true) : e.getName();
+		return e.getName(mapped, tmpNamed, unmatchedTmp);
 	}
 
 	private ClassInstance rootCls;
 	private IClassEnv env;
 	private boolean mapped;
+	private boolean tmpNamed;
+	private boolean unmatchedTmp;
 	private String pkg;
 	private final Map<String, String> imports = new HashMap<>();
 	private final List<String> wildcardImports = new ArrayList<>();

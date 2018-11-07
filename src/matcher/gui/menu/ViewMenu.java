@@ -56,12 +56,17 @@ public class ViewMenu extends Menu {
 		});
 		getItems().add(checkMenuItem);
 
-		getItems().add(new SeparatorMenuItem());
-
 		checkMenuItem = new CheckMenuItem("Show non-inputs");
 		checkMenuItem.setSelected(gui.isShowNonInputs());
 		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
 			if (newValue != null) gui.setShowNonInputs(newValue);
+		});
+		getItems().add(checkMenuItem);
+
+		checkMenuItem = new CheckMenuItem("Use tmp names");
+		checkMenuItem.setSelected(gui.isTmpNamed());
+		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setTmpNamed(newValue);
 		});
 		getItems().add(checkMenuItem);
 	}

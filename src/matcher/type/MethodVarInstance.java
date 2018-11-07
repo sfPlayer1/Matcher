@@ -73,13 +73,26 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	}
 
 	@Override
-	public String getMappedName(boolean defaultToUnmapped) {
+	public String getTmpName(boolean unmatched) {
+		String ret;
+
+		if (!unmatched && matchedInstance != null && (ret = matchedInstance.getTmpName(true)) != null) {
+			return ret;
+		}
+
+		return tmpName;
+	}
+
+	public void setTmpName(String tmpName) {
+		this.tmpName = tmpName;
+	}
+
+	@Override
+	public String getMappedName() {
 		if (mappedName != null) {
 			return mappedName;
 		} else if (matchedInstance != null && matchedInstance.mappedName != null) {
 			return matchedInstance.mappedName;
-		} else if (defaultToUnmapped) {
-			return getName();
 		} else {
 			return null;
 		}
@@ -116,6 +129,8 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	final String origName;
 	final boolean nameObfuscated;
 
-	String mappedName;
-	MethodVarInstance matchedInstance;
+	private String tmpName;
+
+	private String mappedName;
+	private MethodVarInstance matchedInstance;
 }

@@ -21,11 +21,11 @@ public interface IClassEnv {
 
 	ClassInstance getCreateClassInstance(String id, boolean createUnknown);
 
-	default ClassInstance getClsByMappedName(String name) {
-		return getClsByMappedId(ClassInstance.getId(name));
+	default ClassInstance getClsByName(String name, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		return getClsById(ClassInstance.getId(name), mapped, tmpNamed, unmatchedTmp);
 	}
 
-	ClassInstance getClsByMappedId(String id);
+	ClassInstance getClsById(String id, boolean mapped, boolean tmpNamed, boolean unmatchedTmp);
 
 	ClassEnvironment getGlobal();
 }

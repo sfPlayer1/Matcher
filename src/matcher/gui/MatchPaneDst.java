@@ -93,10 +93,10 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		srcPane.addListener(srcListener);
 	}
 
-	private static class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<RankResult<T>> {
+	private class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<RankResult<T>> {
 		@Override
 		protected String getText(RankResult<T> item) {
-			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(false, false));
+			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(false, false, gui.isTmpNamed(), true));
 		}
 	}
 

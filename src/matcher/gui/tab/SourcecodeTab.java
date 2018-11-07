@@ -29,11 +29,12 @@ import matcher.type.MatchType;
 import matcher.type.MethodInstance;
 
 public class SourcecodeTab extends Tab implements IGuiComponent {
-	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider) {
+	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("source");
 
 		this.gui = gui;
 		this.selectionProvider = selectionProvider;
+		this.unmatchedTmp = unmatchedTmp;
 
 		webView.getEngine().getLoadWorker().stateProperty().addListener((observable, oldValue, newValue) -> {
 			if (newValue == State.SUCCEEDED) {
@@ -67,6 +68,15 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 		}
 	}
 
+	@Override
+	public void onViewChange() {
+		ClassInstance cls = selectionProvider.getSelectedClass();
+
+		if (cls != null) {
+			update(cls, true);
+		}
+	}
+
 	private void update(ClassInstance cls, boolean isRefresh) {
 		pendingWebViewTasks.clear();
 
@@ -81,8 +91,11 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 			displayText("decompiling...");
 		}
 
+		boolean mapped = true;
+		boolean tmpNamed = gui.isTmpNamed();
+
 		//Gui.runAsyncTask(() -> gui.getEnv().decompile(cls, true))
-		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(cls, true), cls, true))
+		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(cls, mapped, tmpNamed, unmatchedTmp), cls, mapped, tmpNamed, unmatchedTmp))
 		.whenComplete((res, exc) -> {
 			if (cDecompId == decompId) {
 				if (exc != null) {
@@ -122,6 +135,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	}
 
 	private void jumpTo(String anchorId) {
+		if (unmatchedTmp) System.out.println("jump to "+anchorId);
 		addWebViewTask(() -> webView.getEngine().executeScript("var anchorElem = document.getElementById('"+anchorId+"'); if (anchorElem !== null) document.body.scrollTop = anchorElem.getBoundingClientRect().top + window.scrollY;"));
 	}
 
@@ -178,6 +192,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 
 	private final Gui gui;
 	private final ISelectionProvider selectionProvider;
+	private final boolean unmatchedTmp;
 	//private final TextArea text = new TextArea();
 	private final WebView webView = new WebView();
 	private final Queue<Runnable> pendingWebViewTasks = new ArrayDeque<>();

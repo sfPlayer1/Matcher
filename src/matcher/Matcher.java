@@ -176,7 +176,7 @@ public class Matcher {
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
-						String mappedName = cls.getMappedName(false);
+						String mappedName = cls.getMappedName();
 						System.out.println("can't find mapped method "+srcClsName+"/"+srcName+" ("+(mappedName != null ? mappedName+"/" : "")+dstName+")");
 					} else {
 						if (!method.hasMappedName() || replace) method.setMappedName(dstName);
@@ -239,7 +239,7 @@ public class Matcher {
 							return;
 						}
 
-						if (arg.getMappedName(false) == null || replace) arg.setMappedName(dstArgName);
+						if (arg.getMappedName() == null || replace) arg.setMappedName(dstArgName);
 						counts[4]++;
 					}
 				}
@@ -252,7 +252,7 @@ public class Matcher {
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
-						String mappedName = cls.getMappedName(false);
+						String mappedName = cls.getMappedName();
 						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(mappedName != null ? mappedName+"/" : "")+dstName+")");
 					} else {
 						if (!field.hasMappedName() || replace) field.setMappedName(dstName);
@@ -314,7 +314,7 @@ public class Matcher {
 		try (MappingWriter writer = new MappingWriter(file, format)) {
 			for (ClassInstance cls : classes) {
 				String clsName = cls.getName();
-				String mappedClsName = cls.getMappedName(false);
+				String mappedClsName = cls.getMappedName();
 
 				if (mappedClsName == null && cls.getMappedComment() == null) {
 					boolean found = false;
@@ -348,13 +348,13 @@ public class Matcher {
 				.forEachOrdered(m -> {
 					String name = m.getName();
 					String desc = m.getDesc();
-					writer.acceptMethod(clsName, name, desc, mappedClsName, m.getMappedName(false), getMappedDesc(m));
+					writer.acceptMethod(clsName, name, desc, mappedClsName, m.getMappedName(), getMappedDesc(m));
 
 					String comment = m.getMappedComment();
 					if (comment != null) writer.acceptMethodComment(clsName, name, desc, comment);
 
 					for (MethodVarInstance arg : m.getArgs()) {
-						String argName = arg.getMappedName(false);
+						String argName = arg.getMappedName();
 						if (argName != null) writer.acceptMethodArg(clsName, name, desc, arg.getIndex(), arg.getLvtIndex(), argName);
 					}
 				});
@@ -365,7 +365,7 @@ public class Matcher {
 				.forEachOrdered(m -> {
 					String name = m.getName();
 					String desc = m.getDesc();
-					writer.acceptField(clsName, name, desc, mappedClsName, m.getMappedName(false), getMappedDesc(m));
+					writer.acceptField(clsName, name, desc, mappedClsName, m.getMappedName(), getMappedDesc(m));
 
 					String comment = m.getMappedComment();
 					if (comment != null) writer.acceptFieldComment(clsName, name, desc, comment);
@@ -403,7 +403,7 @@ public class Matcher {
 	}
 
 	private static String getMappedDesc(ClassInstance cls) {
-		String mappedName = cls.getMappedName(false);
+		String mappedName = cls.getMappedName();
 
 		if (mappedName == null) {
 			return cls.getId();
@@ -420,7 +420,7 @@ public class Matcher {
 		if (a.getArrayDimensions() != b.getArrayDimensions()) throw new IllegalArgumentException("the classes don't have the same amount of array dimensions");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName(false);
+		String mappedName = a.getMappedName();
 		System.out.println("match class "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (a.getMatch() != null) {
@@ -506,7 +506,7 @@ public class Matcher {
 		if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName(false);
+		String mappedName = a.getMappedName();
 		System.out.println("match method "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
@@ -546,7 +546,7 @@ public class Matcher {
 		if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName(false);
+		String mappedName = a.getMappedName();
 		System.out.println("match field "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
@@ -565,7 +565,7 @@ public class Matcher {
 		if (a.isArg() != b.isArg()) throw new IllegalArgumentException("the method vars are not of the same kind");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName(false);
+		String mappedName = a.getMappedName();
 		System.out.println("match method arg "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
@@ -581,7 +581,7 @@ public class Matcher {
 		if (cls == null) throw new NullPointerException("null class");
 		if (cls.getMatch() == null) return;
 
-		String mappedName = cls.getMappedName(false);
+		String mappedName = cls.getMappedName();
 		System.out.println("unmatch class "+cls+" (was "+cls.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		cls.getMatch().setMatch(null);
@@ -604,7 +604,7 @@ public class Matcher {
 		if (m == null) throw new NullPointerException("null member");
 		if (m.getMatch() == null) return;
 
-		String mappedName = m.getMappedName(false);
+		String mappedName = m.getMappedName();
 		System.out.println("unmatch member "+m+" (was "+m.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		if (m instanceof MethodInstance) {
@@ -629,7 +629,7 @@ public class Matcher {
 		if (a == null) throw new NullPointerException("null method var");
 		if (a.getMatch() == null) return;
 
-		String mappedName = a.getMappedName(false);
+		String mappedName = a.getMappedName();
 		System.out.println("unmatch method var "+a+" (was "+a.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
 
 		a.getMatch().setMatch(null);
@@ -976,7 +976,7 @@ public class Matcher {
 					if (method.getAllHierarchyMembers().size() <= 1) continue;
 					if (checked.contains(method)) continue;
 
-					String name = method.getMappedName(false);
+					String name = method.getMappedName();
 					if (name != null && method.hasAllArgsMapped()) continue;
 
 					checked.addAll(method.getAllHierarchyMembers());
@@ -988,7 +988,7 @@ public class Matcher {
 					int missingArgNames = argCount;
 
 					collectLoop: for (MethodInstance m : method.getAllHierarchyMembers()) {
-						if (name == null && (name = m.getMappedName(false)) != null) {
+						if (name == null && (name = m.getMappedName()) != null) {
 							if (missingArgNames == 0) break;
 						}
 
@@ -996,7 +996,7 @@ public class Matcher {
 							assert m.getArgs().length == argCount;
 
 							for (int i = 0; i < argCount; i++) {
-								if (argNames[i] == null && (argNames[i] = m.getArg(i).getMappedName(false)) != null) {
+								if (argNames[i] == null && (argNames[i] = m.getArg(i).getMappedName()) != null) {
 									missingArgNames--;
 
 									if (name != null && missingArgNames == 0) break collectLoop;
@@ -1018,7 +1018,7 @@ public class Matcher {
 						for (int i = 0; i < argCount; i++) {
 							MethodVarInstance arg;
 
-							if (argNames[i] != null && (arg = m.getArg(i)).getMappedName(false) == null) {
+							if (argNames[i] != null && (arg = m.getArg(i)).getMappedName() == null) {
 								arg.setMappedName(argNames[i]);
 								propagatedArgNames++;
 							}

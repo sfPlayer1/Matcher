@@ -141,6 +141,20 @@ public class Gui extends Application {
 		}
 	}
 
+	public boolean isTmpNamed() {
+		return tmpNamed;
+	}
+
+	public void setTmpNamed(boolean tmpNamed) {
+		if (this.tmpNamed == tmpNamed) return;
+
+		this.tmpNamed = tmpNamed;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange();
+		}
+	}
+
 	public void onProjectChange() {
 		for (IGuiComponent c : components) {
 			c.onProjectChange();
@@ -285,6 +299,8 @@ public class Gui extends Application {
 	private SortKey sortKey = SortKey.Name;
 	private boolean sortMatchesAlphabetically;
 	private boolean showNonInputs;
+
+	private boolean tmpNamed;
 
 	private static File lastChooserFile;
 }
