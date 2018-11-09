@@ -19,6 +19,7 @@ import matcher.type.ClassInstance;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
+import matcher.type.Signature.MethodSignature;
 
 public class MethodClassifier {
 	public static void init() {
@@ -26,6 +27,7 @@ public class MethodClassifier {
 		addClassifier(accessFlags, 4);
 		addClassifier(argTypes, 10);
 		addClassifier(retType, 5);
+		addClassifier(signature, 5);
 		addClassifier(classRefs, 3);
 		addClassifier(stringConstants, 5);
 		addClassifier(numericConstants, 5);
@@ -145,6 +147,19 @@ public class MethodClassifier {
 		@Override
 		public double getScore(MethodInstance methodA, MethodInstance methodB, ClassEnvironment env) {
 			return ClassifierUtil.checkPotentialEquality(methodA.getRetType(), methodB.getRetType()) ? 1 : 0;
+		}
+	};
+
+	private static AbstractClassifier signature = new AbstractClassifier("signature") {
+		@Override
+		public double getScore(MethodInstance methodA, MethodInstance methodB, ClassEnvironment env) {
+			MethodSignature sigA = methodA.getSignature();
+			MethodSignature sigB = methodB.getSignature();
+
+			if (sigA == null && sigB == null) return 1;
+			if (sigA == null || sigB == null) return 0;
+
+			return sigA.isPotentiallyEqual(sigB) ? 1 : 0;
 		}
 	};
 

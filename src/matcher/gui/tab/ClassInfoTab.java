@@ -4,8 +4,6 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import org.objectweb.asm.tree.ClassNode;
-
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
@@ -78,6 +76,11 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		update(cls);
 	}
 
+	@Override
+	public void onViewChange() {
+		update(selectionProvider.getSelectedClass());
+	}
+
 	private void update(ClassInstance cls) {
 		if (cls == null) {
 			nameLabel.setText("-");
@@ -101,8 +104,13 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 			nameObfLabel.setText(Boolean.toString(cls.isNameObfuscated(false)));
 			accessLabel.setText(Util.formatAccessFlags(cls.getAccess(), AFElementType.Class));
 
-			ClassNode asmNode = cls.getMergedAsmNode();
-			sigLabel.setText(asmNode == null || asmNode.signature == null ? "-" : asmNode.signature);
+			if (cls.getSignature() == null) {
+				sigLabel.setText("-");
+			} else {
+				String sig = cls.getSignature().toString(false, gui.isTmpNamed(), unmatchedTmp);
+				String sigMapped = cls.getSignature().toString(true, gui.isTmpNamed(), unmatchedTmp);
+				sigLabel.setText(sig.equals(sigMapped) ? sig : sig+" - "+sigMapped);
+			}
 
 			outerLabel.setText(cls.getOuterClass() != null ? getName(cls.getOuterClass()) : "-");
 			superLabel.setText(cls.getSuperClass() != null ? getName(cls.getSuperClass()) : "-");

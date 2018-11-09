@@ -8,6 +8,7 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldNode;
 
 import matcher.Util;
+import matcher.type.Signature.FieldSignature;
 
 public class FieldInstance extends MemberInstance<FieldInstance> {
 	/**
@@ -29,6 +30,7 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 
 		this.type = cls.getEnv().getCreateClassInstance(desc);
 		this.asmNode = asmNode;
+		this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : FieldSignature.parse(asmNode.signature, cls.getEnv());
 
 		type.fieldTypeRefs.add(this);
 	}
@@ -65,6 +67,10 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 		}
 	}
 
+	public FieldSignature getSignature() {
+		return signature;
+	}
+
 	public List<AbstractInsnNode> getInitializer() {
 		return initializer;
 	}
@@ -84,6 +90,7 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 	final FieldNode asmNode;
 	final ClassInstance type;
 	ClassInstance exactType;
+	private final FieldSignature signature;
 	List<AbstractInsnNode> initializer;
 
 	final Set<MethodInstance> readRefs = Util.newIdentityHashSet();

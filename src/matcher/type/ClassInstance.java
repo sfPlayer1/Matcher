@@ -17,6 +17,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 
 import matcher.Util;
+import matcher.type.Signature.ClassSignature;
 
 public class ClassInstance implements IMatchable<ClassInstance> {
 	/**
@@ -172,6 +173,14 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		String retId = id.substring(1);
 
 		return create ? env.getCreateClassInstance(retId) : env.getClsById(retId);
+	}
+
+	public ClassSignature getSignature() {
+		return signature;
+	}
+
+	void setSignature(ClassSignature signature) {
+		this.signature = signature;
 	}
 
 	public boolean isPrimitive() {
@@ -839,6 +848,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	final boolean nameObfuscated;
 	private final boolean input;
 	final ClassInstance elementClass; // TODO: improve handling of array classes (references etc.)
+	private ClassSignature signature;
 
 	MethodInstance[] methods = noMethods;
 	FieldInstance[] fields = noFields;

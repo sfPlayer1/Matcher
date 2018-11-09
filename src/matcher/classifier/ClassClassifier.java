@@ -23,10 +23,12 @@ import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
+import matcher.type.Signature.ClassSignature;
 
 public class ClassClassifier {
 	public static void init() {
 		addClassifier(classTypeCheck, 20);
+		addClassifier(signature, 5);
 		addClassifier(hierarchyDepth, 1);
 		addClassifier(parentClass, 4);
 		addClassifier(childClasses, 3);
@@ -86,6 +88,19 @@ public class ClassClassifier {
 			//assert Integer.bitCount(resultA) <= 3 && Integer.bitCount(resultB) <= 3;
 
 			return 1 - Integer.bitCount(resultA ^ resultB) / 4.;
+		}
+	};
+
+	private static AbstractClassifier signature = new AbstractClassifier("signature") {
+		@Override
+		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
+			ClassSignature sigA = clsA.getSignature();
+			ClassSignature sigB = clsB.getSignature();
+
+			if (sigA == null && sigB == null) return 1;
+			if (sigA == null || sigB == null) return 0;
+
+			return sigA.isPotentiallyEqual(sigB) ? 1 : 0;
 		}
 	};
 

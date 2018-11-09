@@ -19,12 +19,14 @@ import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
+import matcher.type.Signature.FieldSignature;
 
 public class FieldClassifier {
 	public static void init() {
 		addClassifier(fieldTypeCheck, 10);
 		addClassifier(accessFlags, 4);
 		addClassifier(type, 10);
+		addClassifier(signature, 5);
 		addClassifier(readReferences, 6);
 		addClassifier(writeReferences, 6);
 		addClassifier(position, 3);
@@ -90,6 +92,19 @@ public class FieldClassifier {
 		@Override
 		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
 			return ClassifierUtil.checkPotentialEquality(fieldA.getType(), fieldB.getType()) ? 1 : 0;
+		}
+	};
+
+	private static AbstractClassifier signature = new AbstractClassifier("signature") {
+		@Override
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
+			FieldSignature sigA = fieldA.getSignature();
+			FieldSignature sigB = fieldB.getSignature();
+
+			if (sigA == null && sigB == null) return 1;
+			if (sigA == null || sigB == null) return 0;
+
+			return sigA.isPotentiallyEqual(sigB) ? 1 : 0;
 		}
 	};
 

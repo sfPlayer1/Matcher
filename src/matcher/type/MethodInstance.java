@@ -11,6 +11,7 @@ import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import matcher.Util;
+import matcher.type.Signature.MethodSignature;
 
 public class MethodInstance extends MemberInstance<MethodInstance> {
 	/**
@@ -36,6 +37,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		this.retType = cls.getEnv().getCreateClassInstance(Type.getReturnType(desc).getDescriptor());
 		classRefs.add(retType);
 		retType.methodTypeRefs.add(this);
+		this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : MethodSignature.parse(asmNode.signature, cls.getEnv());
 	}
 
 	private static MethodVarInstance[] gatherArgs(MethodInstance method, String desc) {
@@ -225,6 +227,10 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		}
 	}
 
+	public MethodSignature getSignature() {
+		return signature;
+	}
+
 	public Set<MethodInstance> getRefsIn() {
 		return refsIn;
 	}
@@ -255,6 +261,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 	final MethodVarInstance[] args;
 	final ClassInstance retType;
 	MethodVarInstance[] vars;
+	final MethodSignature signature;
 
 	final Set<MethodInstance> refsIn = Util.newIdentityHashSet();
 	final Set<MethodInstance> refsOut = Util.newIdentityHashSet();

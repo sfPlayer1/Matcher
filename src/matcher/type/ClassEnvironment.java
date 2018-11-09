@@ -36,6 +36,7 @@ import matcher.classifier.MatchingCache;
 import matcher.config.ProjectConfig;
 import matcher.srcprocess.Cfr;
 import matcher.srcprocess.Decompiler;
+import matcher.type.Signature.ClassSignature;
 
 public class ClassEnvironment implements IClassEnv {
 	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
@@ -367,7 +368,7 @@ public class ClassEnvironment implements IClassEnv {
 	}
 
 	/**
-	 * 1st class processing pass, member and class hierarchy initialization.
+	 * 1st class processing pass, member+class hierarchy and signature initialization.
 	 *
 	 * Only the (known) classes are fully available at this point.
 	 */
@@ -375,6 +376,10 @@ public class ClassEnvironment implements IClassEnv {
 		Set<String> strings = cls.strings;
 
 		for (ClassNode cn : cls.getAsmNodes()) {
+			if (cls.isInput() && cls.getSignature() == null && cn.signature != null) {
+				cls.setSignature(ClassSignature.parse(cn.signature, cls.getEnv()));
+			}
+
 			boolean isEnum = (cn.access & Opcodes.ACC_ENUM) != 0;
 
 			for (int i = 0; i < cn.methods.size(); i++) {
