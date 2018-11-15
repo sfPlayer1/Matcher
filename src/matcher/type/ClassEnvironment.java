@@ -11,17 +11,20 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.DoubleConsumer;
+import java.util.regex.Pattern;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
@@ -38,28 +41,32 @@ import matcher.srcprocess.Cfr;
 import matcher.srcprocess.Decompiler;
 import matcher.type.Signature.ClassSignature;
 
-public class ClassEnvironment implements IClassEnv {
+public class ClassEnvironment implements ClassEnv {
 	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
 		final double cpInitCost = 0.05;
 		final double classReadCost = 0.2;
 		double progress = 0;
 
-		boolean inputsFirst = config.hasInputsBeforeClassPath();
+		inputsBeforeClassPath = config.hasInputsBeforeClassPath();
+		nonObfuscatedClassPatternA = config.getNonObfuscatedClassPatternA().isEmpty() ? null : Pattern.compile(config.getNonObfuscatedClassPatternA());
+		nonObfuscatedClassPatternB = config.getNonObfuscatedClassPatternB().isEmpty() ? null : Pattern.compile(config.getNonObfuscatedClassPatternB());
+		nonObfuscatedMemberPatternA = config.getNonObfuscatedMemberPatternA().isEmpty() ? null : Pattern.compile(config.getNonObfuscatedMemberPatternA());
+		nonObfuscatedMemberPatternB = config.getNonObfuscatedMemberPatternB().isEmpty() ? null : Pattern.compile(config.getNonObfuscatedMemberPatternB());
 
 		try {
 			for (int i = 0; i < 2; i++) {
-				if ((i == 0) != inputsFirst) {
+				if ((i == 0) != inputsBeforeClassPath) {
 					// class path indexing
-					initClassPath(config.getSharedClassPath(), inputsFirst);
+					initClassPath(config.getSharedClassPath(), inputsBeforeClassPath);
 					CompletableFuture.allOf(
-							CompletableFuture.runAsync(() -> extractorA.processClassPath(config.getClassPathA(), inputsFirst)),
-							CompletableFuture.runAsync(() -> extractorB.processClassPath(config.getClassPathB(), inputsFirst))).get();
+							CompletableFuture.runAsync(() -> extractorA.processClassPath(config.getClassPathA(), inputsBeforeClassPath)),
+							CompletableFuture.runAsync(() -> extractorB.processClassPath(config.getClassPathB(), inputsBeforeClassPath))).get();
 					progress += cpInitCost;
 				} else {
 					// async class reading
 					CompletableFuture.allOf(
-							CompletableFuture.runAsync(() -> extractorA.processInputs(config.getPathsA())),
-							CompletableFuture.runAsync(() -> extractorB.processInputs(config.getPathsB()))).get();
+							CompletableFuture.runAsync(() -> extractorA.processInputs(config.getPathsA(), nonObfuscatedClassPatternA)),
+							CompletableFuture.runAsync(() -> extractorB.processInputs(config.getPathsB(), nonObfuscatedClassPatternB))).get();
 					progress += classReadCost;
 				}
 
@@ -67,10 +74,10 @@ public class ClassEnvironment implements IClassEnv {
 			}
 
 			// synchronous feature extraction
-			extractorA.process();
+			extractorA.process(nonObfuscatedMemberPatternA);
 			progressReceiver.accept(0.8);
 
-			extractorB.process();
+			extractorB.process(nonObfuscatedMemberPatternB);
 			progressReceiver.accept(0.98);
 		} catch (InterruptedException | ExecutionException | IOException e) {
 			throw new RuntimeException(e);
@@ -115,6 +122,22 @@ public class ClassEnvironment implements IClassEnv {
 		openFileSystems.add(fs);
 	}
 
+	public Pattern getNonObfuscatedClassPatternA() {
+		return nonObfuscatedClassPatternA;
+	}
+
+	public Pattern getNonObfuscatedClassPatternB() {
+		return nonObfuscatedClassPatternB;
+	}
+
+	public Pattern getNonObfuscatedMemberPatternA() {
+		return nonObfuscatedMemberPatternA;
+	}
+
+	public Pattern getNonObfuscatedMemberPatternB() {
+		return nonObfuscatedMemberPatternB;
+	}
+
 	@Override
 	public boolean isShared() {
 		return true;
@@ -135,12 +158,51 @@ public class ClassEnvironment implements IClassEnv {
 		return getSharedClsById(id);
 	}
 
-	public IClassEnv getEnvA() {
+	public LocalClassEnv getEnvA() {
 		return extractorA;
 	}
 
-	public IClassEnv getEnvB() {
+	public LocalClassEnv getEnvB() {
 		return extractorB;
+	}
+
+	@Override
+	public Collection<ClassInstance> getClasses() {
+		return new AbstractCollection<ClassInstance>() {
+			@Override
+			public Iterator<ClassInstance> iterator() {
+				return new Iterator<ClassInstance>() {
+					@Override
+					public boolean hasNext() {
+						checkAdvance();
+
+						return parent.hasNext();
+					}
+
+					@Override
+					public ClassInstance next() {
+						checkAdvance();
+
+						return parent.next();
+					}
+
+					private void checkAdvance() {
+						if (isA && !parent.hasNext()) {
+							parent = extractorB.getClasses().iterator();
+							isA = false;
+						}
+					}
+
+					private Iterator<ClassInstance> parent = extractorA.getClasses().iterator();
+					private boolean isA;
+				};
+			}
+
+			@Override
+			public int size() {
+				return extractorA.getClasses().size() + extractorB.getClasses().size();
+			}
+		};
 	}
 
 	public ClassInstance getClsByNameA(String name) {
@@ -196,11 +258,11 @@ public class ClassEnvironment implements IClassEnv {
 	}
 
 	public Collection<ClassInstance> getClassesA() {
-		return extractorA.getClasses().values();
+		return extractorA.getClasses();
 	}
 
 	public Collection<ClassInstance> getClassesB() {
-		return extractorB.getClasses().values();
+		return extractorB.getClasses();
 	}
 
 	public List<ClassInstance> getDisplayClassesA(boolean inputsOnly) {
@@ -214,7 +276,7 @@ public class ClassEnvironment implements IClassEnv {
 	private static List<ClassInstance> getDisplayClasses(ClassFeatureExtractor extractor, boolean inputsOnly) {
 		List<ClassInstance> ret = new ArrayList<>();
 
-		for (ClassInstance cls : extractor.getClasses().values()) {
+		for (ClassInstance cls : extractor.getClasses()) {
 			if (cls.getUri() == null || inputsOnly && !cls.isInput()) continue;
 
 			ret.add(cls);
@@ -254,9 +316,9 @@ public class ClassEnvironment implements IClassEnv {
 	public String decompile(ClassInstance cls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		ClassFeatureExtractor extractor;
 
-		if (extractorA.getClasses().get(cls.getId()) == cls) {
+		if (extractorA.getLocalClsById(cls.getId()) == cls) {
 			extractor = extractorA;
-		} else if (extractorB.getClasses().get(cls.getId()) == cls) {
+		} else if (extractorB.getLocalClsById(cls.getId()) == cls) {
 			extractor = extractorB;
 		} else {
 			throw new IllegalArgumentException("unknown class: "+cls);
@@ -287,7 +349,7 @@ public class ClassEnvironment implements IClassEnv {
 		return ret;
 	}
 
-	static ClassInstance getArrayCls(IClassEnv env, String id) {
+	static ClassInstance getArrayCls(ClassEnv env, String id) {
 		assert id.startsWith("[");
 
 		String elementId = id.substring(id.lastIndexOf('[') + 1);
@@ -318,7 +380,7 @@ public class ClassEnvironment implements IClassEnv {
 				ClassInstance ret = addSharedCls(cls);
 
 				if (ret == cls) { // cls was added
-					processClassA(ret);
+					processClassA(ret, null);
 				}
 
 				return ret;
@@ -372,7 +434,9 @@ public class ClassEnvironment implements IClassEnv {
 	 *
 	 * Only the (known) classes are fully available at this point.
 	 */
-	static void processClassA(ClassInstance cls) {
+	static void processClassA(ClassInstance cls, Pattern nonObfuscatedMemberPattern) {
+		assert !cls.isInput() || !cls.isShared();
+
 		Set<String> strings = cls.strings;
 
 		for (ClassNode cn : cls.getAsmNodes()) {
@@ -386,10 +450,12 @@ public class ClassEnvironment implements IClassEnv {
 				MethodNode mn = cn.methods.get(i);
 
 				if (cls.getMethod(mn.name, mn.desc) == null) {
-					boolean nameObfuscated = !cls.isShared()
+					boolean nameObfuscated = cls.isInput()
 							&& !mn.name.equals("<clinit>")
 							&& !mn.name.equals("<init>")
-							&& (!isEnum || !isStandardEnumMethod(cn.name, mn));
+							&& (!mn.name.equals("main") || !mn.desc.equals("([Ljava/lang/String;)V") || mn.access != (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC))
+							&& (!isEnum || !isStandardEnumMethod(cn.name, mn))
+							&& (nonObfuscatedMemberPattern == null || !nonObfuscatedMemberPattern.matcher(cn.name+"/"+mn.name+mn.desc).matches());
 
 					cls.addMethod(new MethodInstance(cls, mn.name, mn.desc, mn, nameObfuscated, i));
 
@@ -401,7 +467,9 @@ public class ClassEnvironment implements IClassEnv {
 				FieldNode fn = cn.fields.get(i);
 
 				if (cls.getField(fn.name, fn.desc) == null) {
-					boolean nameObfuscated = !cls.isShared();
+					boolean nameObfuscated = cls.isInput()
+							&& (nonObfuscatedMemberPattern == null || !nonObfuscatedMemberPattern.matcher(cn.name+"/"+fn.name+";;"+fn.desc).matches());
+
 					cls.addField(new FieldInstance(cls, fn.name, fn.desc, fn, nameObfuscated, i));
 
 					if (fn.value instanceof String) {
@@ -491,4 +559,10 @@ public class ClassEnvironment implements IClassEnv {
 	private final ClassFeatureExtractor extractorB = new ClassFeatureExtractor(this);
 	private final MatchingCache cache = new MatchingCache();
 	private final Decompiler decompiler = new Cfr();
+
+	private boolean inputsBeforeClassPath;
+	private Pattern nonObfuscatedClassPatternA;
+	private Pattern nonObfuscatedClassPatternB;
+	private Pattern nonObfuscatedMemberPatternA;
+	private Pattern nonObfuscatedMemberPatternB;
 }

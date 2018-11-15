@@ -1,6 +1,7 @@
 package matcher.type;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Set;
 
 import org.objectweb.asm.Opcodes;
@@ -51,17 +52,13 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	public abstract boolean isReal();
 
 	@Override
-	public IClassEnv getEnv() {
+	public ClassEnv getEnv() {
 		return cls.getEnv();
 	}
 
 	@Override
-	public boolean isNameObfuscated(boolean recursive) {
-		if (!recursive) {
-			return nameObfuscated;
-		} else {
-			return nameObfuscated || cls.isNameObfuscated(true);
-		}
+	public boolean isNameObfuscated() {
+		return nameObfuscated;
 	}
 
 	public int getPosition() {
@@ -110,11 +107,11 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	public T getMatchedHierarchyMember() {
 		if (getMatch() != null) return (T) this;
 
-		IClassEnv reqEnv = cls.getEnv();
+		ClassEnv reqEnv = cls.getEnv();
 
 		for (T m : hierarchyMembers) {
 			if (m.getMatch() != null) {
-				IClassEnv env = m.cls.getEnv();
+				ClassEnv env = m.cls.getEnv();
 
 				if (env.isShared() || env == reqEnv) return m;
 			}
@@ -142,6 +139,25 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 
 	public void setTmpName(String tmpName) {
 		this.tmpName = tmpName;
+	}
+
+	@Override
+	public int getUid() {
+		if (uid >= 0) {
+			if (matchedInstance != null && matchedInstance.uid >= 0) {
+				return Math.min(uid, matchedInstance.uid);
+			} else {
+				return uid;
+			}
+		} else if (matchedInstance != null) {
+			return matchedInstance.uid;
+		} else {
+			return -1;
+		}
+	}
+
+	public void setUid(int uid) {
+		this.uid = uid;
 	}
 
 	public boolean hasMappedName() {
@@ -195,6 +211,8 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 		return getDisplayName(true, false, false, true);
 	}
 
+	public static final Comparator<MemberInstance<?>> nameComparator = Comparator.<MemberInstance<?>, String>comparing(MemberInstance::getName).thenComparing(MemberInstance::getDesc);
+
 	final ClassInstance cls;
 	final String id;
 	final String origName;
@@ -207,6 +225,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements IMa
 	Set<T> hierarchyMembers;
 
 	private String tmpName;
+	int uid = -1;
 
 	String mappedName;
 	String mappedComment;

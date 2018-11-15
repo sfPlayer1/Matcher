@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,7 +24,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	/**
 	 * Create a shared unknown class.
 	 */
-	ClassInstance(String id, IClassEnv env) {
+	ClassInstance(String id, ClassEnv env) {
 		this(id, null, env, null, false, false, null);
 
 		assert id.indexOf('[') == -1 : id;
@@ -32,7 +33,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	/**
 	 * Create a known class (class path).
 	 */
-	public ClassInstance(String id, URI uri, IClassEnv env, ClassNode asmNode) {
+	public ClassInstance(String id, URI uri, ClassEnv env, ClassNode asmNode) {
 		this(id, uri, env, asmNode, false, false, null);
 
 		assert id.indexOf('[') == -1 : id;
@@ -54,7 +55,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	/**
 	 * Create a non-array class.
 	 */
-	ClassInstance(String id, URI uri, IClassEnv env, ClassNode asmNode, boolean nameObfuscated) {
+	ClassInstance(String id, URI uri, ClassEnv env, ClassNode asmNode, boolean nameObfuscated) {
 		this(id, uri, env, asmNode, nameObfuscated, true, null);
 
 		assert id.startsWith("L") : id;
@@ -62,7 +63,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		assert asmNode != null;
 	}
 
-	private ClassInstance(String id, URI uri, IClassEnv env, ClassNode asmNode, boolean nameObfuscated, boolean input, ClassInstance elementClass) {
+	private ClassInstance(String id, URI uri, ClassEnv env, ClassNode asmNode, boolean nameObfuscated, boolean input, ClassInstance elementClass) {
 		if (id.isEmpty()) throw new IllegalArgumentException("empty id");
 		if (env == null) throw new NullPointerException("null env");
 
@@ -116,7 +117,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	}
 
 	@Override
-	public IClassEnv getEnv() {
+	public ClassEnv getEnv() {
 		return env;
 	}
 
@@ -150,7 +151,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	}
 
 	@Override
-	public boolean isNameObfuscated(boolean recursive) {
+	public boolean isNameObfuscated() {
 		return nameObfuscated;
 	}
 
@@ -308,7 +309,6 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 						match = method.args[idx].type;
 					}
 
-					int start = pos;
 					int dims;
 
 					if (c == '[') { // array cls
@@ -650,6 +650,33 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		this.tmpName = tmpName;
 	}
 
+	@Override
+	public int getUid() {
+		if (uid >= 0) {
+			if (matchedClass != null && matchedClass.uid >= 0) {
+				return Math.min(uid, matchedClass.uid);
+			} else {
+				return uid;
+			}
+		} else if (matchedClass != null) {
+			return matchedClass.uid;
+		} else {
+			return -1;
+		}
+	}
+
+	public void setUid(int uid) {
+		this.uid = uid;
+	}
+
+	@Override
+	public String getUidString() {
+		int uid = getUid();
+		if (uid < 0) return null;
+
+		return "class_"+uid;
+	}
+
 	public boolean hasMappedName() {
 		return mappedName != null
 				|| matchedClass != null && matchedClass.mappedName != null
@@ -837,13 +864,15 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		return id.startsWith("L") ? id.substring(1, id.length() - 1) : id;
 	}
 
+	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getId);
+
 	private static final ClassInstance[] noArrays = new ClassInstance[0];
 	private static final MethodInstance[] noMethods = new MethodInstance[0];
 	private static final FieldInstance[] noFields = new FieldInstance[0];
 
 	final String id;
 	final URI uri;
-	final IClassEnv env;
+	final ClassEnv env;
 	private ClassNode[] asmNodes;
 	final boolean nameObfuscated;
 	private final boolean input;
@@ -871,6 +900,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	final Set<String> strings = new HashSet<>();
 
 	private String tmpName;
+	private int uid = -1;
 
 	private String mappedName;
 	private String mappedComment;

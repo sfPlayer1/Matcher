@@ -288,7 +288,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private static String getMappedName(IMatchable<?> m) {
 		String ret = m.getMappedName();
 		if (ret != null) return ret;
-		if (!m.isNameObfuscated(false)) return m.getName();
+		if (!m.isNameObfuscated()) return m.getName();
 
 		return null;
 	}

@@ -1,4 +1,4 @@
-package matcher.serdes.mapping;
+package matcher.mapping;
 
 import java.io.BufferedWriter;
 import java.io.Closeable;
@@ -12,8 +12,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.zip.GZIPOutputStream;
 
+import matcher.NameType;
+
 public class MappingWriter implements IMappingAcceptor, Closeable {
-	public MappingWriter(Path file, MappingFormat format) throws IOException {
+	public MappingWriter(Path file, MappingFormat format, NameType srcType, NameType dstType) throws IOException {
 		this.format = format;
 
 		switch (format) {
@@ -35,7 +37,21 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 		}
 
 		if (format == MappingFormat.TINY || format == MappingFormat.TINY_GZIP) {
-			writer.write("v1\tmojang\tpomf\n");
+			writer.write("v1\t");
+			writer.write(getTinyNameType(srcType));
+			writer.write('\t');
+			writer.write(getTinyNameType(dstType));
+			writer.write('\n');
+		}
+	}
+
+	private static String getTinyNameType(NameType type) {
+		switch (type) {
+		case MAPPED: return "pomf";
+		case PLAIN: return "official";
+		case TMP: return "tmp";
+		case UID: return "intermediary";
+		default: throw new IllegalArgumentException();
 		}
 	}
 

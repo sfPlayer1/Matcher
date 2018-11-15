@@ -40,6 +40,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Name", nameLabel, grid, row);
 		row = addRow("Tmp name", tmpNameLabel, grid, row);
 		row = addRow("Mapped name", mappedNameLabel, grid, row);
+		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Access", accessLabel, grid, row);
 		row = addRow("Signature", sigLabel, grid, row);
@@ -86,6 +87,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText("-");
 			tmpNameLabel.setText("-");
 			mappedNameLabel.setText("-");
+			uidLabel.setText("-");
 			nameObfLabel.setText("-");
 			accessLabel.setText("-");
 			sigLabel.setText("-");
@@ -101,7 +103,8 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText(cls.getName());
 			tmpNameLabel.setText(nullToMissing(cls.getTmpName(unmatchedTmp)));
 			mappedNameLabel.setText(nullToMissing(cls.getMappedName()));
-			nameObfLabel.setText(Boolean.toString(cls.isNameObfuscated(false)));
+			uidLabel.setText(cls.getUid() < 0 ? "-" : Integer.toString(cls.getUid()));
+			nameObfLabel.setText(Boolean.toString(cls.isNameObfuscated()));
 			accessLabel.setText(Util.formatAccessFlags(cls.getAccess(), AFElementType.Class));
 
 			if (cls.getSignature() == null) {
@@ -157,6 +160,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 	private final Label nameLabel = new Label();
 	private final Label tmpNameLabel = new Label();
 	private final Label mappedNameLabel = new Label();
+	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
 	private final Label accessLabel = new Label();
 	private final Label sigLabel = new Label();

@@ -4,12 +4,12 @@ import org.objectweb.asm.commons.Remapper;
 
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.IClassEnv;
+import matcher.type.ClassEnv;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class AsmRemapper extends Remapper {
-	public AsmRemapper(IClassEnv env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public AsmRemapper(ClassEnv env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		this.env = env;
 		this.mapped = mapped;
 		this.tmpNamed = tmpNamed;
@@ -88,7 +88,7 @@ public class AsmRemapper extends Remapper {
 		return name;
 	}
 
-	private final IClassEnv env;
+	private final ClassEnv env;
 	private final boolean mapped;
 	private final boolean tmpNamed;
 	private final boolean unmatchedTmp;

@@ -51,8 +51,8 @@ public class ClassifierUtil {
 		if (a.isArray() != b.isArray()) return false;
 		if (a.isArray() && !checkPotentialEquality(a.getElementClass(), b.getElementClass())) return false;
 
-		boolean nameObfA = a.isNameObfuscated(false);
-		boolean nameObfB = b.isNameObfuscated(false);
+		boolean nameObfA = a.isNameObfuscated();
+		boolean nameObfB = b.isNameObfuscated();
 		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
 		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
 
@@ -65,8 +65,8 @@ public class ClassifierUtil {
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
 
-		boolean nameObfA = a.isNameObfuscated(false);
-		boolean nameObfB = b.isNameObfuscated(false);
+		boolean nameObfA = a.isNameObfuscated();
+		boolean nameObfB = b.isNameObfuscated();
 		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
 		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
 
@@ -79,8 +79,8 @@ public class ClassifierUtil {
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
 
-		boolean nameObfA = a.isNameObfuscated(false);
-		boolean nameObfB = b.isNameObfuscated(false);
+		boolean nameObfA = a.isNameObfuscated();
+		boolean nameObfB = b.isNameObfuscated();
 		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
 		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
 
@@ -94,8 +94,8 @@ public class ClassifierUtil {
 		if (a.isArg() != b.isArg()) return false;
 		if (!checkPotentialEquality(a.getMethod(), b.getMethod())) return false;
 
-		boolean nameObfA = a.isNameObfuscated(false);
-		boolean nameObfB = b.isNameObfuscated(false);
+		boolean nameObfA = a.isNameObfuscated();
+		boolean nameObfB = b.isNameObfuscated();
 		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
 		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
 
@@ -186,7 +186,7 @@ public class ClassifierUtil {
 				}
 
 				it.remove();
-			} else if (assumeBothOrNoneObfuscated && !a.isNameObfuscated(true)) {
+			} else if (assumeBothOrNoneObfuscated && !a.isNameObfuscated()) {
 				unmatched++;
 				it.remove();
 			}
@@ -197,7 +197,7 @@ public class ClassifierUtil {
 			for (Iterator<T> it = setB.iterator(); it.hasNext(); ) {
 				T b = it.next();
 
-				if (!b.isNameObfuscated(true)) {
+				if (!b.isNameObfuscated()) {
 					unmatched++;
 					it.remove();
 				}
@@ -207,7 +207,7 @@ public class ClassifierUtil {
 		for (Iterator<T> it = setA.iterator(); it.hasNext(); ) {
 			T a = it.next();
 
-			assert a.getMatch() == null && a.isNameObfuscated(true);
+			assert a.getMatch() == null && a.isNameObfuscated();
 			boolean found = false;
 
 			for (T b : setB) {

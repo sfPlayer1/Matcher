@@ -1,7 +1,11 @@
 package matcher.type;
 
-public interface IClassEnv {
+import java.util.Collection;
+
+public interface ClassEnv {
 	boolean isShared();
+
+	Collection<ClassInstance> getClasses();
 
 	default ClassInstance getClsByName(String name) {
 		return getClsById(ClassInstance.getId(name));

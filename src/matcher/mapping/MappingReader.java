@@ -1,4 +1,4 @@
-package matcher.serdes.mapping;
+package matcher.mapping;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -65,7 +65,7 @@ public class MappingReader {
 			readtiny(file, mappingAcceptor);
 			break;
 		case TINY_GZIP:
-			readGztiny(file, mappingAcceptor);
+			readGzTiny(file, mappingAcceptor);
 			break;
 		case ENIGMA:
 			readEnigma(file, mappingAcceptor);
@@ -83,17 +83,17 @@ public class MappingReader {
 
 	public static void readtiny(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
-			readtiny(reader, mappingAcceptor);
+			readTiny(reader, mappingAcceptor);
 		}
 	}
 
-	public static void readGztiny(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readGzTiny(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8))) {
-			readtiny(reader, mappingAcceptor);
+			readTiny(reader, mappingAcceptor);
 		}
 	}
 
-	private static void readtiny(BufferedReader reader, IMappingAcceptor mappingAcceptor) throws IOException {
+	private static void readTiny(BufferedReader reader, IMappingAcceptor mappingAcceptor) throws IOException {
 		boolean firstLine = true;
 		String line;
 

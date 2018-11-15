@@ -8,7 +8,7 @@ public interface IMatchable<T> {
 		return getName();
 	}
 
-	IClassEnv getEnv();
+	ClassEnv getEnv();
 
 	default String getName(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		if (mapped) {
@@ -25,6 +25,8 @@ public interface IMatchable<T> {
 	}
 
 	String getTmpName(boolean unmatched);
+	int getUid();
+	String getUidString();
 	String getMappedName();
 
 	default boolean hasMatch() {
@@ -32,5 +34,5 @@ public interface IMatchable<T> {
 	}
 
 	T getMatch();
-	boolean isNameObfuscated(boolean recursive);
+	boolean isNameObfuscated();
 }

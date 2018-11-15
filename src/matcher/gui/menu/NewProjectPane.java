@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javafx.beans.InvalidationListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -18,6 +19,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MultipleSelectionModel;
 import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -42,6 +44,10 @@ public class NewProjectPane extends GridPane {
 		classPathB = FXCollections.observableArrayList(config.getClassPathB());
 		sharedClassPath = FXCollections.observableArrayList(config.getSharedClassPath());
 		inputsBeforeClassPath = config.hasInputsBeforeClassPath();
+		nonObfuscatedClassPatternA = new TextField(config.getNonObfuscatedClassPatternA());
+		nonObfuscatedClassPatternB = new TextField(config.getNonObfuscatedClassPatternB());
+		nonObfuscatedMemberPatternA = new TextField(config.getNonObfuscatedMemberPatternA());
+		nonObfuscatedMemberPatternB = new TextField(config.getNonObfuscatedMemberPatternB());
 
 		init();
 	}
@@ -87,13 +93,20 @@ public class NewProjectPane extends GridPane {
 		add(createFilesSelectionPane("Shared class path", sharedClassPath, window, true, true), 0, 3, 2, 1);
 		// TODO: config.inputsBeforeClassPath
 
+		add(createMiscPane(), 0, 4, 2, 1);
+
 		ListChangeListener<Path> listChangeListener = change -> okButton.setDisable(!createConfig().isValid());
+		InvalidationListener invalidationListener = change -> okButton.setDisable(!createConfig().isValid());
 
 		pathsA.addListener(listChangeListener);
 		pathsB.addListener(listChangeListener);
 		classPathA.addListener(listChangeListener);
 		classPathB.addListener(listChangeListener);
 		sharedClassPath.addListener(listChangeListener);
+		nonObfuscatedClassPatternA.textProperty().addListener(invalidationListener);
+		nonObfuscatedClassPatternB.textProperty().addListener(invalidationListener);
+		nonObfuscatedMemberPatternA.textProperty().addListener(invalidationListener);
+		nonObfuscatedMemberPatternB.textProperty().addListener(invalidationListener);
 		listChangeListener.onChanged(null);
 	}
 
@@ -254,13 +267,32 @@ public class NewProjectPane extends GridPane {
 		return Arrays.asList(new FileChooser.ExtensionFilter("Java archive", "*.jar"));
 	}
 
+	private Node createMiscPane() {
+		VBox ret = new VBox(GuiConstants.padding);
+
+		ret.getChildren().add(new Label("Non-obfuscated class name pattern A (regex):"));
+		ret.getChildren().add(nonObfuscatedClassPatternA);
+		ret.getChildren().add(new Label("Non-obfuscated class name pattern B (regex):"));
+		ret.getChildren().add(nonObfuscatedClassPatternB);
+		ret.getChildren().add(new Label("Non-obfuscated member name pattern A (regex):"));
+		ret.getChildren().add(nonObfuscatedMemberPatternA);
+		ret.getChildren().add(new Label("Non-obfuscated member name pattern B (regex):"));
+		ret.getChildren().add(nonObfuscatedMemberPatternB);
+
+		return ret;
+	}
+
 	public ProjectConfig createConfig() {
 		return new ProjectConfig(new ArrayList<>(pathsA),
 				new ArrayList<>(pathsB),
 				new ArrayList<>(classPathA),
 				new ArrayList<>(classPathB),
 				new ArrayList<>(sharedClassPath),
-				inputsBeforeClassPath);
+				inputsBeforeClassPath,
+				nonObfuscatedClassPatternA.getText(),
+				nonObfuscatedClassPatternB.getText(),
+				nonObfuscatedMemberPatternA.getText(),
+				nonObfuscatedMemberPatternB.getText());
 	}
 
 	private final Window window;
@@ -272,4 +304,8 @@ public class NewProjectPane extends GridPane {
 	private final ObservableList<Path> classPathB;
 	private final ObservableList<Path> sharedClassPath;
 	private final boolean inputsBeforeClassPath;
+	private final TextField nonObfuscatedClassPatternA;
+	private final TextField nonObfuscatedClassPatternB;
+	private final TextField nonObfuscatedMemberPatternA;
+	private final TextField nonObfuscatedMemberPatternB;
 }

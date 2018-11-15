@@ -44,6 +44,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Name", nameLabel, grid, row);
 		row = addRow("Tmp name", tmpNameLabel, grid, row);
 		row = addRow("Mapped name", mappedNameLabel, grid, row);
+		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Args", argLabel, grid, row);
 		row = addRow("Ret type", retTypeLabel, grid, row);
@@ -87,6 +88,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText("-");
 			tmpNameLabel.setText("-");
 			mappedNameLabel.setText("-");
+			uidLabel.setText("-");
 			nameObfLabel.setText("-");
 			argLabel.setText("-");
 			retTypeLabel.setText("-");
@@ -103,11 +105,12 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			ownerLabel.setText(getName(method.getCls()));
 			String name = method.getDisplayName(false, false, false, true);
 			String tmpName = method.getDisplayName(false, false, true, unmatchedTmp);
-			String mappedName = method.getDisplayName(false, false, gui.isTmpNamed(), unmatchedTmp);
+			String mappedName = method.getDisplayName(false, true, gui.isTmpNamed(), unmatchedTmp);
 			nameLabel.setText(name);
 			tmpNameLabel.setText(tmpName.equals(name) ? "-" : tmpName);
 			mappedNameLabel.setText(mappedName.equals(gui.isTmpNamed() ? tmpName : name) ? "-" : mappedName);
-			nameObfLabel.setText(Boolean.toString(method.isNameObfuscated(false)));
+			uidLabel.setText(method.getUid() < 0 ? "-" : Integer.toString(method.getUid()));
+			nameObfLabel.setText(Boolean.toString(method.isNameObfuscated()));
 			argLabel.setText(Arrays.stream(method.getArgs()).map(this::getVarName).collect(Collectors.joining("\n")));
 			retTypeLabel.setText(getName(method.getRetType()));
 			accessLabel.setText(Util.formatAccessFlags(method.getAccess(), AFElementType.Method));
@@ -146,6 +149,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 	private final Label nameLabel = new Label();
 	private final Label tmpNameLabel = new Label();
 	private final Label mappedNameLabel = new Label();
+	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
 	private final Label argLabel = new Label();
 	private final Label retTypeLabel = new Label();

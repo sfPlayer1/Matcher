@@ -21,12 +21,13 @@ import matcher.Matcher;
 import matcher.config.Config;
 import matcher.config.UidConfig;
 import matcher.gui.Gui;
+import matcher.type.ClassEnv;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.IClassEnv;
 import matcher.type.IMatchable;
 import matcher.type.MatchType;
+import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
@@ -61,6 +62,12 @@ public class UidMenu extends Menu {
 				this::submitMatches,
 				() -> { },
 				Throwable::printStackTrace));
+
+		getItems().add(new SeparatorMenuItem());
+
+		menuItem = new MenuItem("Assign missing");
+		getItems().add(menuItem);
+		menuItem.setOnAction(event -> assignMissing());
 	}
 
 	private void setup() {
@@ -156,7 +163,7 @@ public class UidMenu extends Menu {
 		}
 	}
 
-	private static ClassInstance getCls(IClassEnv env, String fullId, int type) {
+	private static ClassInstance getCls(ClassEnv env, String fullId, int type) {
 		if (type == TYPE_CLASS) {
 			return env.getLocalClsById(fullId);
 		} else if (type == TYPE_FIELD) {
@@ -249,6 +256,64 @@ public class UidMenu extends Menu {
 			progressConsumer.accept(1);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
+		}
+	}
+
+	private void assignMissing() {
+		// TOOD: these need to be managed globally, uids need to be unique across all versions
+		int nextClassId = 0;
+		int nextMethodId = 0;
+		int nextFieldId = 0;
+
+		List<ClassInstance> classes = new ArrayList<>(gui.getEnv().getClassesB());
+		classes.sort(ClassInstance.nameComparator);
+
+		List<MethodInstance> methods = new ArrayList<>();
+		List<FieldInstance> fields = new ArrayList<>();
+
+		for (ClassInstance cls : classes) {
+			assert cls.isInput();
+
+			if (cls.isNameObfuscated() && cls.getUid() < 0) {
+				cls.setUid(nextClassId++);
+			}
+
+			for (MethodInstance method : cls.getMethods()) {
+				if (method.isNameObfuscated() && method.getUid() < 0) {
+					methods.add(method);
+				}
+			}
+
+			if (!methods.isEmpty()) {
+				methods.sort(MemberInstance.nameComparator);
+
+				for (MethodInstance method : methods) {
+					int uid = nextMethodId++;
+
+					for (MethodInstance m : method.getAllHierarchyMembers()) {
+						m.setUid(uid);
+					}
+				}
+
+				methods.clear();
+			}
+
+			for (FieldInstance field : cls.getFields()) {
+				if (field.isNameObfuscated() && field.getUid() < 0) {
+					fields.add(field);
+				}
+			}
+
+			if (!fields.isEmpty()) {
+				fields.sort(MemberInstance.nameComparator);
+
+				for (FieldInstance field : cls.getFields()) {
+					field.setUid(nextFieldId++);
+					assert field.getAllHierarchyMembers().size() == 1;
+				}
+
+				fields.clear();
+			}
 		}
 	}
 

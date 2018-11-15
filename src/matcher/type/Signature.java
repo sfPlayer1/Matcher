@@ -8,7 +8,7 @@ import matcher.classifier.ClassifierUtil;
 
 public class Signature {
 	public static class ClassSignature implements PotentialComparable<ClassSignature> {
-		public static ClassSignature parse(String sig, IClassEnv env) {
+		public static ClassSignature parse(String sig, ClassEnv env) {
 			// [<TypeParameter+>] ClassTypeSignature ClassTypeSignature*
 			ClassSignature ret = new ClassSignature();
 			MutableInt pos = new MutableInt();
@@ -83,7 +83,7 @@ public class Signature {
 	}
 
 	public static class TypeParameter implements PotentialComparable<TypeParameter> {
-		static TypeParameter parse(String sig, MutableInt pos, IClassEnv env) {
+		static TypeParameter parse(String sig, MutableInt pos, ClassEnv env) {
 			// Identifier ':' ReferenceTypeSignature ( ':' ReferenceTypeSignature )*
 			TypeParameter ret = new TypeParameter();
 
@@ -146,7 +146,7 @@ public class Signature {
 	}
 
 	public static class ReferenceTypeSignature implements PotentialComparable<ReferenceTypeSignature> {
-		static ReferenceTypeSignature parse(String sig, MutableInt pos, IClassEnv env) {
+		static ReferenceTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// ClassTypeSignature | TypeVariableSignature | ( '[' JavaTypeSignature )
 			ReferenceTypeSignature ret = new ReferenceTypeSignature();
 			char next = sig.charAt(pos.val);
@@ -204,7 +204,7 @@ public class Signature {
 	}
 
 	public static class ClassTypeSignature implements PotentialComparable<ClassTypeSignature> {
-		static ClassTypeSignature parse(String sig, MutableInt pos, IClassEnv env) {
+		static ClassTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// 'L' [PackageSpecifier] SimpleClassTypeSignature ( '.' SimpleClassTypeSignature )* ';'
 			// [PackageSpecifier] SimpleClassTypeSignature -> cls + typeArguments
 			ClassTypeSignature ret = new ClassTypeSignature();
@@ -275,7 +275,7 @@ public class Signature {
 	}
 
 	public static class JavaTypeSignature implements PotentialComparable<JavaTypeSignature> {
-		static JavaTypeSignature parse(String sig, MutableInt pos, IClassEnv env) {
+		static JavaTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// ReferenceTypeSignature | 'B' | 'C' | 'D' | 'F' | 'I' | 'J' | 'S' | 'Z'
 			JavaTypeSignature ret = new JavaTypeSignature();
 			char next = sig.charAt(pos.val);
@@ -318,7 +318,7 @@ public class Signature {
 	}
 
 	public static class SimpleClassTypeSignature implements PotentialComparable<SimpleClassTypeSignature> {
-		static SimpleClassTypeSignature parse(String sig, MutableInt pos, IClassEnv env) {
+		static SimpleClassTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// Identifier [<TypeArgument+>]
 			SimpleClassTypeSignature ret = new SimpleClassTypeSignature();
 
@@ -337,7 +337,7 @@ public class Signature {
 			return ret;
 		}
 
-		static List<TypeArgument> parseTypeArguments(String sig, MutableInt pos, IClassEnv env) {
+		static List<TypeArgument> parseTypeArguments(String sig, MutableInt pos, ClassEnv env) {
 			if (sig.charAt(pos.val) == '<') {
 				pos.val++;
 				List<TypeArgument> ret = new ArrayList<>();
@@ -396,7 +396,7 @@ public class Signature {
 	}
 
 	public static class TypeArgument implements PotentialComparable<TypeArgument> {
-		static TypeArgument parse(String sig, MutableInt pos, IClassEnv env) {
+		static TypeArgument parse(String sig, MutableInt pos, ClassEnv env) {
 			// ( ['+'|'-'] ReferenceTypeSignature ) | '*'
 			TypeArgument ret = new TypeArgument();
 			char next = sig.charAt(pos.val);
@@ -443,7 +443,7 @@ public class Signature {
 	}
 
 	public static class MethodSignature implements PotentialComparable<MethodSignature> {
-		public static MethodSignature parse(String sig, IClassEnv env) {
+		public static MethodSignature parse(String sig, ClassEnv env) {
 			// [<TypeParameter+>] '(' JavaTypeSignature* ')' ( 'V' | JavaTypeSignature ) ThrowsSignature*
 			MethodSignature ret = new MethodSignature();
 			MutableInt pos = new MutableInt();
@@ -551,7 +551,7 @@ public class Signature {
 	}
 
 	public static class ThrowsSignature implements PotentialComparable<ThrowsSignature> {
-		static ThrowsSignature parse(String sig, MutableInt pos, IClassEnv env) {
+		static ThrowsSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// '^' ( ClassTypeSignature | TypeVariableSignature )
 			ThrowsSignature ret = new ThrowsSignature();
 
@@ -604,7 +604,7 @@ public class Signature {
 	}
 
 	public static class FieldSignature implements PotentialComparable<FieldSignature> {
-		public static FieldSignature parse(String sig, IClassEnv env) {
+		public static FieldSignature parse(String sig, ClassEnv env) {
 			// ReferenceTypeSignature
 			FieldSignature ret = new FieldSignature();
 			MutableInt pos = new MutableInt();

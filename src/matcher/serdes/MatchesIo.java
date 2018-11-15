@@ -35,6 +35,10 @@ public class MatchesIo {
 			List<InputFile> inputFilesB = new ArrayList<>();
 			List<InputFile> cpFilesA = new ArrayList<>();
 			List<InputFile> cpFilesB = new ArrayList<>();
+			String nonObfuscatedClassPatternA = "";
+			String nonObfuscatedClassPatternB = "";
+			String nonObfuscatedMemberPatternA = "";
+			String nonObfuscatedMemberPatternB = "";
 			ClassInstance currentClass = null;
 			MethodInstance currentMethod = null;
 			String line;
@@ -106,7 +110,17 @@ public class MatchesIo {
 							state = ParserState.CP_FILES_B;
 							break;
 						default:
-							throw new IOException("invalid header: "+line);
+							if (line.startsWith("\tnon-obf cls a\t")) {
+								nonObfuscatedClassPatternA = line.substring("\tnon-obf cls a\t".length());
+							} else if (line.startsWith("\tnon-obf cls b\t")) {
+								nonObfuscatedClassPatternB = line.substring("\tnon-obf cls b\t".length());
+							} else if (line.startsWith("\tnon-obf mem a\t")) {
+								nonObfuscatedMemberPatternA = line.substring("\tnon-obf mem a\t".length());
+							} else if (line.startsWith("\tnon-obf mem b\t")) {
+								nonObfuscatedMemberPatternB = line.substring("\tnon-obf mem b\t".length());
+							} else {
+								throw new IOException("invalid header: "+line);
+							}
 						}
 					}
 				} else {
@@ -114,7 +128,9 @@ public class MatchesIo {
 						state = ParserState.CONTENT;
 
 						if (inputDirs != null) {
-							matcher.initFromMatches(inputDirs, inputFilesA, inputFilesB, cpFiles, cpFilesA, cpFilesB, progressReceiver);
+							matcher.initFromMatches(inputDirs, inputFilesA, inputFilesB, cpFiles, cpFilesA, cpFilesB,
+									nonObfuscatedClassPatternA, nonObfuscatedClassPatternB, nonObfuscatedMemberPatternA, nonObfuscatedMemberPatternB,
+									progressReceiver);
 							inputDirs = null;
 						}
 					}
@@ -219,6 +235,30 @@ public class MatchesIo {
 			writeInputFiles(env.getClassPathFilesA(), writer);
 			writer.write("\tcp b:\n");
 			writeInputFiles(env.getClassPathFilesB(), writer);
+
+			if (env.getNonObfuscatedClassPatternA() != null) {
+				writer.write("\tnon-obf cls a\t");
+				writer.write(env.getNonObfuscatedClassPatternA().toString());
+				writer.write('\n');
+			}
+
+			if (env.getNonObfuscatedClassPatternB() != null) {
+				writer.write("\tnon-obf cls b\t");
+				writer.write(env.getNonObfuscatedClassPatternB().toString());
+				writer.write('\n');
+			}
+
+			if (env.getNonObfuscatedMemberPatternA() != null) {
+				writer.write("\tnon-obf mem a\t");
+				writer.write(env.getNonObfuscatedMemberPatternA().toString());
+				writer.write('\n');
+			}
+
+			if (env.getNonObfuscatedMemberPatternB() != null) {
+				writer.write("\tnon-obf mem b\t");
+				writer.write(env.getNonObfuscatedMemberPatternB().toString());
+				writer.write('\n');
+			}
 
 			for (ClassInstance cls : classes) {
 				assert !cls.isShared();

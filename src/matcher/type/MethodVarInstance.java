@@ -59,17 +59,13 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	}
 
 	@Override
-	public IClassEnv getEnv() {
+	public ClassEnv getEnv() {
 		return method.getEnv();
 	}
 
 	@Override
-	public boolean isNameObfuscated(boolean recursive) {
-		if (!recursive) {
-			return nameObfuscated;
-		} else {
-			return nameObfuscated || method.isNameObfuscated(true);
-		}
+	public boolean isNameObfuscated() {
+		return nameObfuscated;
 	}
 
 	@Override
@@ -85,6 +81,16 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 
 	public void setTmpName(String tmpName) {
 		this.tmpName = tmpName;
+	}
+
+	@Override
+	public int getUid() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public String getUidString() {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

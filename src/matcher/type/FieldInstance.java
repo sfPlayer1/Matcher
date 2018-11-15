@@ -83,6 +83,14 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 		return writeRefs;
 	}
 
+	@Override
+	public String getUidString() {
+		int uid = getUid();
+		if (uid < 0) return null;
+
+		return "field_"+uid;
+	}
+
 	static String getId(String name, String desc) {
 		return name+";;"+desc;
 	}

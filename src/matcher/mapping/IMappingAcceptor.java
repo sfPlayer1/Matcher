@@ -1,4 +1,4 @@
-package matcher.serdes.mapping;
+package matcher.mapping;
 
 public interface IMappingAcceptor {
 	void acceptClass(String srcName, String dstName);

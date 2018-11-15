@@ -251,6 +251,14 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		return classRefs;
 	}
 
+	@Override
+	public String getUidString() {
+		int uid = getUid();
+		if (uid < 0) return null;
+
+		return "method_"+uid;
+	}
+
 	static String getId(String name, String desc) {
 		return name+desc;
 	}

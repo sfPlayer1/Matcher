@@ -26,7 +26,7 @@ import com.github.javaparser.ast.type.VoidType;
 
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.IClassEnv;
+import matcher.type.ClassEnv;
 import matcher.type.IMatchable;
 import matcher.type.MethodInstance;
 
@@ -236,7 +236,7 @@ class TypeResolver {
 	}
 
 	private ClassInstance rootCls;
-	private IClassEnv env;
+	private ClassEnv env;
 	private boolean mapped;
 	private boolean tmpNamed;
 	private boolean unmatchedTmp;

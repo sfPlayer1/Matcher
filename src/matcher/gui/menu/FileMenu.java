@@ -38,8 +38,11 @@ import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
+import matcher.gui.menu.SaveMappingsPane.MappingsSaveSettings;
+import matcher.mapping.MappingFormat;
+import matcher.mapping.Mappings;
 import matcher.serdes.MatchesIo;
-import matcher.serdes.mapping.MappingFormat;
+import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
 
 public class FileMenu extends Menu {
@@ -84,7 +87,7 @@ public class FileMenu extends Menu {
 
 		menuItem = new MenuItem("Clear mappings");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.getMatcher().clearMappings());
+		menuItem.setOnAction(event -> Mappings.clear(gui.getMatcher().getEnv()));
 
 		getItems().add(new SeparatorMenuItem());
 
@@ -213,7 +216,8 @@ public class FileMenu extends Menu {
 		boolean replace = result[1];
 
 		try {
-			gui.getMatcher().readMappings(file, format, forA, replace);
+			ClassEnvironment env = gui.getMatcher().getEnv();
+			Mappings.load(file, format, forA ? env.getEnvA() : env.getEnvB(), replace);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -294,24 +298,42 @@ public class FileMenu extends Menu {
 			}
 		}
 
-		try {
-			if (Files.exists(path)) {
-				if (Files.isDirectory(path) != !format.hasSingleFile()) {
-					gui.showAlert(AlertType.ERROR, "Save error", "Invalid file selection", "The selected file is of the wrong type.");
-					return;
+		if (Files.exists(path)) {
+			if (Files.isDirectory(path) != !format.hasSingleFile()) {
+				gui.showAlert(AlertType.ERROR, "Save error", "Invalid file selection", "The selected file is of the wrong type.");
+				return;
+			}
+		}
+
+		Dialog<MappingsSaveSettings> dialog = new Dialog<>();
+		//dialog.initModality(Modality.APPLICATION_MODAL);
+		dialog.setResizable(true);
+		dialog.setTitle("Mappings export settings");
+		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+		SaveMappingsPane content = new SaveMappingsPane();
+		dialog.getDialogPane().setContent(content);
+		dialog.setResultConverter(button -> button == ButtonType.OK ? content.getSettings() : null);
+		final Path savePath = path;
+		final MappingFormat saveFormat = format;
+
+		dialog.showAndWait().ifPresent(settings -> {
+			ClassEnvironment env = gui.getMatcher().getEnv();
+
+			try {
+				if (Files.exists(savePath)) {
+					Files.deleteIfExists(savePath);
 				}
 
-				Files.deleteIfExists(path);
+				if (!Mappings.save(savePath, saveFormat, settings.a ? env.getEnvA() : env.getEnvB(), settings.srcName, settings.dstName, settings.verbosity)) {
+					gui.showAlert(AlertType.WARNING, "Mapping save warning", "No mappings to save", "There are currently no names mapped to matched classes, so saving was aborted.");
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
 			}
-
-			if (!gui.getMatcher().saveMappings(path, format)) {
-				gui.showAlert(AlertType.WARNING, "Mapping save warning", "No mappings to save", "There are currently no names mapped to matched classes, so saving was aborted.");
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		}
+		});
 	}
 
 	private static boolean isDirEmpty(Path dir) {
