@@ -43,7 +43,7 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	 * Create an array class.
 	 */
 	ClassInstance(String id, ClassInstance elementClass) {
-		this(id, null, elementClass.env, null, false, false, elementClass);
+		this(id, null, elementClass.env, null, elementClass.nameObfuscated, false, elementClass);
 
 		assert id.startsWith("[") : id;
 		assert id.indexOf('[', getArrayDimensions()) == -1 : id;
