@@ -38,6 +38,7 @@ import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
+import matcher.gui.menu.LoadProjectPane.ProjectLoadSettings;
 import matcher.gui.menu.SaveMappingsPane.MappingsSaveSettings;
 import matcher.mapping.MappingFormat;
 import matcher.mapping.Mappings;
@@ -139,7 +140,7 @@ public class FileMenu extends Menu {
 		Path file = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (file == null) return;
 
-		Dialog<List<Path>> dialog = new Dialog<>();
+		Dialog<ProjectLoadSettings> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
 		dialog.setTitle("Project paths");
@@ -147,21 +148,22 @@ public class FileMenu extends Menu {
 
 		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
 
-		LoadProjectPane content = new LoadProjectPane(Config.getInputDirs(), dialog.getOwner(), okButton);
+		LoadProjectPane content = new LoadProjectPane(Config.getInputDirs(), Config.getVerifyInputFiles(), dialog.getOwner(), okButton);
 		dialog.getDialogPane().setContent(content);
 		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
 		dialog.showAndWait().ifPresent(newConfig -> {
-			if (newConfig.isEmpty()) return;
+			if (newConfig.paths.isEmpty()) return;
 
-			Config.setInputDirs(newConfig);
+			Config.setInputDirs(newConfig.paths);
+			Config.setVerifyInputFiles(newConfig.verifyFiles);
 			Config.saveAsLast();
 
 			gui.getMatcher().reset();
 			gui.onProjectChange();
 
 			gui.runProgressTask("Initializing files...",
-					progressReceiver -> MatchesIo.read(file, newConfig, gui.getMatcher(), progressReceiver),
+					progressReceiver -> MatchesIo.read(file, newConfig.paths, newConfig.verifyFiles, gui.getMatcher(), progressReceiver),
 					() -> gui.onProjectChange(),
 					Throwable::printStackTrace);
 		});
@@ -407,7 +409,7 @@ public class FileMenu extends Menu {
 		Path file = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (file == null) return;
 
-		MatchesIo.read(file, null, gui.getMatcher(), progress -> {});
+		MatchesIo.read(file, null, false, gui.getMatcher(), progress -> {});
 		gui.onMatchChange(EnumSet.allOf(MatchType.class));
 	}
 

@@ -25,7 +25,7 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class MatchesIo {
-	public static void read(Path path, List<Path> inputDirs, Matcher matcher, DoubleConsumer progressReceiver) {
+	public static void read(Path path, List<Path> inputDirs, boolean verifyInputs, Matcher matcher, DoubleConsumer progressReceiver) {
 		ClassEnvironment env = matcher.getEnv();
 
 		try (BufferedReader reader = Files.newBufferedReader(path)) {
@@ -75,13 +75,16 @@ public class MatchesIo {
 						}
 
 						int pos = line.indexOf('\t', 2);
-						long size;
-						byte[] hash;
+						long size = -1;
+						byte[] hash = null;
 
 						if (pos == -1) {
-							size = -1;
-							hash = null;
 							pos = 2;
+						} else if (!verifyInputs) {
+							if (pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
+							pos = line.indexOf('\t', pos + 1);
+							if (pos == -1 || pos == pos + 1 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
+							pos++;
 						} else {
 							if (pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
 							size = Long.parseLong(line.substring(2, pos));

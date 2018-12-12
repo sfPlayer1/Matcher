@@ -12,6 +12,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionMode;
@@ -23,10 +24,11 @@ import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
 
 public class LoadProjectPane extends VBox {
-	LoadProjectPane(List<Path> paths, Window window, Node okButton) {
+	LoadProjectPane(List<Path> paths, boolean verifyFiles, Window window, Node okButton) {
 		super(GuiConstants.padding);
 
 		this.paths = FXCollections.observableArrayList(paths);
+		this.verifyFiles = verifyFiles;
 		this.window = window;
 		this.okButton = okButton;
 
@@ -80,13 +82,29 @@ public class LoadProjectPane extends VBox {
 
 		itemChangeListener.onChanged(null);
 		selectChangeListener.onChanged(null);
+
+		verifyFilesBox = new CheckBox("verify files (hash, size)");
+		verifyFilesBox.setSelected(verifyFiles);
+		getChildren().add(verifyFilesBox);
 	}
 
-	public List<Path> createConfig() {
-		return new ArrayList<>(paths);
+	public ProjectLoadSettings createConfig() {
+		return new ProjectLoadSettings(new ArrayList<>(paths), verifyFilesBox.isSelected());
+	}
+
+	public static class ProjectLoadSettings {
+		public ProjectLoadSettings(List<Path> paths, boolean verifyFiles) {
+			this.paths = paths;
+			this.verifyFiles = verifyFiles;
+		}
+
+		public final List<Path> paths;
+		public final boolean verifyFiles;
 	}
 
 	private final ObservableList<Path> paths;
+	private final boolean verifyFiles;
+	private CheckBox verifyFilesBox;
 	private final Window window;
 	private final Node okButton;
 }

@@ -19,6 +19,7 @@ public class Config {
 
 				if (prefs.nodeExists(lastProjectSetupKey)) setProjectConfig(new ProjectConfig(prefs.node(lastProjectSetupKey)));
 				setInputDirs(loadList(prefs, lastInputDirsKey, Config::deserializePath));
+				setVerifyInputFiles(prefs.getBoolean(lastVerifyInputFilesKey, true));
 				setUidConfig(new UidConfig(prefs));
 			}
 		} catch (BackingStoreException e) { }
@@ -28,6 +29,10 @@ public class Config {
 
 	public static ProjectConfig getProjectConfig() {
 		return projectConfig;
+	}
+
+	public static boolean getVerifyInputFiles() {
+		return verifyInputFiles;
 	}
 
 	public static List<Path> getInputDirs() {
@@ -51,6 +56,10 @@ public class Config {
 		inputDirs.addAll(dirs);
 	}
 
+	public static void setVerifyInputFiles(boolean value) {
+		verifyInputFiles = value;
+	}
+
 	public static boolean setUidConfig(UidConfig config) {
 		if (!config.isValid()) return false;
 
@@ -65,6 +74,7 @@ public class Config {
 		try {
 			if (projectConfig.isValid()) projectConfig.save(root.node(lastProjectSetupKey));
 			saveList(root.node(lastInputDirsKey), inputDirs);
+			root.putBoolean(lastVerifyInputFilesKey, verifyInputFiles);
 			uidConfig.save(root);
 
 			root.flush();
@@ -102,8 +112,10 @@ public class Config {
 	private static final String userPrefFolder = "player-obf-matcher";
 	private static final String lastProjectSetupKey = "last-project-setup";
 	private static final String lastInputDirsKey = "last-input-dirs";
+	private static final String lastVerifyInputFilesKey = "last-verify-input-files";
 
 	private static ProjectConfig projectConfig = new ProjectConfig();
 	private static final List<Path> inputDirs = new ArrayList<>();
+	private static boolean verifyInputFiles = true;
 	private static UidConfig uidConfig = new UidConfig();
 }
