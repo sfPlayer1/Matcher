@@ -42,14 +42,16 @@ class EnigmaMappingState implements IMappingAcceptor{
 	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvIndex, String dstArgName) {
 		assert dstArgName != null;
 
-		getMethod(srcClsName, srcName, srcDesc).args.add(new EnigmaMappingMethodVar(argIndex, dstArgName));
+		getMethod(srcClsName, srcName, srcDesc).args.add(new EnigmaMappingMethodVar(LEGACY ? lvIndex : argIndex, dstArgName));
 	}
 
 	@Override
 	public void acceptMethodVar(String srcClsName, String srcName, String srcDesc, int varIndex, int lvIndex, String dstVarName) {
 		assert dstVarName != null;
 
-		getMethod(srcClsName, srcName, srcDesc).vars.add(new EnigmaMappingMethodVar(varIndex, dstVarName));
+		if (!LEGACY) {
+			getMethod(srcClsName, srcName, srcDesc).vars.add(new EnigmaMappingMethodVar(varIndex, dstVarName));
+		}
 	}
 
 	@Override
@@ -270,6 +272,8 @@ class EnigmaMappingState implements IMappingAcceptor{
 		private final String nameDesc;
 		final String mappedName;
 	}
+
+	static final boolean LEGACY = true;
 
 	private final Path dstPath;
 	private final Map<String, EnigmaMappingClass> classes = new HashMap<>();

@@ -263,12 +263,18 @@ public class MappingReader {
 					String srcMethodName = methodContext.substring(1, methodDescStart);
 					String srcMethodDesc = methodContext.substring(methodDescStart);
 					int index = Integer.parseInt(parts[1]);
+					int lvIndex = -1;
 					String name = parts[2];
 
+					if (EnigmaMappingState.LEGACY) {
+						lvIndex = index;
+						index = -1;
+					}
+
 					if (parts[0].equals("ARG")) {
-						mappingAcceptor.acceptMethodArg(srcClsName, srcMethodName, srcMethodDesc, index, -1, name);
+						mappingAcceptor.acceptMethodArg(srcClsName, srcMethodName, srcMethodDesc, index, lvIndex, name);
 					} else {
-						mappingAcceptor.acceptMethodVar(srcClsName, srcMethodName, srcMethodDesc, index, -1, name);
+						mappingAcceptor.acceptMethodVar(srcClsName, srcMethodName, srcMethodDesc, index, lvIndex, name);
 					}
 
 					break;
