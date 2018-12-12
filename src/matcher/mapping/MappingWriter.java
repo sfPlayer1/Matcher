@@ -130,7 +130,7 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				}
 				break;
 			case SRG:
-				if (dstClsName != null && dstName != null) {
+				if (dstName != null) {
 					writer.write("MD: ");
 					writer.write(srcClsName);
 					writer.write('/');
@@ -138,7 +138,7 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 					writer.write(' ');
 					writer.write(srcDesc);
 					writer.write(' ');
-					writer.write(dstClsName);
+					writer.write(dstClsName != null ? dstClsName : srcClsName);
 					writer.write('/');
 					writer.write(dstName);
 					writer.write(' ');
@@ -262,13 +262,13 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				}
 				break;
 			case SRG:
-				if (dstClsName != null && dstName != null) {
+				if (dstName != null) {
 					writer.write("FD: ");
 					writer.write(srcClsName);
 					writer.write('/');
 					writer.write(srcName);
 					writer.write(' ');
-					writer.write(dstClsName);
+					writer.write(dstClsName != null ? dstClsName : srcClsName);
 					writer.write('/');
 					writer.write(dstName);
 					writer.write('\n');

@@ -227,7 +227,11 @@ public class Mappings {
 
 				String dstClsName = getName(cls, dstType);
 
-				if ((dstClsName == null || dstClsName.equals(srcClsName))
+				if (dstClsName != null && dstClsName.equals(srcClsName)) {
+					dstClsName = null;
+				}
+
+				if (dstClsName == null
 						&& (!format.supportsComments || cls.getMappedComment() == null)
 						&& !shouldExportAny(cls.getMethods(), format, srcType, dstType, verbosity, exportedHierarchies)
 						&& !shouldExportAny(cls.getFields(), format, srcType, dstType)) {
@@ -252,6 +256,10 @@ public class Mappings {
 					String srcName = getName(m, srcType);
 					String desc = getDesc(m, srcType);
 					String dstName = getName(m, dstType);
+
+					if (dstName != null && dstName.equals(srcName)) {
+						dstName = null;
+					}
 
 					if (dstName != null && shouldExportName(m, verbosity, exportedHierarchies)) {
 						if (verbosity == MappingsExportVerbosity.MINIMAL) exportedHierarchies.add(m.getAllHierarchyMembers());
@@ -295,6 +303,11 @@ public class Mappings {
 					String srcName = getName(f, srcType);
 					String desc = getDesc(f, srcType);
 					String dstName = getName(f, dstType);
+
+					if (dstName != null && dstName.equals(srcName)) {
+						dstName = null;
+					}
+
 					writer.acceptField(srcClsName, srcName, desc, dstClsName, dstName, getDesc(f, dstType));
 
 					if (format.supportsComments) {
