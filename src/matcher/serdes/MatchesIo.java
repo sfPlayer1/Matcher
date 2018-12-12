@@ -152,7 +152,7 @@ public class MatchesIo {
 						} else {
 							matcher.match(currentClass, target);
 						}
-					} else if (line.startsWith("\tm\t") || line.startsWith("\tf\t")) {
+					} else if (line.startsWith("\tm\t") || line.startsWith("\tf\t")) { // method or field
 						if (currentClass != null) {
 							int pos = line.indexOf('\t', 3);
 							if (pos == -1 || pos == 3 || pos + 1 == line.length()) throw new IOException("invalid matches file");
@@ -184,7 +184,7 @@ public class MatchesIo {
 								}
 							}
 						}
-					} else if (line.startsWith("\t\tma\t")) {
+					} else if (line.startsWith("\t\tma\t") || line.startsWith("\t\tmv\t")) { // method arg or method var
 						if (currentMethod != null) {
 							int pos = line.indexOf('\t', 5);
 							if (pos == -1 || pos == 5 || pos + 1 == line.length()) throw new IOException("invalid matches file");
@@ -193,14 +193,29 @@ public class MatchesIo {
 							int idxB = Integer.parseInt(line.substring(pos + 1));
 							MethodInstance matchedMethod = currentMethod.getMatch();
 
-							if (idxA < 0 || idxA >= currentMethod.getArgs().length) {
-								System.err.println("Unknown a method arg "+idxA+" in method "+currentMethod);
-							} else if (matchedMethod == null) {
+							if (matchedMethod == null) {
 								System.err.println("Arg for unmatched method "+currentMethod);
-							} else if (idxB < 0 || idxB >= matchedMethod.getArgs().length) {
-								System.err.println("Unknown b method arg "+idxB+" in method "+matchedMethod);
 							} else {
-								matcher.match(currentMethod.getArg(idxA), matchedMethod.getArg(idxB));
+								MethodVarInstance[] varsA, varsB;
+								String type;
+
+								if (line.startsWith("\t\tma\t")) {
+									type = "arg";
+									varsA = currentMethod.getArgs();
+									varsB = matchedMethod.getArgs();
+								} else {
+									type = "var";
+									varsA = currentMethod.getVars();
+									varsB = matchedMethod.getVars();
+								}
+
+								if (idxA < 0 || idxA >= varsA.length) {
+									System.err.println("Unknown a method "+type+" "+idxA+" in method "+currentMethod);
+								} else if (idxB < 0 || idxB >= varsB.length) {
+									System.err.println("Unknown b method "+type+" "+idxB+" in method "+matchedMethod);
+								} else {
+									matcher.match(varsA[idxA], varsB[idxB]);
+								}
 							}
 						}
 					}
@@ -302,6 +317,16 @@ public class MatchesIo {
 				out.write(Integer.toString(arg.getIndex()));
 				out.write('\t');
 				out.write(Integer.toString(arg.getMatch().getIndex()));
+				out.write('\n');
+			}
+
+			for (MethodVarInstance var : method.getVars()) {
+				if (var.getMatch() == null) continue;
+
+				out.write("\t\tmv\t");
+				out.write(Integer.toString(var.getIndex()));
+				out.write('\t');
+				out.write(Integer.toString(var.getMatch().getIndex()));
 				out.write('\n');
 			}
 		}

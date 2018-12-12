@@ -39,10 +39,17 @@ class EnigmaMappingState implements IMappingAcceptor{
 	}
 
 	@Override
-	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvtIndex, String dstArgName) {
+	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvIndex, String dstArgName) {
 		assert dstArgName != null;
 
-		getMethod(srcClsName, srcName, srcDesc).args.add(new EnigmaMappingMethodArg(argIndex, dstArgName));
+		getMethod(srcClsName, srcName, srcDesc).args.add(new EnigmaMappingMethodVar(argIndex, dstArgName));
+	}
+
+	@Override
+	public void acceptMethodVar(String srcClsName, String srcName, String srcDesc, int varIndex, int lvIndex, String dstVarName) {
+		assert dstVarName != null;
+
+		getMethod(srcClsName, srcName, srcDesc).vars.add(new EnigmaMappingMethodVar(varIndex, dstVarName));
 	}
 
 	@Override
@@ -129,12 +136,26 @@ class EnigmaMappingState implements IMappingAcceptor{
 				writer.write('\n');
 
 				if (!method.args.isEmpty()) {
-					List<EnigmaMappingMethodArg> args = new ArrayList<>(method.args);
+					List<EnigmaMappingMethodVar> args = new ArrayList<>(method.args);
 					args.sort(Comparator.naturalOrder());
 
-					for (EnigmaMappingMethodArg arg : args) {
+					for (EnigmaMappingMethodVar arg : args) {
 						writer.write(prefix);
 						writer.write("\t\tARG ");
+						writer.write(Integer.toString(arg.index));
+						writer.write(' ');
+						writer.write(arg.mappedName);
+						writer.write('\n');
+					}
+				}
+
+				if (!method.vars.isEmpty()) {
+					List<EnigmaMappingMethodVar> args = new ArrayList<>(method.vars);
+					args.sort(Comparator.naturalOrder());
+
+					for (EnigmaMappingMethodVar arg : args) {
+						writer.write(prefix);
+						writer.write("\t\tVAR ");
 						writer.write(Integer.toString(arg.index));
 						writer.write(' ');
 						writer.write(arg.mappedName);
@@ -212,17 +233,18 @@ class EnigmaMappingState implements IMappingAcceptor{
 		final String desc;
 		private final String nameDesc;
 		String mappedName;
-		final List<EnigmaMappingMethodArg> args = new ArrayList<>();
+		final List<EnigmaMappingMethodVar> args = new ArrayList<>();
+		final List<EnigmaMappingMethodVar> vars = new ArrayList<>();
 	}
 
-	private static class EnigmaMappingMethodArg implements Comparable<EnigmaMappingMethodArg> {
-		EnigmaMappingMethodArg(int index, String mappedName) {
+	private static class EnigmaMappingMethodVar implements Comparable<EnigmaMappingMethodVar> {
+		EnigmaMappingMethodVar(int index, String mappedName) {
 			this.index = index;
 			this.mappedName = mappedName;
 		}
 
 		@Override
-		public int compareTo(EnigmaMappingMethodArg o) {
+		public int compareTo(EnigmaMappingMethodVar o) {
 			return Integer.compare(index, o.index);
 		}
 

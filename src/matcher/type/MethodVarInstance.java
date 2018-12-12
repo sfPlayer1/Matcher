@@ -1,13 +1,13 @@
 package matcher.type;
 
 public class MethodVarInstance implements IMatchable<MethodVarInstance> {
-	MethodVarInstance(MethodInstance method, boolean isArg, int index, int lvtIndex, int asmIndex,
+	MethodVarInstance(MethodInstance method, boolean isArg, int index, int lvIndex, int asmIndex,
 			ClassInstance type, int startInsn, int endInsn,
 			String origName, boolean nameObfuscated) {
 		this.method = method;
 		this.isArg = isArg;
 		this.index = index;
-		this.lvtIndex = lvtIndex;
+		this.lvIndex = lvIndex;
 		this.asmIndex = asmIndex;
 		this.type = type;
 		this.startInsn = startInsn;
@@ -28,8 +28,8 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 		return index;
 	}
 
-	public int getLvtIndex() {
-		return lvtIndex;
+	public int getLvIndex() {
+		return lvIndex;
 	}
 
 	public int getAsmIndex() {
@@ -127,7 +127,7 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	final MethodInstance method;
 	final boolean isArg;
 	final int index;
-	final int lvtIndex;
+	final int lvIndex;
 	final int asmIndex;
 	final ClassInstance type;
 	final int startInsn; // inclusive

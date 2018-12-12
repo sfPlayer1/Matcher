@@ -182,7 +182,7 @@ public class FileMenu extends Menu {
 		Dialog<boolean[]> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
-		dialog.setTitle("UID Setup");
+		dialog.setTitle("Import Settings");
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
 		GridPane grid = new GridPane();

@@ -184,7 +184,7 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 	}
 
 	@Override
-	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvtIndex, String dstArgName) {
+	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvIndex, String dstArgName) {
 		try {
 			switch (format) {
 			case TINY:
@@ -205,7 +205,37 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				// not supported
 				break;
 			case ENIGMA:
-				enigmaState.acceptMethodArg(srcClsName, srcName, srcDesc, argIndex, lvtIndex, dstArgName);
+				enigmaState.acceptMethodArg(srcClsName, srcName, srcDesc, argIndex, lvIndex, dstArgName);
+				break;
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public void acceptMethodVar(String srcClsName, String srcName, String srcDesc, int varIndex, int lvIndex, String dstVarName) {
+		try {
+			switch (format) {
+			case TINY:
+			case TINY_GZIP:
+				writer.write("MTH-VAR\t");
+				writer.write(srcClsName);
+				writer.write('\t');
+				writer.write(srcDesc);
+				writer.write('\t');
+				writer.write(srcName);
+				writer.write('\t');
+				writer.write(Integer.toString(varIndex));
+				writer.write('\t');
+				writer.write(dstVarName);
+				writer.write('\n');
+				break;
+			case SRG:
+				// not supported
+				break;
+			case ENIGMA:
+				enigmaState.acceptMethodVar(srcClsName, srcName, srcDesc, varIndex, lvIndex, dstVarName);
 				break;
 			}
 		} catch (IOException e) {

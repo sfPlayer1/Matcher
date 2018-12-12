@@ -147,17 +147,20 @@ public class MappingReader {
 						unescape(parts[4]));
 				break;
 			case "MTH-ARG":
+			case "MTH-VAR":
 				if (parts.length != 6) throw new IOException("invalid tiny line (missing/extra columns): "+line);
 				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
 				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty src method desc): "+line);
 				if (parts[3].isEmpty()) throw new IOException("invalid tiny line (empty src method name): "+line);
-				if (parts[4].isEmpty()) throw new IOException("invalid tiny line (empty method arg index): "+line);
-				if (parts[5].isEmpty()) throw new IOException("invalid tiny line (empty dst method arg name): "+line);
+				if (parts[4].isEmpty()) throw new IOException("invalid tiny line (empty method arg/var index): "+line);
+				if (parts[5].isEmpty()) throw new IOException("invalid tiny line (empty dst method arg/var name): "+line);
 
-				mappingAcceptor.acceptMethodArg(
-						parts[1], parts[3], parts[2],
-						Integer.parseInt(parts[4]), -1,
-						parts[5]);
+				if (parts[0].equals("MTH-ARG")) {
+					mappingAcceptor.acceptMethodArg(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, parts[5]);
+				} else {
+					mappingAcceptor.acceptMethodVar(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, parts[5]);
+				}
+
 				break;
 			case "FIELD":
 				if (parts.length != 5) throw new IOException("invalid tiny line (missing/extra columns): "+line);
@@ -245,7 +248,8 @@ public class MappingReader {
 					if (parts.length == 4) mappingAcceptor.acceptMethod(context.substring(1), parts[1], parts[3], null, parts[2], null);
 					break;
 				}
-				case "ARG": {
+				case "ARG":
+				case "VAR": {
 					if (parts.length != 3) throw new IOException("invalid enigma line (missing/extra columns): "+line);
 					String methodContext = contextStack.poll();
 					if (methodContext == null || methodContext.charAt(0) != 'M') throw new IOException("invalid enigma line (arg without method): "+line);
@@ -254,12 +258,19 @@ public class MappingReader {
 					contextStack.add(methodContext);
 					int methodDescStart = methodContext.indexOf('(');
 					assert methodDescStart != -1;
-					mappingAcceptor.acceptMethodArg(classContext.substring(1),
-							methodContext.substring(1, methodDescStart),
-							methodContext.substring(methodDescStart),
-							Integer.parseInt(parts[1]),
-							-1,
-							parts[2]);
+
+					String srcClsName = classContext.substring(1);
+					String srcMethodName = methodContext.substring(1, methodDescStart);
+					String srcMethodDesc = methodContext.substring(methodDescStart);
+					int index = Integer.parseInt(parts[1]);
+					String name = parts[2];
+
+					if (parts[0].equals("ARG")) {
+						mappingAcceptor.acceptMethodArg(srcClsName, srcMethodName, srcMethodDesc, index, -1, name);
+					} else {
+						mappingAcceptor.acceptMethodVar(srcClsName, srcMethodName, srcMethodDesc, index, -1, name);
+					}
+
 					break;
 				}
 				case "FIELD":

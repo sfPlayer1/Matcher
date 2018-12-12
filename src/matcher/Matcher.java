@@ -29,8 +29,8 @@ import matcher.classifier.ClassClassifier;
 import matcher.classifier.ClassifierLevel;
 import matcher.classifier.FieldClassifier;
 import matcher.classifier.IRanker;
-import matcher.classifier.MethodArgClassifier;
 import matcher.classifier.MethodClassifier;
+import matcher.classifier.MethodVarClassifier;
 import matcher.classifier.RankResult;
 import matcher.config.Config;
 import matcher.config.ProjectConfig;
@@ -48,7 +48,7 @@ public class Matcher {
 		ClassClassifier.init();
 		MethodClassifier.init();
 		FieldClassifier.init();
-		MethodArgClassifier.init();
+		MethodVarClassifier.init();
 	}
 
 	public Matcher(ClassEnvironment env) {
@@ -391,6 +391,7 @@ public class Matcher {
 
 		do {
 			matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+			matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
 		} while (matchedAny);
 
 		env.getCache().clear();
@@ -567,12 +568,21 @@ public class Matcher {
 	}
 
 	public boolean autoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
+		return autoMatchMethodVars(true, MethodInstance::getArgs, level, absThreshold, relThreshold, progressReceiver);
+	}
+
+	public boolean autoMatchMethodVars(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
+		return autoMatchMethodVars(false, MethodInstance::getVars, level, absThreshold, relThreshold, progressReceiver);
+	}
+
+	private boolean autoMatchMethodVars(boolean isArg, Function<MethodInstance, MethodVarInstance[]> supplier,
+			ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		List<MethodInstance> methods = env.getClassesA().stream()
 				.filter(cls -> cls.getUri() != null && cls.getMatch() != null && cls.getMethods().length > 0)
 				.flatMap(cls -> Stream.<MethodInstance>of(cls.getMethods()))
-				.filter(m -> m.getMatch() != null && m.getArgs().length > 0)
+				.filter(m -> m.getMatch() != null && supplier.apply(m).length > 0)
 				.filter(m -> {
-					for (MethodVarInstance a : m.getArgs()) {
+					for (MethodVarInstance a : supplier.apply(m)) {
 						if (a.getMatch() == null) return true;
 					}
 
@@ -585,22 +595,22 @@ public class Matcher {
 		if (methods.isEmpty()) {
 			matches = Collections.emptyMap();
 		} else {
-			double maxScore = MethodArgClassifier.getMaxScore(level);
+			double maxScore = MethodVarClassifier.getMaxScore(level);
 			double maxMismatch = maxScore - getRawScore(absThreshold * (1 - relThreshold), maxScore);
 			matches = new ConcurrentHashMap<>(512);
 
 			runInParallel(methods, m -> {
 				int unmatched = 0;
 
-				for (MethodVarInstance arg : m.getArgs()) {
-					if (arg.getMatch() != null) continue;
+				for (MethodVarInstance var : supplier.apply(m)) {
+					if (var.getMatch() != null) continue;
 
-					List<RankResult<MethodVarInstance>> ranking = MethodArgClassifier.rank(arg, m.getMatch().getArgs(), level, env, maxMismatch);
+					List<RankResult<MethodVarInstance>> ranking = MethodVarClassifier.rank(var, supplier.apply(m.getMatch()), level, env, maxMismatch);
 
 					if (checkRank(ranking, absThreshold, relThreshold, maxScore)) {
 						MethodVarInstance match = ranking.get(0).getSubject();
 
-						matches.put(arg, match);
+						matches.put(var, match);
 					} else {
 						unmatched++;
 					}
@@ -616,7 +626,7 @@ public class Matcher {
 			match(entry.getKey(), entry.getValue());
 		}
 
-		System.out.println("Auto matched "+matches.size()+" method args ("+totalUnmatched.get()+" unmatched)");
+		System.out.println("Auto matched "+matches.size()+" method "+(isArg ? "arg" : "var")+"s ("+totalUnmatched.get()+" unmatched)");
 
 		return !matches.isEmpty();
 	}
@@ -668,6 +678,8 @@ public class Matcher {
 		int matchedMethodCount = 0;
 		int totalMethodArgCount = 0;
 		int matchedMethodArgCount = 0;
+		int totalMethodVarCount = 0;
+		int matchedMethodVarCount = 0;
 		int totalFieldCount = 0;
 		int matchedFieldCount = 0;
 
@@ -688,6 +700,12 @@ public class Matcher {
 
 						if (arg.getMatch() != null) matchedMethodArgCount++;
 					}
+
+					for (MethodVarInstance var : method.getVars()) {
+						totalMethodVarCount++;
+
+						if (var.getMatch() != null) matchedMethodVarCount++;
+					}
 				}
 			}
 
@@ -700,7 +718,11 @@ public class Matcher {
 			}
 		}
 
-		return new MatchingStatus(totalClassCount, matchedClassCount, totalMethodCount, matchedMethodCount, totalMethodArgCount, matchedMethodArgCount, totalFieldCount, matchedFieldCount);
+		return new MatchingStatus(totalClassCount, matchedClassCount,
+				totalMethodCount, matchedMethodCount,
+				totalMethodArgCount, matchedMethodArgCount,
+				totalMethodVarCount, matchedMethodVarCount,
+				totalFieldCount, matchedFieldCount);
 	}
 
 	public boolean propagateNames(DoubleConsumer progressReceiver) {
@@ -781,6 +803,7 @@ public class Matcher {
 		MatchingStatus(int totalClassCount, int matchedClassCount,
 				int totalMethodCount, int matchedMethodCount,
 				int totalMethodArgCount, int matchedMethodArgCount,
+				int totalMethodVarCount, int matchedMethodVarCount,
 				int totalFieldCount, int matchedFieldCount) {
 			this.totalClassCount = totalClassCount;
 			this.matchedClassCount = matchedClassCount;
@@ -788,6 +811,8 @@ public class Matcher {
 			this.matchedMethodCount = matchedMethodCount;
 			this.totalMethodArgCount = totalMethodArgCount;
 			this.matchedMethodArgCount = matchedMethodArgCount;
+			this.totalMethodVarCount = totalMethodVarCount;
+			this.matchedMethodVarCount = matchedMethodVarCount;
 			this.totalFieldCount = totalFieldCount;
 			this.matchedFieldCount = matchedFieldCount;
 		}
@@ -798,6 +823,8 @@ public class Matcher {
 		public final int matchedMethodCount;
 		public final int totalMethodArgCount;
 		public final int matchedMethodArgCount;
+		public final int totalMethodVarCount;
+		public final int matchedMethodVarCount;
 		public final int totalFieldCount;
 		public final int matchedFieldCount;
 	}

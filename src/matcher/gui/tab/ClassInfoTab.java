@@ -135,7 +135,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 	}
 
 	static String format(Collection<? extends IMatchable<?>> c, boolean tmpNamed, boolean unmatchedTmp) {
-		return c.stream().map(v -> ClassInfoTab.getName(v, tmpNamed, unmatchedTmp)).sorted().collect(Collectors.joining("\n"));
+		return c.stream().map(v -> getName(v, tmpNamed, unmatchedTmp)).sorted().collect(Collectors.joining("\n"));
 	}
 
 	static String getName(IMatchable<?> m, boolean tmpNamed, boolean unmatchedTmp) {

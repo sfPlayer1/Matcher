@@ -9,10 +9,11 @@ import java.util.Map;
 import matcher.type.ClassEnvironment;
 import matcher.type.MethodVarInstance;
 
-public class MethodArgClassifier {
+public class MethodVarClassifier {
 	public static void init() {
 		addClassifier(type, 10);
 		addClassifier(position, 3);
+		addClassifier(lvIndex, 2);
 	}
 
 	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
@@ -47,7 +48,17 @@ public class MethodArgClassifier {
 	private static AbstractClassifier position = new AbstractClassifier("position") {
 		@Override
 		public double getScore(MethodVarInstance methodA, MethodVarInstance methodB, ClassEnvironment env) {
-			return ClassifierUtil.classifyPosition(methodA, methodB, MethodVarInstance::getIndex, (a, idx) -> a.getMethod().getArg(idx), a -> a.getMethod().getArgs());
+			return ClassifierUtil.classifyPosition(methodA, methodB,
+					MethodVarInstance::getIndex,
+					(a, idx) -> (a.isArg() ? a.getMethod().getArg(idx) : a.getMethod().getVar(idx)),
+					a -> (a.isArg() ? a.getMethod().getArgs() : a.getMethod().getVars()));
+		}
+	};
+
+	private static AbstractClassifier lvIndex = new AbstractClassifier("lv index") {
+		@Override
+		public double getScore(MethodVarInstance argA, MethodVarInstance argB, ClassEnvironment env) {
+			return argA.getLvIndex() == argB.getLvIndex() ? 1 : 0;
 		}
 	};
 

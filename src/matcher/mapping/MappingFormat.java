@@ -1,17 +1,18 @@
 package matcher.mapping;
 
 public enum MappingFormat {
-	TINY("Tiny", "tiny", true, true),
-	TINY_GZIP("Tiny (gzipped)", "tiny.gz", true, true),
-	ENIGMA("Enigma", null, false, true),
-	MCP("MCP", null, true, true),
-	SRG("SRG", "srg", false, false);
+	TINY("Tiny", "tiny", true, true, false),
+	TINY_GZIP("Tiny (gzipped)", "tiny.gz", true, true, false),
+	ENIGMA("Enigma", null, false, true, false),
+	MCP("MCP", null, true, true, false),
+	SRG("SRG", "srg", false, false, false);
 
-	private MappingFormat(String name, String fileExt, boolean supportsComments, boolean supportsArgs) {
+	private MappingFormat(String name, String fileExt, boolean supportsComments, boolean supportsArgs, boolean supportsLocals) {
 		this.name = name;
 		this.fileExt = fileExt;
 		this.supportsComments = supportsComments;
 		this.supportsArgs = supportsArgs;
+		this.supportsLocals = supportsLocals;
 	}
 
 	public boolean hasSingleFile() {
@@ -28,4 +29,5 @@ public enum MappingFormat {
 	public final String fileExt;
 	public final boolean supportsComments;
 	public final boolean supportsArgs;
+	public final boolean supportsLocals;
 }

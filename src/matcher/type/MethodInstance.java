@@ -1,5 +1,8 @@
 package matcher.type;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -33,7 +36,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 
 		this.asmNode = asmNode;
 		this.args = gatherArgs(this, desc);
-		//this.vars = gatherVars(this);
+		this.vars = gatherVars(this);
 		this.retType = cls.getEnv().getCreateClassInstance(Type.getReturnType(desc).getDescriptor());
 		classRefs.add(retType);
 		retType.methodTypeRefs.add(this);
@@ -48,7 +51,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		List<LocalVariableNode> locals = method.asmNode != null ? method.asmNode.localVariables : null;
 		InsnList il = method.asmNode != null ? method.asmNode.instructions : null;
 		AbstractInsnNode firstInsn = method.asmNode != null ? il.getFirst() : null;
-		int lvtIdx = method.isStatic ? 0 : 1;
+		int lvIdx = method.isStatic ? 0 : 1;
 
 		for (int i = 0; i < argTypes.length; i++) {
 			Type asmType = argTypes[i];
@@ -62,7 +65,7 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 				for (int j = 0; j < locals.size(); j++) {
 					LocalVariableNode n = locals.get(j);
 
-					if (n.index == lvtIdx && n.start == firstInsn) {
+					if (n.index == lvIdx && n.start == firstInsn) {
 						assert n.desc.equals(type.id);
 
 						asmIndex = j;
@@ -75,54 +78,64 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 				}
 			}
 
-			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvtIdx, asmIndex, type, startInsn, endInsn, name, name == null || method.nameObfuscated || method.cls.nameObfuscated);
+			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvIdx, asmIndex, type, startInsn, endInsn, name, name == null || method.nameObfuscated || method.cls.nameObfuscated);
 			args[i] = arg;
 
 			method.classRefs.add(type);
 			type.methodTypeRefs.add(method);
 
-			lvtIdx += type.getSlotSize();
+			lvIdx += type.getSlotSize();
 		}
 
 		return args;
 	}
 
-	/*private static MethodVarInstance[] gatherVars(MethodInstance method) {
+	private static MethodVarInstance[] gatherVars(MethodInstance method) {
 		MethodNode asmNode = method.asmNode;
 		if (asmNode == null) return emptyVars;
-		if (asmNode.localVariables == null) return null;
+		if (asmNode.localVariables == null) return emptyVars; // TODO: generate?
 		if (asmNode.localVariables.isEmpty()) return emptyVars;
 
 		InsnList il = asmNode.instructions;
 		AbstractInsnNode firstInsn = il.getFirst();
-		List<MethodVarInstance> ret = new ArrayList<>();
+		List<LocalVariableNode> vars = new ArrayList<>();
 
-		for (int i = 0; i < asmNode.localVariables.size(); i++) {
-			LocalVariableNode n = asmNode.localVariables.get(i);
+		lvLoop: for (int i = 0; i < asmNode.localVariables.size(); i++) {
+			LocalVariableNode var = asmNode.localVariables.get(i);
 
-			if (n.start == firstInsn) { // check if it's an arg
-				if (n.index == 0 && !method.isStatic) continue;
+			if (var.start == firstInsn) { // check if it's an arg
+				if (var.index == 0 && !method.isStatic) continue;
 
-				boolean found = false;
-
-				for (MethodArgInstance arg : method.args) {
-					if (arg.lvtIndex == n.index) {
-						found = true;
-						break;
+				for (MethodVarInstance arg : method.args) {
+					if (arg.asmIndex == i) { // var is an arg
+						continue lvLoop;
 					}
 				}
-
-				if (found) continue;
 			}
 
-			assert n.name != null;
-			ret.add(new MethodVarInstance(method, false, ret.size(), n.index, i,
-					method.getEnv().getCreateClassInstance(n.desc), il.indexOf(n.start), il.indexOf(n.end),
-					n.name, method.nameObfuscated || method.cls.nameObfuscated));
+			vars.add(var);
 		}
 
-		return ret.isEmpty() ? emptyVars : ret.toArray(new MethodVarInstance[0]);
-	}*/
+		if (vars.isEmpty()) return emptyVars;
+
+		// stable sort by start bci
+		Collections.sort(vars, Comparator.comparingInt(var -> il.indexOf(var.start))); // Collections.sort is specified as stable, List.sort isn't (only implNote in OpenJDK 8)
+
+		MethodVarInstance[] ret = new MethodVarInstance[vars.size()];
+
+		for (int i = 0; i < vars.size(); i++) {
+			LocalVariableNode var = vars.get(i);
+
+			assert var.name != null;
+			assert method.args.length == 0 || var.index > method.args[method.args.length - 1].lvIndex;
+
+			ret[i] = new MethodVarInstance(method, false, i, var.index, asmNode.localVariables.indexOf(var),
+					method.getEnv().getCreateClassInstance(var.desc), il.indexOf(var.start), il.indexOf(var.end),
+					var.name, method.nameObfuscated || method.cls.nameObfuscated);
+		}
+
+		return ret;
+	}
 
 	@Override
 	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
@@ -179,8 +192,14 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		return getArg(Integer.parseInt(id));
 	}
 
+	public MethodVarInstance getVar(int index) {
+		if (index < 0 || index >= vars.length) throw new IllegalArgumentException("invalid var index: "+index);
+
+		return vars[index];
+	}
+
 	public MethodVarInstance getVar(String id) {
-		throw new UnsupportedOperationException(); // TODO: implement
+		return getVar(Integer.parseInt(id));
 	}
 
 	public MethodVarInstance getVar(String id, boolean isArg) {

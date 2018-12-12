@@ -70,7 +70,7 @@ public class AsmRemapper extends Remapper {
 		return method.getName(mapped, tmpNamed, unmatchedTmp);
 	}
 
-	public String mapLocalVariableName(String className, String methodName, String methodDesc, String name, String desc, int lvtIndex, int startInsn, int endInsn) {
+	public String mapLocalVariableName(String className, String methodName, String methodDesc, String name, String desc, int lvIndex, int startInsn, int endInsn) {
 		ClassInstance cls = env.getClsByName(className);
 		if (cls == null) return name;
 
@@ -78,7 +78,7 @@ public class AsmRemapper extends Remapper {
 		if (method == null) return name;
 
 		for (MethodVarInstance var : method.getArgs()) { // TODO: iterate all method vars once available
-			if (var.getLvtIndex() == lvtIndex && var.getEndInsn() > startInsn && var.getStartInsn() < endInsn) {
+			if (var.getLvIndex() == lvIndex && var.getEndInsn() > startInsn && var.getStartInsn() < endInsn) {
 				assert var.getType().getId().equals(desc);
 
 				return var.getName(mapped, tmpNamed, unmatchedTmp);
