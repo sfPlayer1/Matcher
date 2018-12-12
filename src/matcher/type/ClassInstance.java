@@ -91,25 +91,25 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 	@Override
 	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean localOnly) {
 		int dims = getArrayDimensions();
-		String mappedName = getName(mapped, tmpNamed, localOnly).replace('/', '.');
+		String ret = getName(mapped, tmpNamed, localOnly).replace('/', '.');
 
-		if (dims == 0) {
-			return mappedName;
-		} else {
-			StringBuilder ret = new StringBuilder(mappedName.length() + dims);
+		if (dims > 0) {
+			StringBuilder sb = new StringBuilder(ret.length() + dims);
 
-			if (mappedName.endsWith(";")) { // reference, e.g. [Lx;
-				ret.append(mappedName, dims + 1, mappedName.length() - 1);
+			if (ret.endsWith(";")) { // reference, e.g. [Lx;
+				sb.append(ret, dims + 1, ret.length() - 1);
 			} else { // primitive, e.g. [LZ
-				ret.append(mappedName, dims, mappedName.length());
+				sb.append(ret, dims, ret.length());
 			}
 
 			for (int i = 0; i < dims; i++) {
-				ret.append("[]");
+				sb.append("[]");
 			}
 
-			return ret.toString();
+			ret = sb.toString();
 		}
+
+		return full ? ret : ret.substring(ret.lastIndexOf('.') + 1);
 	}
 
 	public URI getUri() {

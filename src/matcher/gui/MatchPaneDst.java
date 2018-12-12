@@ -96,7 +96,9 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	private class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<RankResult<T>> {
 		@Override
 		protected String getText(RankResult<T> item) {
-			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(false, false, gui.isTmpNamed(), true));
+			boolean full = item.getSubject() instanceof ClassInstance;
+
+			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(full, false, gui.isTmpNamed(), true));
 		}
 	}
 

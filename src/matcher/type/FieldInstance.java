@@ -36,6 +36,17 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 	}
 
 	@Override
+	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		StringBuilder ret = new StringBuilder(64);
+
+		ret.append(super.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
+		ret.append(' ');
+		ret.append(type.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
+
+		return ret.toString();
+	}
+
+	@Override
 	public String getDesc() {
 		return type.id;
 	}

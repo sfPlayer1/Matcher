@@ -154,8 +154,10 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private abstract class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<T> {
 		@Override
 		protected String getText(T item) {
-			String name = item.getName(false, gui.isTmpNamed(), true);
-			String mappedName = item.getName(true, gui.isTmpNamed(), true);
+			boolean full = item instanceof ClassInstance;
+
+			String name = item.getDisplayName(full, false, gui.isTmpNamed(), true);
+			String mappedName = item.getDisplayName(full, true, gui.isTmpNamed(), true);
 
 			if (name.equals(mappedName)) {
 				return name;

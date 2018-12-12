@@ -151,11 +151,11 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 				ret.append(", ");
 			}
 
-			ret.append(arg.getType().getDisplayName(true, mapped, tmpNamed, unmatchedTmp));
+			ret.append(arg.getType().getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
 		}
 
 		ret.append(')');
-		ret.append(retType.getDisplayName(true, mapped, tmpNamed, unmatchedTmp));
+		ret.append(retType.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
 
 		return ret.toString();
 	}
