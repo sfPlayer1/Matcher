@@ -307,12 +307,6 @@ public class ClassEnvironment implements ClassEnv {
 		return extractorB.getInputFiles();
 	}
 
-	public byte[] serializeClass(ClassInstance cls, boolean isA, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
-		ClassFeatureExtractor extractor = isA ? extractorA : extractorB;
-
-		return extractor.serializeClass(cls, mapped, tmpNamed, unmatchedTmp);
-	}
-
 	public String decompile(ClassInstance cls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
 		ClassFeatureExtractor extractor;
 

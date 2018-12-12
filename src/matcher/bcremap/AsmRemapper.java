@@ -2,9 +2,9 @@ package matcher.bcremap;
 
 import org.objectweb.asm.commons.Remapper;
 
+import matcher.type.ClassEnv;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.ClassEnv;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 

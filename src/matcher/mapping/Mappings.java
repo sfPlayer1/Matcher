@@ -227,7 +227,8 @@ public class Mappings {
 
 				String dstClsName = getName(cls, dstType);
 
-				if (dstClsName != null && dstClsName.equals(srcClsName)) {
+				if (dstClsName != null && (dstClsName.equals(srcClsName) || dstType == NameType.MAPPED && cls.hasNoFullyMappedName())) {
+					// don't save no-op or partial mappings (partial = only outer class is mapped)
 					dstClsName = null;
 				}
 

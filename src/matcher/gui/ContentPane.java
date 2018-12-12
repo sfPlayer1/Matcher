@@ -30,7 +30,7 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 
 		// bytecode tab
 
-		BytecodeTab bcTab = new BytecodeTab();
+		BytecodeTab bcTab = new BytecodeTab(gui, selectionProvider, isSource);
 		components.add(bcTab);
 		getTabs().add(bcTab);
 

@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -28,8 +27,6 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
 import matcher.Util;
-import matcher.bcremap.AsmClassRemapper;
-import matcher.bcremap.AsmRemapper;
 import matcher.type.Analysis.CommonClasses;
 
 public class ClassFeatureExtractor implements LocalClassEnv {
@@ -551,23 +548,6 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	@Override
 	public ClassEnvironment getGlobal() {
 		return env;
-	}
-
-	public byte[] serializeClass(ClassInstance cls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
-		ClassNode cn = cls.getMergedAsmNode();
-		if (cn == null) throw new IllegalArgumentException("cls without asm node: "+cls);
-
-		ClassWriter writer = new ClassWriter(0);
-
-		synchronized (Util.asmNodeSync) {
-			if (mapped || tmpNamed) {
-				AsmClassRemapper.process(cn, new AsmRemapper(this, mapped, tmpNamed, unmatchedTmp), writer);
-			} else {
-				cn.accept(writer);
-			}
-		}
-
-		return writer.toByteArray();
 	}
 
 	final ClassEnvironment env;

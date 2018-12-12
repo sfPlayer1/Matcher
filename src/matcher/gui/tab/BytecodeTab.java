@@ -7,13 +7,18 @@ import org.objectweb.asm.util.TraceClassVisitor;
 
 import javafx.scene.control.Tab;
 import javafx.scene.control.TextArea;
-import matcher.Util;
+import matcher.gui.Gui;
 import matcher.gui.IGuiComponent;
+import matcher.gui.ISelectionProvider;
 import matcher.type.ClassInstance;
 
 public class BytecodeTab extends Tab implements IGuiComponent {
-	public BytecodeTab() {
+	public BytecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("bytecode");
+
+		this.gui = gui;
+		this.selectionProvider = selectionProvider;
+		this.unmatchedTmp = unmatchedTmp;
 
 		init();
 	}
@@ -26,24 +31,34 @@ public class BytecodeTab extends Tab implements IGuiComponent {
 
 	@Override
 	public void onClassSelect(ClassInstance cls) {
-		update(cls);
+		update(cls, false);
 	}
 
-	private void update(ClassInstance cls) {
+	@Override
+	public void onViewChange() {
+		ClassInstance cls = selectionProvider.getSelectedClass();
+
+		if (cls != null) {
+			update(cls, true);
+		}
+	}
+
+	private void update(ClassInstance cls, boolean isRefresh) {
 		if (cls == null) {
 			text.setText("");
 		} else {
 			StringWriter writer = new StringWriter();
 
 			try (PrintWriter pw = new PrintWriter(writer)) {
-				synchronized (Util.asmNodeSync) {
-					cls.getMergedAsmNode().accept(new TraceClassVisitor(pw));
-				}
+				cls.accept(new TraceClassVisitor(pw), gui.isMapCodeViews(), gui.isTmpNamed(), unmatchedTmp);
 			}
 
 			text.setText(writer.toString());
 		}
 	}
 
+	private final Gui gui;
+	private final ISelectionProvider selectionProvider;
+	private final boolean unmatchedTmp;
 	private final TextArea text = new TextArea();
 }

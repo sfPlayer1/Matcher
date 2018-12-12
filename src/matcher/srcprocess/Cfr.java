@@ -1,121 +1,124 @@
 package matcher.srcprocess;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import org.benf.cfr.reader.api.CfrDriver;
 import org.benf.cfr.reader.api.ClassFileSource;
+import org.benf.cfr.reader.api.OutputSinkFactory;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
-import org.benf.cfr.reader.entities.ClassFile;
-import org.benf.cfr.reader.entities.Method;
-import org.benf.cfr.reader.state.DCCommonState;
-import org.benf.cfr.reader.state.TypeUsageCollector;
-import org.benf.cfr.reader.state.TypeUsageCollectorImpl;
-import org.benf.cfr.reader.state.TypeUsageInformation;
-import org.benf.cfr.reader.util.getopt.GetOptParser;
-import org.benf.cfr.reader.util.getopt.Options;
-import org.benf.cfr.reader.util.getopt.OptionsImpl;
-import org.benf.cfr.reader.util.output.IllegalIdentifierDump;
-import org.benf.cfr.reader.util.output.StreamDumper;
 
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
 
 public class Cfr implements Decompiler {
 	@Override
-	public synchronized String decompile(ClassInstance cls, ClassFeatureExtractor extractor, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
-		String name = cls.getName(mapped, tmpNamed, unmatchedTmp) + ".class";
-		Options options = new GetOptParser().parse(new String[] { name }, OptionsImpl.getFactory()).getSecond();
-		ClassFileSource source = new ClassFileSource() {
-			@Override
-			public void informAnalysisRelativePathDetail(String usePath, String specPath) {
-				if (!usePath.equals(specPath)) {
-					System.out.println("informAnalysisRelativePathDetail: "+specPath+" -> "+usePath);
-					nameMap.put(specPath, usePath);
-				}
-			}
+	public synchronized String decompile(ClassInstance cls, ClassFeatureExtractor env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		Map<String, String> options = new HashMap<>();
 
-			@Override
-			public String getPossiblyRenamedPath(String name) {
-				return name;
-			}
+		Sink sink = new Sink();
 
-			@Override
-			public Pair<byte[], String> getClassFileContent(String file) throws IOException {
-				String realFile = nameMap.get(file);
-				if (realFile != null) file = realFile;
+		CfrDriver driver = new CfrDriver.Builder()
+				.withOptions(options)
+				.withClassFileSource(new Source(env, mapped, tmpNamed, unmatchedTmp))
+				.withOutputSink(sink)
+				.build();
 
-				String clsName;
+		driver.analyse(Collections.singletonList(cls.getName(mapped, tmpNamed, unmatchedTmp).concat(fileSuffix)));
 
-				if (file.endsWith(fileSuffix)) {
-					clsName = file.substring(0, file.length() - fileSuffix.length());
-				} else {
-					clsName = file;
-				}
-
-				ClassInstance cls = extractor.getClsByName(clsName, mapped, tmpNamed, unmatchedTmp);
-
-				if (cls == null || cls.getAsmNodes() == null) {
-					if (warnedMissing.add(clsName)) System.out.println("can't find class "+clsName+" for "+file);
-
-					throw new IOException("can't find class "+clsName+" for "+file);
-				}
-
-				byte[] data = extractor.serializeClass(cls, mapped, tmpNamed, unmatchedTmp);
-
-				return Pair.make(data, file);
-			}
-
-			@Override
-			public Collection<String> addJar(String var1) {
-				throw new UnsupportedOperationException();
-			}
-
-			private final Map<String, String> nameMap = new HashMap<>();
-			private final Set<String> warnedMissing = new HashSet<>();
-		};
-
-		DCCommonState state = new DCCommonState(options, source);
-
-		ClassFile classFile = state.getClassFileMaybePath(name);
-		state.configureWith(classFile);
-		classFile = state.getClassFile(classFile.getClassType());
-		classFile.analyseTop(state);
-
-		TypeUsageCollector typeUsageCollector = new TypeUsageCollectorImpl(classFile);
-		classFile.collectTypeUsages(typeUsageCollector);
-
-		StringDumper dumper = new StringDumper(typeUsageCollector.getTypeUsageInformation(), options);
-		classFile.dump(dumper);
-
-		return dumper.toString();
+		return sink.toString();
 	}
 
-	private static class StringDumper extends StreamDumper {
-		public StringDumper(TypeUsageInformation typeUsageInformation, Options options) {
-			super(typeUsageInformation, options, new IllegalIdentifierDump.Nop());
+	private static class Source implements ClassFileSource {
+		Source(ClassFeatureExtractor env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+			this.env = env;
+			this.mapped = mapped;
+			this.tmpNamed = tmpNamed;
+			this.unmatchedTmp = unmatchedTmp;
 		}
 
 		@Override
-		protected void write(String str) {
-			buffer.append(str);
+		public void informAnalysisRelativePathDetail(String usePath, String classFilePath) {
+			System.out.printf("informAnalysisRelativePathDetail %s %s%n", usePath, classFilePath);
 		}
 
 		@Override
-		public void addSummaryError(Method var1, String var2) { }
+		public Collection<String> addJar(String jarPath) {
+			System.out.printf("addJar %s%n", jarPath);
+
+			throw new UnsupportedOperationException();
+		}
 
 		@Override
-		public void close() { }
+		public String getPossiblyRenamedPath(String path) {
+			return path;
+		}
+
+		@Override
+		public Pair<byte[], String> getClassFileContent(String path) throws IOException {
+			if (!path.endsWith(fileSuffix)) {
+				System.out.printf("getClassFileContent invalid path: %s%n", path);
+				throw new NoSuchFileException(path);
+			}
+
+			String clsName = path.substring(0, path.length() - fileSuffix.length());
+			ClassInstance cls = env.getClsByName(clsName, mapped, tmpNamed, unmatchedTmp);
+
+			if (cls == null) {
+				System.out.printf("getClassFileContent missing cls: %s%n", clsName);
+				throw new NoSuchFileException(path);
+			}
+
+			if (cls.getAsmNodes() == null) {
+				System.out.printf("getClassFileContent unknown cls: %s%n", clsName);
+				throw new NoSuchFileException(path);
+			}
+
+			byte[] data = cls.serialize(mapped, tmpNamed, unmatchedTmp);
+
+			return Pair.make(data, path);
+		}
+
+		private final ClassFeatureExtractor env;
+		private final boolean mapped;
+		private final boolean tmpNamed;
+		private final boolean unmatchedTmp;
+	}
+
+	private static class Sink implements OutputSinkFactory {
+		@Override
+		public List<SinkClass> getSupportedSinks(SinkType sinkType, Collection<SinkClass> available) {
+			return Collections.singletonList(SinkClass.STRING);
+		}
+
+		@Override
+		public <T> OutputSinkFactory.Sink<T> getSink(SinkType sinkType, SinkClass sinkClass) {
+			switch (sinkType) {
+			case EXCEPTION:
+				return str -> System.out.println("e "+str);
+			case JAVA:
+				return sb::append;
+			case PROGRESS:
+				return str -> System.out.println("p "+str);
+			case SUMMARY:
+				return str -> System.out.println("s "+str);
+			default:
+				System.out.println("unknown sink type: "+sinkType);
+				return str -> System.out.println("* "+str);
+			}
+		}
 
 		@Override
 		public String toString() {
-			return buffer.toString();
+			return sb.toString();
 		}
 
-		private final StringBuilder buffer = new StringBuilder();
+		private final StringBuilder sb = new StringBuilder();
 	}
 
 	private static final String fileSuffix = ".class";

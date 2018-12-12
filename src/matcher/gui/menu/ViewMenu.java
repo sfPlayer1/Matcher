@@ -69,6 +69,13 @@ public class ViewMenu extends Menu {
 			if (newValue != null) gui.setTmpNamed(newValue);
 		});
 		getItems().add(checkMenuItem);
+
+		checkMenuItem = new CheckMenuItem("map code views");
+		checkMenuItem.setSelected(gui.isMapCodeViews());
+		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setMapCodeViews(newValue);
+		});
+		getItems().add(checkMenuItem);
 	}
 
 	private final Gui gui;

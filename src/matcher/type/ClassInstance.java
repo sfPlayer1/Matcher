@@ -14,10 +14,14 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 
 import matcher.Util;
+import matcher.bcremap.AsmClassRemapper;
+import matcher.bcremap.AsmRemapper;
 import matcher.type.Signature.ClassSignature;
 
 public class ClassInstance implements IMatchable<ClassInstance> {
@@ -694,9 +698,25 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 			if (ret == null) return null;
 
 			return elementClass.isPrimitive() || elementClass.isArray() ? "["+ret : "[L"+ret+";";
+		} else if (outerClass != null) {
+			int pos = id.lastIndexOf('$');
+			if (pos < 0) return null;
+
+			String ret = outerClass.getMappedName();
+			if (ret == null) return null;
+
+			return ret.concat(id.substring(pos, id.length() - 1));
 		} else {
 			return null;
 		}
+	}
+
+	public boolean hasNoFullyMappedName() {
+		assert elementClass == null || outerClass == null; // array classes can't have an outer class
+
+		return outerClass != null
+				&& mappedName == null
+				&& (matchedClass == null || matchedClass.mappedName == null);
 	}
 
 	public void setMappedName(String mappedName) {
@@ -824,6 +844,26 @@ public class ClassInstance implements IMatchable<ClassInstance> {
 		}
 
 		return objCls;
+	}
+
+	public void accept(ClassVisitor visitor, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		ClassNode cn = getMergedAsmNode();
+		if (cn == null) throw new IllegalArgumentException("cls without asm node: "+this);
+
+		synchronized (Util.asmNodeSync) {
+			if (mapped || tmpNamed) {
+				AsmClassRemapper.process(cn, new AsmRemapper(env, mapped, tmpNamed, unmatchedTmp), visitor);
+			} else {
+				cn.accept(visitor);
+			}
+		}
+	}
+
+	public byte[] serialize(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		ClassWriter writer = new ClassWriter(0);
+		accept(writer, mapped, tmpNamed, unmatchedTmp);
+
+		return writer.toByteArray();
 	}
 
 	@Override

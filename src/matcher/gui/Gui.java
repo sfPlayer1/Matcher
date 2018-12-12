@@ -145,10 +145,24 @@ public class Gui extends Application {
 		return tmpNamed;
 	}
 
-	public void setTmpNamed(boolean tmpNamed) {
-		if (this.tmpNamed == tmpNamed) return;
+	public void setTmpNamed(boolean value) {
+		if (this.tmpNamed == value) return;
 
-		this.tmpNamed = tmpNamed;
+		this.tmpNamed = value;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange();
+		}
+	}
+
+	public boolean isMapCodeViews() {
+		return mapCodeViews;
+	}
+
+	public void setMapCodeViews(boolean value) {
+		if (this.mapCodeViews == value) return;
+
+		this.mapCodeViews = value;
 
 		for (IGuiComponent c : components) {
 			c.onViewChange();
@@ -260,6 +274,11 @@ public class Gui extends Application {
 
 		fileChooser.setTitle(title);
 		fileChooser.getExtensionFilters().addAll(extensionFilters);
+
+		while (lastChooserFile != null && !lastChooserFile.isDirectory()) {
+			lastChooserFile = lastChooserFile.getParentFile();
+		}
+
 		if (lastChooserFile != null) fileChooser.setInitialDirectory(lastChooserFile);
 
 		File file = isOpen ? fileChooser.showOpenDialog(parent) : fileChooser.showSaveDialog(parent);
@@ -274,6 +293,11 @@ public class Gui extends Application {
 		DirectoryChooser fileChooser = new DirectoryChooser();
 
 		fileChooser.setTitle(title);
+
+		while (lastChooserFile != null && !lastChooserFile.isDirectory()) {
+			lastChooserFile = lastChooserFile.getParentFile();
+		}
+
 		if (lastChooserFile != null) fileChooser.setInitialDirectory(lastChooserFile);
 
 		File file = fileChooser.showDialog(parent);
@@ -301,6 +325,7 @@ public class Gui extends Application {
 	private boolean showNonInputs;
 
 	private boolean tmpNamed;
+	private boolean mapCodeViews = true;
 
 	private static File lastChooserFile;
 }

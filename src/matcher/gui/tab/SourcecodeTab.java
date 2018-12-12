@@ -91,7 +91,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 			displayText("decompiling...");
 		}
 
-		boolean mapped = true;
+		boolean mapped = gui.isMapCodeViews();
 		boolean tmpNamed = gui.isTmpNamed();
 
 		//Gui.runAsyncTask(() -> gui.getEnv().decompile(cls, true))
