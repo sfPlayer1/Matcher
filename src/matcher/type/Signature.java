@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import matcher.NameType;
 import matcher.classifier.ClassifierUtil;
 
 public class Signature {
@@ -39,24 +40,24 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			StringBuilder ret = new StringBuilder();
 
 			if (typeParameters != null) {
 				ret.append('<');
 
 				for (TypeParameter tp : typeParameters) {
-					ret.append(tp.toString(mapped, tmpNamed, unmatchedTmp));
+					ret.append(tp.toString(nameType));
 				}
 
 				ret.append('>');
 			}
 
-			ret.append(superClassSignature.toString(mapped, tmpNamed, unmatchedTmp));
+			ret.append(superClassSignature.toString(nameType));
 
 			if (superInterfaceSignatures != null) {
 				for (ClassTypeSignature ts : superInterfaceSignatures) {
-					ret.append(ts.toString(mapped, tmpNamed, unmatchedTmp));
+					ret.append(ts.toString(nameType));
 				}
 			}
 
@@ -65,7 +66,7 @@ public class Signature {
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -109,16 +110,16 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			StringBuilder ret = new StringBuilder();
 			ret.append(identifier);
 			ret.append(':');
-			if (classBound != null) ret.append(classBound.toString(mapped, tmpNamed, unmatchedTmp));
+			if (classBound != null) ret.append(classBound.toString(nameType));
 
 			if (interfaceBounds != null) {
 				for (ReferenceTypeSignature ts : interfaceBounds) {
 					ret.append(':');
-					ret.append(ts.toString(mapped, tmpNamed, unmatchedTmp));
+					ret.append(ts.toString(nameType));
 				}
 			}
 
@@ -127,7 +128,7 @@ public class Signature {
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -168,19 +169,19 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			if (cls != null) {
-				return cls.toString(mapped, tmpNamed, unmatchedTmp);
+				return cls.toString(nameType);
 			} else if (var != null) {
 				return "T"+var+";";
 			} else {
-				return "["+arrayElemCls.toString(mapped, tmpNamed, unmatchedTmp);
+				return "["+arrayElemCls.toString(nameType);
 			}
 		}
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -239,11 +240,11 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			StringBuilder ret = new StringBuilder();
 			ret.append('L');
-			ret.append(cls.getName(mapped, tmpNamed, unmatchedTmp));
-			SimpleClassTypeSignature.printTypeArguments(typeArguments, mapped, tmpNamed, unmatchedTmp, ret);
+			ret.append(cls.getName(nameType));
+			SimpleClassTypeSignature.printTypeArguments(typeArguments, nameType, ret);
 
 			if (suffixes != null) {
 				for (SimpleClassTypeSignature ts : suffixes) {
@@ -259,7 +260,7 @@ public class Signature {
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -290,9 +291,9 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			if (cls != null) {
-				return cls.toString(mapped, tmpNamed, unmatchedTmp);
+				return cls.toString(nameType);
 			} else {
 				return String.valueOf(baseType);
 			}
@@ -300,7 +301,7 @@ public class Signature {
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -354,13 +355,13 @@ public class Signature {
 			}
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			if (typeArguments == null) {
 				return identifier;
 			} else {
 				StringBuilder ret = new StringBuilder();
 				ret.append(identifier);
-				printTypeArguments(typeArguments, mapped, tmpNamed, unmatchedTmp, ret);
+				printTypeArguments(typeArguments, nameType, ret);
 
 				return ret.toString();
 			}
@@ -368,16 +369,16 @@ public class Signature {
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
-		static void printTypeArguments(List<TypeArgument> typeArguments, boolean mapped, boolean tmpNamed, boolean unmatchedTmp, StringBuilder ret) {
+		static void printTypeArguments(List<TypeArgument> typeArguments, NameType nameType, StringBuilder ret) {
 			if (typeArguments == null) return;
 
 			ret.append('<');
 
 			for (TypeArgument ta : typeArguments) {
-				ret.append(ta.toString(mapped, tmpNamed, unmatchedTmp));
+				ret.append(ta.toString(nameType));
 			}
 
 			ret.append('>');
@@ -415,19 +416,19 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			if (wildcardIndicator != 0) {
-				return wildcardIndicator+cls.toString(mapped, tmpNamed, unmatchedTmp);
+				return wildcardIndicator+cls.toString(nameType);
 			} else if (cls == null) {
 				return "*";
 			} else {
-				return cls.toString(mapped, tmpNamed, unmatchedTmp);
+				return cls.toString(nameType);
 			}
 		}
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -490,14 +491,14 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			StringBuilder ret = new StringBuilder();
 
 			if (typeParameters != null) {
 				ret.append('<');
 
 				for (TypeParameter tp : typeParameters) {
-					ret.append(tp.toString(mapped, tmpNamed, unmatchedTmp));
+					ret.append(tp.toString(nameType));
 				}
 
 				ret.append('>');
@@ -506,7 +507,7 @@ public class Signature {
 			ret.append('(');
 
 			for (JavaTypeSignature arg : args) {
-				ret.append(arg.toString(mapped, tmpNamed, unmatchedTmp));
+				ret.append(arg.toString(nameType));
 			}
 
 			ret.append(')');
@@ -514,12 +515,12 @@ public class Signature {
 			if (result == null) {
 				ret.append('V');
 			} else {
-				ret.append(result.toString(mapped, tmpNamed, unmatchedTmp));
+				ret.append(result.toString(nameType));
 			}
 
 			if (throwsSignatures != null) {
 				for (ThrowsSignature ts : throwsSignatures) {
-					ret.append(ts.toString(mapped, tmpNamed, unmatchedTmp));
+					ret.append(ts.toString(nameType));
 				}
 			}
 
@@ -528,7 +529,7 @@ public class Signature {
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -574,9 +575,9 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		public String toString(NameType nameType) {
 			if (cls != null) {
-				return "^"+cls.toString(mapped, tmpNamed, unmatchedTmp);
+				return "^"+cls.toString(nameType);
 			} else {
 				return "^T"+var+";";
 			}
@@ -584,7 +585,7 @@ public class Signature {
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -617,13 +618,13 @@ public class Signature {
 			return ret;
 		}
 
-		public String toString(boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
-			return cls.toString(mapped, tmpNamed, unmatchedTmp);
+		public String toString(NameType nameType) {
+			return cls.toString(nameType);
 		}
 
 		@Override
 		public String toString() {
-			return toString(false, false, true);
+			return toString(NameType.PLAIN);
 		}
 
 		@Override
@@ -663,7 +664,7 @@ public class Signature {
 		public int val;
 	}
 
-	private static interface PotentialComparable<T> {
+	private interface PotentialComparable<T> {
 		boolean isPotentiallyEqual(T o);
 	}
 }

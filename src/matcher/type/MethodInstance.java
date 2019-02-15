@@ -13,10 +13,11 @@ import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import matcher.NameType;
 import matcher.Util;
 import matcher.type.Signature.MethodSignature;
 
-public class MethodInstance extends MemberInstance<MethodInstance> {
+public final class MethodInstance extends MemberInstance<MethodInstance> {
 	/**
 	 * Create a shared unknown method.
 	 */
@@ -138,9 +139,9 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 	}
 
 	@Override
-	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public String getDisplayName(NameType type, boolean full) {
 		StringBuilder ret = new StringBuilder(64);
-		ret.append(super.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
+		ret.append(super.getDisplayName(type, full));
 		ret.append('(');
 		boolean first = true;
 
@@ -151,11 +152,11 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 				ret.append(", ");
 			}
 
-			ret.append(arg.getType().getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
+			ret.append(arg.getType().getDisplayName(type, full));
 		}
 
 		ret.append(')');
-		ret.append(retType.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
+		ret.append(retType.getDisplayName(type, full));
 
 		return ret.toString();
 	}
@@ -214,17 +215,9 @@ public class MethodInstance extends MemberInstance<MethodInstance> {
 		return vars;
 	}
 
-	public boolean hasMappedArg() {
-		for (MethodVarInstance arg : args) {
-			if (arg.getMappedName() != null) return true;
-		}
-
-		return false;
-	}
-
 	public boolean hasAllArgsMapped() {
 		for (MethodVarInstance arg : args) {
-			if (arg.getMappedName() == null) return false;
+			if (!arg.hasMappedName()) return false;
 		}
 
 		return true;

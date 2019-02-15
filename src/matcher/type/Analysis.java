@@ -48,6 +48,7 @@ import org.objectweb.asm.util.Printer;
 import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 
+import matcher.NameType;
 import matcher.Util;
 
 class Analysis {
@@ -55,7 +56,7 @@ class Analysis {
 		MethodNode asmNode = method.getAsmNode();
 		if (asmNode == null || (asmNode.access & Opcodes.ACC_ABSTRACT) != 0 || asmNode.instructions.size() == 0) return;
 
-		System.out.println(method.getDisplayName(true, false, false, true));
+		System.out.println(method.getDisplayName(NameType.MAPPED_PLAIN, true));
 		dump(asmNode);
 
 		StateRecorder rec = new StateRecorder(method, common);
@@ -1904,7 +1905,7 @@ class Analysis {
 		final int id;
 	}
 
-	private static enum VarSource {
+	private enum VarSource {
 		Constant, Arg, Merge, ExtException, IntException, ArrayElement, Cast, Computed, New, Field, MethodRet;
 	}
 

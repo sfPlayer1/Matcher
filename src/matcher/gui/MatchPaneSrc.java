@@ -154,10 +154,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private abstract class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<T> {
 		@Override
 		protected String getText(T item) {
-			boolean full = item instanceof ClassInstance;
-
-			String name = item.getDisplayName(full, false, gui.isTmpNamed(), true);
-			String mappedName = item.getDisplayName(full, true, gui.isTmpNamed(), true);
+			String name = getName(item);
+			String mappedName = getMappedName(item);
 
 			if (name.equals(mappedName)) {
 				return name;
@@ -262,7 +260,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		case Name:
 			return Comparator.comparing(this::getName);
 		case MappedName:
-			return Comparator.<ClassInstance, String>comparing(MatchPaneSrc::getMappedName, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(this::getName);
+			return Comparator.<ClassInstance, String>comparing(this::getMappedNameNonDefault, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(this::getName);
 		case MatchStatus:
 			return clsMatchStatusComparator.thenComparing(this::getName);
 		}
@@ -275,7 +273,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		case Name:
 			return memberTypeComparator.thenComparing(this::getName);
 		case MappedName:
-			return memberTypeComparator.thenComparing(MatchPaneSrc::getMappedName, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(this::getName);
+			return memberTypeComparator.thenComparing(this::getMappedNameNonDefault, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(this::getName);
 		case MatchStatus:
 			return memberMatchStatusComparator.thenComparing(memberTypeComparator).thenComparing(this::getName);
 		}
@@ -284,15 +282,22 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private String getName(IMatchable<?> m) {
-		return m.getDisplayName(false, false, gui.isTmpNamed(), true);
+		return m.getDisplayName(gui.getNameType().withMapped(false).withUnmatchedTmp(true), m instanceof ClassInstance);
 	}
 
-	private static String getMappedName(IMatchable<?> m) {
-		String ret = m.getMappedName();
-		if (ret != null) return ret;
-		if (!m.isNameObfuscated()) return m.getName();
+	private String getMappedName(IMatchable<?> m) {
+		return m.getDisplayName(gui.getNameType().withMapped(true).withUnmatchedTmp(true), m instanceof ClassInstance);
+	}
 
-		return null;
+	private String getMappedNameNonDefault(IMatchable<?> m) {
+		String name = getName(m);
+		String mappedName = getMappedName(m);
+
+		if (name.equals(mappedName)) {
+			return null;
+		} else {
+			return mappedName;
+		}
 	}
 
 	@Override

@@ -47,10 +47,15 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 
 	private static String getTinyNameType(NameType type) {
 		switch (type) {
-		case MAPPED: return "pomf";
+		case MAPPED_PLAIN: return "pomf";
 		case PLAIN: return "official";
-		case TMP: return "tmp";
-		case UID: return "intermediary";
+		case LOCTMP_PLAIN:
+		case TMP_PLAIN:
+			return "tmp";
+		case UID_PLAIN: return "intermediary";
+		case MAPPED_LOCTMP_PLAIN:
+		case MAPPED_TMP_PLAIN:
+			return "pomf-tmp";
 		default: throw new IllegalArgumentException();
 		}
 	}

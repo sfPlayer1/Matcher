@@ -139,8 +139,7 @@ public class Matcher {
 		if (a.getArrayDimensions() != b.getArrayDimensions()) throw new IllegalArgumentException("the classes don't have the same amount of array dimensions");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName();
-		System.out.println("match class "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
+		System.out.println("match class "+a+" -> "+b+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		if (a.getMatch() != null) {
 			a.getMatch().setMatch(null);
@@ -246,8 +245,7 @@ public class Matcher {
 		if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName();
-		System.out.println("match method "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
+		System.out.println("match method "+a+" -> "+b+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
 		if (b.getMatch() != null) b.getMatch().setMatch(null);
@@ -286,8 +284,7 @@ public class Matcher {
 		if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName();
-		System.out.println("match field "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
+		System.out.println("match field "+a+" -> "+b+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
 		if (b.getMatch() != null) b.getMatch().setMatch(null);
@@ -305,8 +302,7 @@ public class Matcher {
 		if (a.isArg() != b.isArg()) throw new IllegalArgumentException("the method vars are not of the same kind");
 		if (a.getMatch() == b) return;
 
-		String mappedName = a.getMappedName();
-		System.out.println("match method arg "+a+" -> "+b+(mappedName != null ? " ("+mappedName+")" : ""));
+		System.out.println("match method arg "+a+" -> "+b+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		if (a.getMatch() != null) a.getMatch().setMatch(null);
 		if (b.getMatch() != null) b.getMatch().setMatch(null);
@@ -321,8 +317,7 @@ public class Matcher {
 		if (cls == null) throw new NullPointerException("null class");
 		if (cls.getMatch() == null) return;
 
-		String mappedName = cls.getMappedName();
-		System.out.println("unmatch class "+cls+" (was "+cls.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
+		System.out.println("unmatch class "+cls+" (was "+cls.getMatch()+")"+(cls.hasMappedName() ? " ("+cls.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		cls.getMatch().setMatch(null);
 		cls.setMatch(null);
@@ -344,8 +339,7 @@ public class Matcher {
 		if (m == null) throw new NullPointerException("null member");
 		if (m.getMatch() == null) return;
 
-		String mappedName = m.getMappedName();
-		System.out.println("unmatch member "+m+" (was "+m.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
+		System.out.println("unmatch member "+m+" (was "+m.getMatch()+")"+(m.hasMappedName() ? " ("+m.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		if (m instanceof MethodInstance) {
 			for (MethodVarInstance arg : ((MethodInstance) m).getArgs()) {
@@ -369,8 +363,7 @@ public class Matcher {
 		if (a == null) throw new NullPointerException("null method var");
 		if (a.getMatch() == null) return;
 
-		String mappedName = a.getMappedName();
-		System.out.println("unmatch method var "+a+" (was "+a.getMatch()+")"+(mappedName != null ? " ("+mappedName+")" : ""));
+		System.out.println("unmatch method var "+a+" (was "+a.getMatch()+")"+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		a.getMatch().setMatch(null);
 		a.setMatch(null);
@@ -738,7 +731,7 @@ public class Matcher {
 					if (method.getAllHierarchyMembers().size() <= 1) continue;
 					if (checked.contains(method)) continue;
 
-					String name = method.getMappedName();
+					String name = method.hasMappedName() || !method.isNameObfuscated() ? method.getName(NameType.MAPPED_PLAIN) : null;
 					if (name != null && method.hasAllArgsMapped()) continue;
 
 					checked.addAll(method.getAllHierarchyMembers());
@@ -750,7 +743,9 @@ public class Matcher {
 					int missingArgNames = argCount;
 
 					collectLoop: for (MethodInstance m : method.getAllHierarchyMembers()) {
-						if (name == null && (name = m.getMappedName()) != null) {
+						if (name == null && (method.hasMappedName() || !method.isNameObfuscated())) {
+							name = method.getName(NameType.MAPPED_PLAIN);
+
 							if (missingArgNames == 0) break;
 						}
 
@@ -758,7 +753,10 @@ public class Matcher {
 							assert m.getArgs().length == argCount;
 
 							for (int i = 0; i < argCount; i++) {
-								if (argNames[i] == null && (argNames[i] = m.getArg(i).getMappedName()) != null) {
+								MethodVarInstance arg;
+
+								if (argNames[i] == null && (arg = m.getArg(i)).hasMappedName()) {
+									argNames[i] = arg.getName(NameType.MAPPED_PLAIN);
 									missingArgNames--;
 
 									if (name != null && missingArgNames == 0) break collectLoop;
@@ -780,7 +778,7 @@ public class Matcher {
 						for (int i = 0; i < argCount; i++) {
 							MethodVarInstance arg;
 
-							if (argNames[i] != null && (arg = m.getArg(i)).getMappedName() == null) {
+							if (argNames[i] != null && !(arg = m.getArg(i)).hasMappedName()) {
 								arg.setMappedName(argNames[i]);
 								propagatedArgNames++;
 							}

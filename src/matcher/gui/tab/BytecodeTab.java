@@ -50,7 +50,7 @@ public class BytecodeTab extends Tab implements IGuiComponent {
 			StringWriter writer = new StringWriter();
 
 			try (PrintWriter pw = new PrintWriter(writer)) {
-				cls.accept(new TraceClassVisitor(pw), gui.isMapCodeViews(), gui.isTmpNamed(), unmatchedTmp);
+				cls.accept(new TraceClassVisitor(pw), gui.getNameType().withUnmatchedTmp(unmatchedTmp));
 			}
 
 			text.setText(writer.toString());

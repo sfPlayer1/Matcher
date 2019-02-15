@@ -26,6 +26,7 @@ import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
+import matcher.NameType;
 import matcher.Util;
 import matcher.type.Analysis.CommonClasses;
 
@@ -405,7 +406,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 			if (method.getAllHierarchyMembers().size() == 1) {
 				method.setTmpName("m"+envName+memberIndex);
 				memberIndex++;
-			} else if (method.getTmpName(true) == null) {
+			} else if (!method.hasLocalTmpName()) {
 				String name = "vm"+envName+vmIdx.getAndIncrement();
 
 				for (MethodInstance m : method.getAllHierarchyMembers()) {
@@ -456,8 +457,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	@Override
-	public ClassInstance getClsById(String id, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
-		if ((mapped || tmpNamed) && id.charAt(id.length() - 1) == ';') { // no local primitives or primitive arrays
+	public ClassInstance getClsById(String id, NameType nameType) {
+		if (nameType != NameType.PLAIN && id.charAt(id.length() - 1) == ';') { // no local primitives or primitive arrays
 			if (id.charAt(0) == '[') {
 				int start = 1;
 				while (id.charAt(start) == '[') start++;
@@ -466,7 +467,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				int reqNameLen = id.length() - 2 - start;
 
 				for (ClassInstance cls : arrayClasses.values()) {
-					String name = cls.getName(mapped, tmpNamed, unmatchedTmp);
+					String name = cls.getName(nameType);
 					if (name.length() != reqNameLen) continue;
 
 					if (id.startsWith(name, start + 1)) return cls;
@@ -476,7 +477,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				int reqNameLen = id.length() - 2;
 
 				for (ClassInstance cls : classes.values()) {
-					String name = cls.getName(mapped, tmpNamed, unmatchedTmp);
+					String name = cls.getName(nameType);
 					if (name.length() != reqNameLen) continue;
 
 					if (id.startsWith(name, 1)) return cls;

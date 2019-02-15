@@ -2,6 +2,8 @@ package matcher.type;
 
 import java.util.Collection;
 
+import matcher.NameType;
+
 public interface ClassEnv {
 	boolean isShared();
 
@@ -25,11 +27,11 @@ public interface ClassEnv {
 
 	ClassInstance getCreateClassInstance(String id, boolean createUnknown);
 
-	default ClassInstance getClsByName(String name, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
-		return getClsById(ClassInstance.getId(name), mapped, tmpNamed, unmatchedTmp);
+	default ClassInstance getClsByName(String name, NameType nameType) {
+		return getClsById(ClassInstance.getId(name), nameType);
 	}
 
-	ClassInstance getClsById(String id, boolean mapped, boolean tmpNamed, boolean unmatchedTmp);
+	ClassInstance getClsById(String id, NameType nameType);
 
 	ClassEnvironment getGlobal();
 }

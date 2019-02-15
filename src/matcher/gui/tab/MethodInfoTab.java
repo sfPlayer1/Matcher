@@ -1,5 +1,7 @@
 package matcher.gui.tab;
 
+import static matcher.gui.tab.ClassInfoTab.format;
+import static matcher.gui.tab.ClassInfoTab.getName;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -10,15 +12,17 @@ import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
+import matcher.NameType;
 import matcher.Util;
 import matcher.Util.AFElementType;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
-import matcher.type.IMatchable;
+import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
@@ -52,13 +56,15 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Signature", sigLabel, grid, row);
 		row = addRow("Parents", parentLabel, grid, row);
 		row = addRow("Children", childLabel, grid, row);
+		row = addRow("Local vars", varLabel, grid, row);
 		row = addRow("Refs in", refMethodInLabel, grid, row);
 		row = addRow("Refs out", refMethodOutLabel, grid, row);
 		row = addRow("Fields read", refFieldReadLabel, grid, row);
 		row = addRow("Fields written", refFieldWriteLabel, grid, row);
 		row = addRow("Comment", mapCommentLabel, grid, row);
 
-		setContent(grid);
+		ScrollPane scroll = new ScrollPane(grid);
+		setContent(scroll);
 	}
 
 	private static int addRow(String name, Node content, GridPane grid, int row) {
@@ -82,6 +88,11 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		update(method);
 	}
 
+	@Override
+	public void onViewChange() {
+		update(selectionProvider.getSelectedMethod());
+	}
+
 	private void update(MethodInstance method) {
 		if (method == null) {
 			ownerLabel.setText("-");
@@ -96,49 +107,48 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			sigLabel.setText("-");
 			parentLabel.setText("-");
 			childLabel.setText("-");
+			varLabel.setText("-");
 			refMethodInLabel.setText("-");
 			refMethodOutLabel.setText("-");
 			refFieldReadLabel.setText("-");
 			refFieldWriteLabel.setText("-");
 			mapCommentLabel.setText("-");
 		} else {
-			ownerLabel.setText(getName(method.getCls()));
-			String name = method.getDisplayName(false, false, false, true);
-			String tmpName = method.getDisplayName(false, false, true, unmatchedTmp);
-			String mappedName = method.getDisplayName(false, true, gui.isTmpNamed(), unmatchedTmp);
-			nameLabel.setText(name);
-			tmpNameLabel.setText(tmpName.equals(name) ? "-" : tmpName);
-			mappedNameLabel.setText(mappedName.equals(gui.isTmpNamed() ? tmpName : name) ? "-" : mappedName);
-			uidLabel.setText(method.getUid() < 0 ? "-" : Integer.toString(method.getUid()));
+			NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
+
+			ownerLabel.setText(getName(method.getCls(), nameType));
+			nameLabel.setText(method.getName());
+			tmpNameLabel.setText(method.hasLocalTmpName() ? method.getName(NameType.LOCTMP_PLAIN) : "-");
+			mappedNameLabel.setText(method.hasMappedName() ? method.getName(NameType.MAPPED_PLAIN) : "-");
+			uidLabel.setText(method.getUid() >= 0 ? Integer.toString(method.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(method.isNameObfuscated()));
-			argLabel.setText(Arrays.stream(method.getArgs()).map(this::getVarName).collect(Collectors.joining("\n")));
-			retTypeLabel.setText(getName(method.getRetType()));
+			argLabel.setText(Arrays.stream(method.getArgs()).map(a -> getVarName(a, nameType)).collect(Collectors.joining("\n")));
+			retTypeLabel.setText(getName(method.getRetType(), nameType));
 			accessLabel.setText(Util.formatAccessFlags(method.getAccess(), AFElementType.Method));
 
 			MethodNode asmNode = method.getAsmNode();
 			sigLabel.setText(asmNode == null || asmNode.signature == null ? "-" : asmNode.signature);
 
+			parentLabel.setText(!method.getParents().isEmpty() ? formatClass(method.getParents(), nameType) : "-");
+			childLabel.setText(!method.isFinal() ? formatClass(method.getChildren(), nameType) : "-");
 
-			parentLabel.setText(!method.getParents().isEmpty() ? format(method.getParents()) : "-");
-			childLabel.setText(!method.isFinal() ? format(method.getChildren()) : "-");
-			refMethodInLabel.setText(format(method.getRefsIn()));
-			refMethodOutLabel.setText(format(method.getRefsOut()));
-			refFieldReadLabel.setText(format(method.getFieldReadRefs()));
-			refFieldWriteLabel.setText(format(method.getFieldWriteRefs()));
+			varLabel.setText(Arrays.stream(method.getVars()).map(a -> getVarName(a, nameType)).collect(Collectors.joining("\n")));
+
+			refMethodInLabel.setText(format(method.getRefsIn(), nameType));
+			refMethodOutLabel.setText(format(method.getRefsOut(), nameType));
+			refFieldReadLabel.setText(format(method.getFieldReadRefs(), nameType));
+			refFieldWriteLabel.setText(format(method.getFieldWriteRefs(), nameType));
 			mapCommentLabel.setText(method.getMappedComment() != null ? method.getMappedComment() : "-");
 		}
 	}
 
-	private String getVarName(MethodVarInstance arg) {
-		return arg.getIndex()+": "+getName(arg)+" ("+getName(arg.getType())+")";
+	private static String getVarName(MethodVarInstance arg, NameType nameType) {
+		return arg.getIndex()+": "+getName(arg, nameType)+" ("+getName(arg.getType(), nameType)+")";
 	}
 
-	private String format(Collection<? extends IMatchable<?>> c) {
-		return ClassInfoTab.format(c, gui.isTmpNamed(), unmatchedTmp);
-	}
 
-	private String getName(IMatchable<?> m) {
-		return ClassInfoTab.getName(m, gui.isTmpNamed(), unmatchedTmp);
+	static String formatClass(Collection<? extends MemberInstance<?>> c, NameType nameType) {
+		return c.stream().map(v -> getName(v.getCls(), nameType)).sorted().collect(Collectors.joining("\n"));
 	}
 
 	private final Gui gui;
@@ -157,6 +167,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 	private final Label sigLabel = new Label();
 	private final Label parentLabel = new Label();
 	private final Label childLabel = new Label();
+	private final Label varLabel = new Label();
 	private final Label refMethodInLabel = new Label();
 	private final Label refMethodOutLabel = new Label();
 	private final Label refFieldReadLabel = new Label();

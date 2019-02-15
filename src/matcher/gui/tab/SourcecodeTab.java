@@ -17,6 +17,7 @@ import java.util.Set;
 import javafx.concurrent.Worker.State;
 import javafx.scene.control.Tab;
 import javafx.scene.web.WebView;
+import matcher.NameType;
 import matcher.gui.Gui;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
@@ -91,11 +92,11 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 			displayText("decompiling...");
 		}
 
-		boolean mapped = gui.isMapCodeViews();
-		boolean tmpNamed = gui.isTmpNamed();
+		NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
 
 		//Gui.runAsyncTask(() -> gui.getEnv().decompile(cls, true))
-		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(cls, mapped, tmpNamed, unmatchedTmp), cls, mapped, tmpNamed, unmatchedTmp))
+		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), cls, nameType),
+				cls, nameType))
 		.whenComplete((res, exc) -> {
 			if (cDecompId == decompId) {
 				if (exc != null) {

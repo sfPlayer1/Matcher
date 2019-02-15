@@ -13,33 +13,32 @@ import org.benf.cfr.reader.api.ClassFileSource;
 import org.benf.cfr.reader.api.OutputSinkFactory;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
 
+import matcher.NameType;
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
 
 public class Cfr implements Decompiler {
 	@Override
-	public synchronized String decompile(ClassInstance cls, ClassFeatureExtractor env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public synchronized String decompile(ClassInstance cls, ClassFeatureExtractor env, NameType nameType) {
 		Map<String, String> options = new HashMap<>();
 
 		Sink sink = new Sink();
 
 		CfrDriver driver = new CfrDriver.Builder()
 				.withOptions(options)
-				.withClassFileSource(new Source(env, mapped, tmpNamed, unmatchedTmp))
+				.withClassFileSource(new Source(env, nameType))
 				.withOutputSink(sink)
 				.build();
 
-		driver.analyse(Collections.singletonList(cls.getName(mapped, tmpNamed, unmatchedTmp).concat(fileSuffix)));
+		driver.analyse(Collections.singletonList(cls.getName(nameType).concat(fileSuffix)));
 
 		return sink.toString();
 	}
 
 	private static class Source implements ClassFileSource {
-		Source(ClassFeatureExtractor env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+		Source(ClassFeatureExtractor env, NameType nameType) {
 			this.env = env;
-			this.mapped = mapped;
-			this.tmpNamed = tmpNamed;
-			this.unmatchedTmp = unmatchedTmp;
+			this.nameType = nameType;
 		}
 
 		@Override
@@ -67,7 +66,7 @@ public class Cfr implements Decompiler {
 			}
 
 			String clsName = path.substring(0, path.length() - fileSuffix.length());
-			ClassInstance cls = env.getClsByName(clsName, mapped, tmpNamed, unmatchedTmp);
+			ClassInstance cls = env.getClsByName(clsName, nameType);
 
 			if (cls == null) {
 				System.out.printf("getClassFileContent missing cls: %s%n", clsName);
@@ -79,15 +78,13 @@ public class Cfr implements Decompiler {
 				throw new NoSuchFileException(path);
 			}
 
-			byte[] data = cls.serialize(mapped, tmpNamed, unmatchedTmp);
+			byte[] data = cls.serialize(nameType);
 
 			return Pair.make(data, path);
 		}
 
 		private final ClassFeatureExtractor env;
-		private final boolean mapped;
-		private final boolean tmpNamed;
-		private final boolean unmatchedTmp;
+		private final NameType nameType;
 	}
 
 	private static class Sink implements OutputSinkFactory {

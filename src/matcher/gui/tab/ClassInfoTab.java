@@ -8,8 +8,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
+import matcher.NameType;
 import matcher.Util;
 import matcher.Util.AFElementType;
 import matcher.gui.Gui;
@@ -53,7 +55,8 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Ref. fields", refFieldLabel, grid, row);
 		row = addRow("Comment", mapCommentLabel, grid, row);
 
-		setContent(grid);
+		ScrollPane scroll = new ScrollPane(grid);
+		setContent(scroll);
 	}
 
 	private static int addRow(String name, Node content, GridPane grid, int row) {
@@ -100,47 +103,41 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 			refFieldLabel.setText("-");
 			mapCommentLabel.setText("-");
 		} else {
+			NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
+
 			nameLabel.setText(cls.getName());
-			tmpNameLabel.setText(nullToMissing(cls.getTmpName(unmatchedTmp)));
-			mappedNameLabel.setText(nullToMissing(cls.getMappedName()));
-			uidLabel.setText(cls.getUid() < 0 ? "-" : Integer.toString(cls.getUid()));
+			tmpNameLabel.setText(cls.hasLocalTmpName() ? cls.getName(NameType.LOCTMP_PLAIN) : "-");
+			mappedNameLabel.setText(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN) : "-");
+			uidLabel.setText(cls.getUid() >= 0 ? Integer.toString(cls.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(cls.isNameObfuscated()));
 			accessLabel.setText(Util.formatAccessFlags(cls.getAccess(), AFElementType.Class));
 
 			if (cls.getSignature() == null) {
 				sigLabel.setText("-");
 			} else {
-				String sig = cls.getSignature().toString(false, gui.isTmpNamed(), unmatchedTmp);
-				String sigMapped = cls.getSignature().toString(true, gui.isTmpNamed(), unmatchedTmp);
+				String sig = cls.getSignature().toString(nameType.withMapped(false));
+				String sigMapped = cls.getSignature().toString(nameType.withMapped(true));
 				sigLabel.setText(sig.equals(sigMapped) ? sig : sig+" - "+sigMapped);
 			}
 
-			outerLabel.setText(cls.getOuterClass() != null ? getName(cls.getOuterClass()) : "-");
-			superLabel.setText(cls.getSuperClass() != null ? getName(cls.getSuperClass()) : "-");
-			subLabel.setText(cls.isInterface() ? "-" : format(cls.getChildClasses()));
-			ifaceLabel.setText(format(cls.getInterfaces()));
-			implLabel.setText(cls.isInterface() ? format(cls.getImplementers()) : "-");
-			refMethodLabel.setText(format(cls.getMethodTypeRefs()));
-			refFieldLabel.setText(format(cls.getFieldTypeRefs()));
+			outerLabel.setText(cls.getOuterClass() != null ? getName(cls.getOuterClass(), nameType) : "-");
+			superLabel.setText(cls.getSuperClass() != null ? getName(cls.getSuperClass(), nameType) : "-");
+			subLabel.setText(cls.isInterface() ? "-" : format(cls.getChildClasses(), nameType));
+			ifaceLabel.setText(format(cls.getInterfaces(), nameType));
+			implLabel.setText(cls.isInterface() ? format(cls.getImplementers(), nameType) : "-");
+			refMethodLabel.setText(format(cls.getMethodTypeRefs(), nameType));
+			refFieldLabel.setText(format(cls.getFieldTypeRefs(), nameType));
 			mapCommentLabel.setText(nullToMissing(cls.getMappedComment()));
 		}
 	}
 
-	private String format(Collection<? extends IMatchable<?>> c) {
-		return format(c, gui.isTmpNamed(), unmatchedTmp);
+	static String format(Collection<? extends IMatchable<?>> c, NameType nameType) {
+		return c.stream().map(v -> getName(v, nameType)).sorted().collect(Collectors.joining("\n"));
 	}
 
-	private String getName(IMatchable<?> m) {
-		return getName(m, gui.isTmpNamed(), unmatchedTmp);
-	}
-
-	static String format(Collection<? extends IMatchable<?>> c, boolean tmpNamed, boolean unmatchedTmp) {
-		return c.stream().map(v -> getName(v, tmpNamed, unmatchedTmp)).sorted().collect(Collectors.joining("\n"));
-	}
-
-	static String getName(IMatchable<?> m, boolean tmpNamed, boolean unmatchedTmp) {
-		String ret = m.getDisplayName(true, false, tmpNamed, unmatchedTmp);
-		String mapped = m.getDisplayName(true, true, tmpNamed, unmatchedTmp);
+	static String getName(IMatchable<?> m, NameType nameType) {
+		String ret = m.getDisplayName(nameType.withMapped(false), true);
+		String mapped = m.getDisplayName(nameType.withMapped(true), true);
 
 		if (Objects.equals(ret, mapped)) {
 			return ret;

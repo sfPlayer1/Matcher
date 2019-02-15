@@ -8,6 +8,7 @@ import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import matcher.gui.Gui;
 import matcher.gui.Gui.SortKey;
+import matcher.srcprocess.BuiltinDecompiler;
 
 public class ViewMenu extends Menu {
 	ViewMenu(Gui gui) {
@@ -64,18 +65,38 @@ public class ViewMenu extends Menu {
 		getItems().add(checkMenuItem);
 
 		checkMenuItem = new CheckMenuItem("Use tmp names");
-		checkMenuItem.setSelected(gui.isTmpNamed());
+		checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withTmp(false));
 		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
-			if (newValue != null) gui.setTmpNamed(newValue);
+			if (newValue != null) gui.setNameType(gui.getNameType().withTmp(newValue));
 		});
 		getItems().add(checkMenuItem);
 
-		checkMenuItem = new CheckMenuItem("map code views");
-		checkMenuItem.setSelected(gui.isMapCodeViews());
+		checkMenuItem = new CheckMenuItem("Map code views");
+		checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withMapped(false));
 		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
-			if (newValue != null) gui.setMapCodeViews(newValue);
+			if (newValue != null) gui.setNameType(gui.getNameType().withMapped(newValue));
 		});
 		getItems().add(checkMenuItem);
+
+		Menu menu = new Menu("Decompiler");
+		toggleGroup = new ToggleGroup();
+
+		for (BuiltinDecompiler decompiler : BuiltinDecompiler.values()) {
+			radioMenuItem = new RadioMenuItem(decompiler.name);
+			radioMenuItem.setToggleGroup(toggleGroup);
+			radioMenuItem.setUserData(decompiler);
+			menu.getItems().add(radioMenuItem);
+
+			if (gui.getDecompiler() == decompiler) {
+				radioMenuItem.setSelected(true);
+			}
+		}
+
+		toggleGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setDecompiler((BuiltinDecompiler) newValue.getUserData());
+		});
+
+		getItems().add(menu);
 	}
 
 	private final Gui gui;

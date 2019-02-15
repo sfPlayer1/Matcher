@@ -7,10 +7,11 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldNode;
 
+import matcher.NameType;
 import matcher.Util;
 import matcher.type.Signature.FieldSignature;
 
-public class FieldInstance extends MemberInstance<FieldInstance> {
+public final class FieldInstance extends MemberInstance<FieldInstance> {
 	/**
 	 * Create a shared unknown field.
 	 */
@@ -36,12 +37,12 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 	}
 
 	@Override
-	public String getDisplayName(boolean full, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public String getDisplayName(NameType type, boolean full) {
 		StringBuilder ret = new StringBuilder(64);
 
-		ret.append(super.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
+		ret.append(super.getDisplayName(type, full));
 		ret.append(' ');
-		ret.append(type.getDisplayName(full, mapped, tmpNamed, unmatchedTmp));
+		ret.append(this.type.getDisplayName(type, full));
 
 		return ret.toString();
 	}
@@ -95,7 +96,7 @@ public class FieldInstance extends MemberInstance<FieldInstance> {
 	}
 
 	@Override
-	public String getUidString() {
+	protected String getUidString() {
 		int uid = getUid();
 		if (uid < 0) return null;
 

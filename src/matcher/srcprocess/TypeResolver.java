@@ -26,17 +26,16 @@ import com.github.javaparser.ast.type.VoidType;
 
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
+import matcher.NameType;
 import matcher.type.ClassEnv;
 import matcher.type.IMatchable;
 import matcher.type.MethodInstance;
 
 class TypeResolver {
-	public void setup(ClassInstance rootCls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp, CompilationUnit cu) {
+	public void setup(ClassInstance rootCls, NameType nameType, CompilationUnit cu) {
 		this.rootCls = rootCls;
 		this.env = rootCls.getEnv();
-		this.mapped = mapped;
-		this.tmpNamed = tmpNamed;
-		this.unmatchedTmp = unmatchedTmp;
+		this.nameType = nameType;
 
 		if (cu.getPackageDeclaration().isPresent()) {
 			pkg = cu.getPackageDeclaration().get().getNameAsString().replace('.', '/');
@@ -111,7 +110,7 @@ class TypeResolver {
 			name = methodDecl.getName().getIdentifier();
 		}
 
-		return cls.getMethod(name, desc, mapped, tmpNamed, unmatchedTmp);
+		return cls.getMethod(name, desc, nameType);
 	}
 
 	public FieldInstance getField(VariableDeclarator var) {
@@ -121,7 +120,7 @@ class TypeResolver {
 		String name = var.getName().getIdentifier();
 		String desc = toDesc(var.getType());
 
-		return cls.getField(name, desc, mapped, tmpNamed, unmatchedTmp);
+		return cls.getField(name, desc, nameType);
 	}
 
 	public FieldInstance getField(EnumConstantDeclaration var) {
@@ -129,9 +128,9 @@ class TypeResolver {
 		if (cls == null) return null;
 
 		String name = var.getName().getIdentifier();
-		String desc = !cls.isPrimitive() ? "L"+cls.getName(mapped, tmpNamed, unmatchedTmp)+";" : cls.getId();
+		String desc = !cls.isPrimitive() ? "L"+cls.getName(nameType)+";" : cls.getId();
 
-		return cls.getField(name, desc, mapped, tmpNamed, unmatchedTmp);
+		return cls.getField(name, desc, nameType);
 	}
 
 	private String toDesc(Type type) {
@@ -228,18 +227,16 @@ class TypeResolver {
 	}
 
 	public ClassInstance getClsByName(String name) {
-		return env.getClsByName(name, mapped, tmpNamed, unmatchedTmp);
+		return env.getClsByName(name, nameType);
 	}
 
 	public String getName(IMatchable<?> e) {
-		return e.getName(mapped, tmpNamed, unmatchedTmp);
+		return e.getName(nameType);
 	}
 
 	private ClassInstance rootCls;
 	private ClassEnv env;
-	private boolean mapped;
-	private boolean tmpNamed;
-	private boolean unmatchedTmp;
+	private NameType nameType;
 	private String pkg;
 	private final Map<String, String> imports = new HashMap<>();
 	private final List<String> wildcardImports = new ArrayList<>();

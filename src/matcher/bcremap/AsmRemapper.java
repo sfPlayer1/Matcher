@@ -2,6 +2,7 @@ package matcher.bcremap;
 
 import org.objectweb.asm.commons.Remapper;
 
+import matcher.NameType;
 import matcher.type.ClassEnv;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
@@ -9,11 +10,9 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class AsmRemapper extends Remapper {
-	public AsmRemapper(ClassEnv env, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public AsmRemapper(ClassEnv env, NameType nameType) {
 		this.env = env;
-		this.mapped = mapped;
-		this.tmpNamed = tmpNamed;
-		this.unmatchedTmp = unmatchedTmp;
+		this.nameType = nameType;
 	}
 
 	@Override
@@ -21,7 +20,7 @@ public class AsmRemapper extends Remapper {
 		ClassInstance cls = env.getClsByName(typeName);
 		if (cls == null) return typeName;
 
-		return cls.getName(mapped, tmpNamed, unmatchedTmp);
+		return cls.getName(nameType);
 	}
 
 	@Override
@@ -32,7 +31,7 @@ public class AsmRemapper extends Remapper {
 		FieldInstance field = cls.resolveField(name, desc);
 		if (field == null) return name;
 
-		return field.getName(mapped, tmpNamed, unmatchedTmp);
+		return field.getName(nameType);
 	}
 
 	@Override
@@ -47,7 +46,7 @@ public class AsmRemapper extends Remapper {
 			return name;
 		}
 
-		return method.getName(mapped, tmpNamed, unmatchedTmp);
+		return method.getName(nameType);
 	}
 
 	public String mapMethodName(String owner, String name, String desc, boolean itf) {
@@ -57,7 +56,7 @@ public class AsmRemapper extends Remapper {
 		MethodInstance method = cls.resolveMethod(name, desc, itf);
 		if (method == null) return name;
 
-		return method.getName(mapped, tmpNamed, unmatchedTmp);
+		return method.getName(nameType);
 	}
 
 	public String mapArbitraryInvokeDynamicMethodName(String owner, String name) {
@@ -67,7 +66,7 @@ public class AsmRemapper extends Remapper {
 		MethodInstance method = cls.getMethod(name, null);
 		if (method == null) return name;
 
-		return method.getName(mapped, tmpNamed, unmatchedTmp);
+		return method.getName(nameType);
 	}
 
 	public String mapLocalVariableName(String className, String methodName, String methodDesc, String name, String desc, int lvIndex, int startInsn, int endInsn) {
@@ -81,7 +80,7 @@ public class AsmRemapper extends Remapper {
 			if (var.getLvIndex() == lvIndex && var.getEndInsn() > startInsn && var.getStartInsn() < endInsn) {
 				assert var.getType().getId().equals(desc);
 
-				return var.getName(mapped, tmpNamed, unmatchedTmp);
+				return var.getName(nameType);
 			}
 		}
 
@@ -89,7 +88,5 @@ public class AsmRemapper extends Remapper {
 	}
 
 	private final ClassEnv env;
-	private final boolean mapped;
-	private final boolean tmpNamed;
-	private final boolean unmatchedTmp;
+	private final NameType nameType;
 }

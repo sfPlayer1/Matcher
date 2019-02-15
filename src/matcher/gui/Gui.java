@@ -36,7 +36,9 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
 import matcher.Matcher;
+import matcher.NameType;
 import matcher.gui.menu.MainMenuBar;
+import matcher.srcprocess.BuiltinDecompiler;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
 
@@ -141,28 +143,29 @@ public class Gui extends Application {
 		}
 	}
 
-	public boolean isTmpNamed() {
-		return tmpNamed;
+	public NameType getNameType() {
+		return nameType;
 	}
 
-	public void setTmpNamed(boolean value) {
-		if (this.tmpNamed == value) return;
+	public void setNameType(NameType value) {
+		if (this.nameType == value) return;
 
-		this.tmpNamed = value;
+		this.nameType = value;
 
 		for (IGuiComponent c : components) {
 			c.onViewChange();
 		}
 	}
 
-	public boolean isMapCodeViews() {
-		return mapCodeViews;
+
+	public BuiltinDecompiler getDecompiler() {
+		return decompiler;
 	}
 
-	public void setMapCodeViews(boolean value) {
-		if (this.mapCodeViews == value) return;
+	public void setDecompiler(BuiltinDecompiler value) {
+		if (this.decompiler == value) return;
 
-		this.mapCodeViews = value;
+		this.decompiler = value;
 
 		for (IGuiComponent c : components) {
 			c.onViewChange();
@@ -308,7 +311,7 @@ public class Gui extends Application {
 		return file.toPath();
 	}
 
-	public static enum SortKey {
+	public enum SortKey {
 		Name, MappedName, MatchStatus;
 	}
 
@@ -324,8 +327,8 @@ public class Gui extends Application {
 	private boolean sortMatchesAlphabetically;
 	private boolean showNonInputs;
 
-	private boolean tmpNamed;
-	private boolean mapCodeViews = true;
+	private NameType nameType = NameType.MAPPED_PLAIN;
+	private BuiltinDecompiler decompiler = BuiltinDecompiler.CFR;
 
 	private static File lastChooserFile;
 }

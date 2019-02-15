@@ -1,5 +1,7 @@
 package matcher.type;
 
+import matcher.NameType;
+
 public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	MethodVarInstance(MethodInstance method, boolean isArg, int index, int lvIndex, int asmIndex,
 			ClassInstance type, int startInsn, int endInsn,
@@ -59,6 +61,39 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	}
 
 	@Override
+	public String getName(NameType type) {
+		if (type == NameType.PLAIN) {
+			return origName;
+		} else if (type == NameType.UID_PLAIN) {
+			int uid = getUid();
+			if (uid >= 0) return (isArg ? "arg_" : "var_")+index;
+		}
+
+		boolean mapped = type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
+		boolean tmp = type == NameType.MAPPED_TMP_PLAIN || type == NameType.TMP_PLAIN;
+		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
+		String ret;
+
+		if (mapped && mappedName != null) {
+			// MAPPED_*, local name available
+			ret = mappedName;
+		} else if (mapped && matchedInstance != null && matchedInstance.mappedName != null) {
+			// MAPPED_*, remote name available
+			ret = matchedInstance.mappedName;
+		} else if (tmp && (nameObfuscated || !mapped) && matchedInstance != null && matchedInstance.tmpName != null) {
+			// MAPPED_TMP_* with obf name or TMP_*, remote name available
+			ret = matchedInstance.tmpName;
+		} else if ((tmp || locTmp) && (nameObfuscated || !mapped) && tmpName != null) {
+			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
+			ret = tmpName;
+		} else {
+			ret = origName;
+		}
+
+		return ret;
+	}
+
+	@Override
 	public ClassEnv getEnv() {
 		return method.getEnv();
 	}
@@ -69,14 +104,8 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	}
 
 	@Override
-	public String getTmpName(boolean unmatched) {
-		String ret;
-
-		if (!unmatched && matchedInstance != null && (ret = matchedInstance.getTmpName(true)) != null) {
-			return ret;
-		}
-
-		return tmpName;
+	public boolean hasLocalTmpName() {
+		return tmpName != null;
 	}
 
 	public void setTmpName(String tmpName) {
@@ -89,19 +118,8 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 	}
 
 	@Override
-	public String getUidString() {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public String getMappedName() {
-		if (mappedName != null) {
-			return mappedName;
-		} else if (matchedInstance != null && matchedInstance.mappedName != null) {
-			return matchedInstance.mappedName;
-		} else {
-			return null;
-		}
+	public boolean hasMappedName() {
+		return mappedName != null || matchedInstance != null && matchedInstance.mappedName != null;
 	}
 
 	public void setMappedName(String mappedName) {

@@ -98,7 +98,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		protected String getText(RankResult<T> item) {
 			boolean full = item.getSubject() instanceof ClassInstance;
 
-			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(full, false, gui.isTmpNamed(), true));
+			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(gui.getNameType(), full));
 		}
 	}
 

@@ -43,7 +43,7 @@ class SaveMappingsPane extends GridPane {
 
 		add(new Label("Target name type:"), 0, 2);
 		cbDst = new ComboBox<>(FXCollections.observableArrayList(NameType.values()));
-		cbDst.getSelectionModel().select(NameType.MAPPED);
+		cbDst.getSelectionModel().select(NameType.MAPPED_PLAIN);
 		add(cbDst, 1, 2);
 
 		add(new Label("Verbosity:"), 0, 3);

@@ -166,5 +166,17 @@ public class Util {
 				&& !bsm.isInterface();
 	}
 
+	public static boolean isValidJavaIdentifier(String s) {
+		int cp = s.codePointAt(0);
+		if (!Character.isJavaIdentifierStart(cp)) return false;
+
+		for (int i = Character.charCount(cp), max = s.length(); i < max; i += Character.charCount(cp)) {
+			cp = s.codePointAt(i);
+			if (!Character.isJavaIdentifierPart(cp)) return false;
+		}
+
+		return true;
+	}
+
 	public static final Object asmNodeSync = new Object();
 }

@@ -1,8 +1,8 @@
 package matcher.gui.tab;
 
-import static matcher.gui.tab.ClassInfoTab.nullToMissing;
-
-import java.util.Collection;
+import static matcher.gui.tab.ClassInfoTab.format;
+import static matcher.gui.tab.ClassInfoTab.getName;
+import static matcher.gui.tab.MethodInfoTab.formatClass;
 
 import org.objectweb.asm.tree.FieldNode;
 
@@ -10,8 +10,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
+import matcher.NameType;
 import matcher.Util;
 import matcher.Util.AFElementType;
 import matcher.gui.Gui;
@@ -19,7 +21,6 @@ import matcher.gui.GuiConstants;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
 import matcher.type.FieldInstance;
-import matcher.type.IMatchable;
 
 public class FieldInfoTab extends Tab implements IGuiComponent {
 	public FieldInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
@@ -54,7 +55,8 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Write refs", writeRefLabel, grid, row);
 		row = addRow("Comment", mapCommentLabel, grid, row);
 
-		setContent(grid);
+		ScrollPane scroll = new ScrollPane(grid);
+		setContent(scroll);
 	}
 
 	private static int addRow(String name, Node content, GridPane grid, int row) {
@@ -78,6 +80,11 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 		update(field);
 	}
 
+	@Override
+	public void onViewChange() {
+		update(selectionProvider.getSelectedField());
+	}
+
 	private void update(FieldInstance field) {
 		if (field == null) {
 			ownerLabel.setText("-");
@@ -95,32 +102,27 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 			writeRefLabel.setText("-");
 			mapCommentLabel.setText("-");
 		} else {
-			ownerLabel.setText(getName(field.getCls()));
+			NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
+
+			ownerLabel.setText(getName(field.getCls(), nameType));
 			nameLabel.setText(field.getName());
-			tmpNameLabel.setText(nullToMissing(field.getTmpName(unmatchedTmp)));
-			mappedNameLabel.setText(nullToMissing(field.getMappedName()));
-			uidLabel.setText(field.getUid() < 0 ? "-" : Integer.toString(field.getUid()));
+			tmpNameLabel.setText(field.hasLocalTmpName() ? field.getName(NameType.LOCTMP_PLAIN) : "-");
+			mappedNameLabel.setText(field.hasMappedName() ? field.getName(NameType.MAPPED_PLAIN) : "-");
+			uidLabel.setText(field.getUid() >= 0 ? Integer.toString(field.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(field.isNameObfuscated()));
-			typeLabel.setText(getName(field.getType()));
+			typeLabel.setText(getName(field.getType(), nameType));
 			accessLabel.setText(Util.formatAccessFlags(field.getAccess(), AFElementType.Method));
 
 			FieldNode asmNode = field.getAsmNode();
 			sigLabel.setText(asmNode == null || asmNode.signature == null ? "-" : asmNode.signature);
 
-			parentLabel.setText(!field.getParents().isEmpty() ? format(field.getParents()) : "-");
-			childLabel.setText(!field.isFinal() ? format(field.getChildren()) : "-");
-			readRefLabel.setText(format(field.getReadRefs()));
-			writeRefLabel.setText(format(field.getWriteRefs()));
+			parentLabel.setText(!field.getParents().isEmpty() ? formatClass(field.getParents(), nameType) : "-");
+			childLabel.setText(!field.isFinal() ?  formatClass(field.getChildren(), nameType) : "-");
+
+			readRefLabel.setText(format(field.getReadRefs(), nameType));
+			writeRefLabel.setText(format(field.getWriteRefs(), nameType));
 			mapCommentLabel.setText(field.getMappedComment() != null ? field.getMappedComment() : "-");
 		}
-	}
-
-	private String format(Collection<? extends IMatchable<?>> c) {
-		return ClassInfoTab.format(c, gui.isTmpNamed(), unmatchedTmp);
-	}
-
-	private String getName(IMatchable<?> m) {
-		return ClassInfoTab.getName(m, gui.isTmpNamed(), unmatchedTmp);
 	}
 
 	private final Gui gui;

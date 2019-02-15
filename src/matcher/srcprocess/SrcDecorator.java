@@ -18,16 +18,17 @@ import com.github.javaparser.ast.comments.BlockComment;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
+import matcher.NameType;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
 
 public class SrcDecorator {
-	public static String decorate(String src, ClassInstance cls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public static String decorate(String src, ClassInstance cls, NameType nameType) {
 		if (cls.getOuterClass() != null) {
 			// replace <outer>.<inner> with <outer>$<inner> since . is not a legal identifier within class names and thus gets rejected by JavaParser
 
-			String name = cls.getName(mapped, tmpNamed, unmatchedTmp);
+			String name = cls.getName(nameType);
 			int pos = name.indexOf('$');
 
 			if (pos != -1) {
@@ -59,7 +60,7 @@ public class SrcDecorator {
 		}
 
 		TypeResolver resolver = new TypeResolver();
-		resolver.setup(cls, mapped, tmpNamed, unmatchedTmp, cu);
+		resolver.setup(cls, nameType, cu);
 
 		cu.accept(remapVisitor, resolver);
 

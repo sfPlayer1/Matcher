@@ -33,11 +33,11 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import matcher.NameType;
 import matcher.Util;
 import matcher.classifier.ClassifierUtil;
 import matcher.classifier.MatchingCache;
 import matcher.config.ProjectConfig;
-import matcher.srcprocess.Cfr;
 import matcher.srcprocess.Decompiler;
 import matcher.type.Signature.ClassSignature;
 
@@ -154,7 +154,7 @@ public class ClassEnvironment implements ClassEnv {
 	}
 
 	@Override
-	public ClassInstance getClsById(String id, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public ClassInstance getClsById(String id, NameType nameType) {
 		return getSharedClsById(id);
 	}
 
@@ -307,7 +307,7 @@ public class ClassEnvironment implements ClassEnv {
 		return extractorB.getInputFiles();
 	}
 
-	public String decompile(ClassInstance cls, boolean mapped, boolean tmpNamed, boolean unmatchedTmp) {
+	public String decompile(Decompiler decompiler, ClassInstance cls, NameType nameType) {
 		ClassFeatureExtractor extractor;
 
 		if (extractorA.getLocalClsById(cls.getId()) == cls) {
@@ -318,7 +318,7 @@ public class ClassEnvironment implements ClassEnv {
 			throw new IllegalArgumentException("unknown class: "+cls);
 		}
 
-		return decompiler.decompile(cls, extractor, mapped, tmpNamed, unmatchedTmp);
+		return decompiler.decompile(cls, extractor, nameType);
 	}
 
 	@Override
@@ -552,7 +552,6 @@ public class ClassEnvironment implements ClassEnv {
 	private final ClassFeatureExtractor extractorA = new ClassFeatureExtractor(this);
 	private final ClassFeatureExtractor extractorB = new ClassFeatureExtractor(this);
 	private final MatchingCache cache = new MatchingCache();
-	private final Decompiler decompiler = new Cfr();
 
 	private boolean inputsBeforeClassPath;
 	private Pattern nonObfuscatedClassPatternA;
