@@ -2,7 +2,7 @@ package matcher.type;
 
 import matcher.NameType;
 
-public class MethodVarInstance implements IMatchable<MethodVarInstance> {
+public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	MethodVarInstance(MethodInstance method, boolean isArg, int index, int lvIndex, int asmIndex,
 			ClassInstance type, int startInsn, int endInsn,
 			String origName, boolean nameObfuscated) {
@@ -135,6 +135,11 @@ public class MethodVarInstance implements IMatchable<MethodVarInstance> {
 		assert match == null || method == match.method.getMatch();
 
 		this.matchedInstance = match;
+	}
+
+	@Override
+	public boolean isFullyMatched(boolean recursive) {
+		return matchedInstance != null;
 	}
 
 	@Override

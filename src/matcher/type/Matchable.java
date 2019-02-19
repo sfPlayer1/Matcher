@@ -2,7 +2,7 @@ package matcher.type;
 
 import matcher.NameType;
 
-public interface IMatchable<T> {
+public interface Matchable<T> {
 	String getId();
 	String getName();
 	String getName(NameType type);
@@ -23,5 +23,6 @@ public interface IMatchable<T> {
 	}
 
 	T getMatch();
+	boolean isFullyMatched(boolean recursive);
 	boolean isNameObfuscated();
 }

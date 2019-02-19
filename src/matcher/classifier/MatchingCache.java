@@ -4,16 +4,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 
-import matcher.type.IMatchable;
+import matcher.type.Matchable;
 
 public class MatchingCache {
 	@SuppressWarnings("unchecked")
-	public <T, U extends IMatchable<U>> T get(CacheToken<T> token, U a, U b) {
+	public <T, U extends Matchable<U>> T get(CacheToken<T> token, U a, U b) {
 		return (T) cache.get(new CacheKey<U>(token, a, b));
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T, U extends IMatchable<U>> T compute(CacheToken<T> token, U a, U b, BiFunction<U, U, T> f) {
+	public <T, U extends Matchable<U>> T compute(CacheToken<T> token, U a, U b, BiFunction<U, U, T> f) {
 		return (T) cache.computeIfAbsent(new CacheKey<U>(token, a, b), k -> f.apply((U) k.a, (U) k.b));
 	}
 
@@ -23,7 +23,7 @@ public class MatchingCache {
 
 	public static final class CacheToken<t> {}
 
-	private static class CacheKey<T extends IMatchable<T>> {
+	private static class CacheKey<T extends Matchable<T>> {
 		public CacheKey(CacheToken<?> token, T a, T b) {
 			this.token = token;
 			this.a = a;

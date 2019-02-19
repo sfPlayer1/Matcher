@@ -16,7 +16,7 @@ import matcher.classifier.MethodClassifier;
 import matcher.classifier.RankResult;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.IMatchable;
+import matcher.type.Matchable;
 import matcher.type.MatchType;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
@@ -44,7 +44,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 		// class list
 
-		classList.setCellFactory(new MatchableListCellFactory<ClassInstance>());
+		classList.setCellFactory(ignore -> new DstListCell<>());
 		classList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
 			if (suppressChangeEvents || oldValue == newValue) return;
 
@@ -55,7 +55,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 		// member list
 
-		memberList.setCellFactory(new MatchableListCellFactory<MemberInstance<?>>());
+		memberList.setCellFactory(ignore -> new DstListCell<MemberInstance<?>>());
 		memberList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
 			if (suppressChangeEvents || oldValue == newValue) return;
 
@@ -93,7 +93,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		srcPane.addListener(srcListener);
 	}
 
-	private class MatchableListCellFactory<T extends IMatchable<? extends T>> extends ListCellFactory<RankResult<T>> {
+	private class DstListCell<T extends Matchable<? extends T>> extends StyledListCell<RankResult<T>> {
 		@Override
 		protected String getText(RankResult<T> item) {
 			boolean full = item.getSubject() instanceof ClassInstance;
@@ -167,7 +167,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 		suppressChangeEvents = true;
 
-		Comparator<RankResult<? extends IMatchable<?>>> cmp;
+		Comparator<RankResult<? extends Matchable<?>>> cmp;
 
 		if (gui.isSortMatchesAlphabetically()) {
 			cmp = getNameComparator();
@@ -207,12 +207,12 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		return components;
 	}
 
-	private static Comparator<RankResult<? extends IMatchable<?>>> getNameComparator() {
+	private static Comparator<RankResult<? extends Matchable<?>>> getNameComparator() {
 		return Comparator.comparing(r -> r.getSubject().getName());
 	}
 
-	private static Comparator<RankResult<? extends IMatchable<?>>> getScoreComparator() {
-		return Comparator.<RankResult<? extends IMatchable<?>>>comparingDouble(r -> r.getScore()).reversed();
+	private static Comparator<RankResult<? extends Matchable<?>>> getScoreComparator() {
+		return Comparator.<RankResult<? extends Matchable<?>>>comparingDouble(r -> r.getScore()).reversed();
 	}
 
 	private class SrcListener implements IGuiComponent {

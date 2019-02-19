@@ -103,6 +103,11 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 		return "field_"+uid;
 	}
 
+	@Override
+	public boolean isFullyMatched(boolean recursive) {
+		return matchedInstance != null;
+	}
+
 	static String getId(String name, String desc) {
 		return name+";;"+desc;
 	}

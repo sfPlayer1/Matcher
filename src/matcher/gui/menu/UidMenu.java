@@ -25,7 +25,7 @@ import matcher.type.ClassEnv;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.IMatchable;
+import matcher.type.Matchable;
 import matcher.type.MatchType;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
@@ -200,7 +200,7 @@ public class UidMenu extends Menu {
 			conn.setRequestProperty("X-Token", config.getToken());
 			conn.setDoOutput(true);
 
-			List<IMatchable<?>> requested = new ArrayList<>();
+			List<Matchable<?>> requested = new ArrayList<>();
 
 			try (DataOutputStream os = new DataOutputStream(conn.getOutputStream())) {
 				for (ClassInstance cls : gui.getEnv().getClassesA()) {
@@ -248,7 +248,7 @@ public class UidMenu extends Menu {
 			progressConsumer.accept(0.5);
 
 			try (DataInputStream is = new DataInputStream(conn.getInputStream())) {
-				for (IMatchable<?> matchable : requested) {
+				for (Matchable<?> matchable : requested) {
 					int uid = is.readInt();
 				}
 			}

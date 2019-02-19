@@ -9,7 +9,7 @@ import org.objectweb.asm.Opcodes;
 import matcher.NameType;
 import matcher.Util;
 
-public abstract class MemberInstance<T extends MemberInstance<T>> implements IMatchable<T> {
+public abstract class MemberInstance<T extends MemberInstance<T>> implements Matchable<T> {
 	@SuppressWarnings("unchecked")
 	protected MemberInstance(ClassInstance cls, String id, String origName, boolean nameObfuscated, int position, boolean isStatic) {
 		this.cls = cls;

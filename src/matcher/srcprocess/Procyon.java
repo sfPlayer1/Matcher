@@ -18,6 +18,7 @@ public class Procyon implements Decompiler {
 	@Override
 	public String decompile(ClassInstance cls, ClassFeatureExtractor env, NameType nameType) {
 		DecompilerSettings settings = DecompilerSettings.javaDefaults();
+		settings.setShowSyntheticMembers(true);
 		settings.setTypeLoader(new CompositeTypeLoader(
 				new TypeLoader(env, nameType),
 				new ClasspathTypeLoader()));

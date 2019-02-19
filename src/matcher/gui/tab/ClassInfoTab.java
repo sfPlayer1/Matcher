@@ -19,7 +19,7 @@ import matcher.gui.GuiConstants;
 import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
 import matcher.type.ClassInstance;
-import matcher.type.IMatchable;
+import matcher.type.Matchable;
 
 public class ClassInfoTab extends Tab implements IGuiComponent {
 	public ClassInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
@@ -131,11 +131,11 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		}
 	}
 
-	static String format(Collection<? extends IMatchable<?>> c, NameType nameType) {
+	static String format(Collection<? extends Matchable<?>> c, NameType nameType) {
 		return c.stream().map(v -> getName(v, nameType)).sorted().collect(Collectors.joining("\n"));
 	}
 
-	static String getName(IMatchable<?> m, NameType nameType) {
+	static String getName(Matchable<?> m, NameType nameType) {
 		String ret = m.getDisplayName(nameType.withMapped(false), true);
 		String mapped = m.getDisplayName(nameType.withMapped(true), true);
 

@@ -23,9 +23,10 @@ import matcher.NameType;
 import matcher.Util;
 import matcher.bcremap.AsmClassRemapper;
 import matcher.bcremap.AsmRemapper;
+import matcher.classifier.ClassifierUtil;
 import matcher.type.Signature.ClassSignature;
 
-public final class ClassInstance implements IMatchable<ClassInstance> {
+public final class ClassInstance implements Matchable<ClassInstance> {
 	/**
 	 * Create a shared unknown class.
 	 */
@@ -213,6 +214,56 @@ public final class ClassInstance implements IMatchable<ClassInstance> {
 		assert cls == null || cls.getEnv() != env && !cls.getEnv().isShared();
 
 		this.matchedClass = cls;
+	}
+
+	@Override
+	public boolean isFullyMatched(boolean recursive) {
+		if (matchedClass == null) return false;
+
+		boolean anyUnmatched = false;
+
+		for (MethodInstance m : methods) {
+			if (!m.hasMatch() || recursive && !m.isFullyMatched(true)) {
+				anyUnmatched = true;
+				break;
+			}
+		}
+
+		if (anyUnmatched) {
+			for (MethodInstance a : methods) {
+				if (a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
+
+				// check for any potential match to ignore methods that are impossible to match
+				for (MethodInstance b : matchedClass.methods) {
+					if (!b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
+						return false;
+					}
+				}
+			}
+		}
+
+		anyUnmatched = false;
+
+		for (FieldInstance m : fields) {
+			if (!m.hasMatch() || recursive && !m.isFullyMatched(true)) {
+				anyUnmatched = true;
+				break;
+			}
+		}
+
+		if (anyUnmatched) {
+			for (FieldInstance a : fields) {
+				if (a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
+
+				for (FieldInstance b : matchedClass.fields) {
+					if (!b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
+						return false;
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 	@Override
@@ -726,7 +777,8 @@ public final class ClassInstance implements IMatchable<ClassInstance> {
 	public boolean hasMappedName() {
 		return mappedName != null
 				|| matchedClass != null && matchedClass.mappedName != null
-				|| elementClass != null && elementClass.hasMappedName();
+				|| elementClass != null && elementClass.hasMappedName()
+				|| outerClass != null && outerClass.hasMappedName();
 	}
 
 	public boolean hasNoFullyMappedName() {

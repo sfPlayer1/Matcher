@@ -57,6 +57,13 @@ public class ViewMenu extends Menu {
 		});
 		getItems().add(checkMenuItem);
 
+		checkMenuItem = new CheckMenuItem("Use tree view");
+		checkMenuItem.setSelected(gui.isUseClassTreeView());
+		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setUseClassTreeView(newValue);
+		});
+		getItems().add(checkMenuItem);
+
 		checkMenuItem = new CheckMenuItem("Show non-inputs");
 		checkMenuItem.setSelected(gui.isShowNonInputs());
 		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {

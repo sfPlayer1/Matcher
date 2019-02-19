@@ -39,7 +39,7 @@ import matcher.classifier.MatchingCache.CacheToken;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.IMatchable;
+import matcher.type.Matchable;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
@@ -161,7 +161,7 @@ public class ClassifierUtil {
 		return compareIdentitySets(setA, setB, readOnly, ClassifierUtil::checkPotentialEquality);
 	}
 
-	private static <T extends IMatchable<T>> double compareIdentitySets(Set<T> setA, Set<T> setB, boolean readOnly, BiPredicate<T, T> comparator) {
+	private static <T extends Matchable<T>> double compareIdentitySets(Set<T> setA, Set<T> setB, boolean readOnly, BiPredicate<T, T> comparator) {
 		if (setA.isEmpty() || setB.isEmpty()) {
 			return setA.isEmpty() && setB.isEmpty() ? 1 : 0;
 		}
@@ -603,7 +603,7 @@ public class ClassifierUtil {
 		int apply(T list);
 	}
 
-	public static <T extends IMatchable<T>> List<RankResult<T>> rank(T src, T[] dsts, Collection<IClassifier<T>> classifiers, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env, double maxMismatch) {
+	public static <T extends Matchable<T>> List<RankResult<T>> rank(T src, T[] dsts, Collection<IClassifier<T>> classifiers, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env, double maxMismatch) {
 		List<RankResult<T>> ret = new ArrayList<>(dsts.length);
 
 		for (T dst : dsts) {
@@ -616,7 +616,7 @@ public class ClassifierUtil {
 		return ret;
 	}
 
-	public static <T extends IMatchable<T>> List<RankResult<T>> rankParallel(T src, T[] dsts, Collection<IClassifier<T>> classifiers, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env, double maxMismatch) {
+	public static <T extends Matchable<T>> List<RankResult<T>> rankParallel(T src, T[] dsts, Collection<IClassifier<T>> classifiers, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env, double maxMismatch) {
 		return Arrays.stream(dsts)
 				.parallel()
 				.map(dst -> rank(src, dst, classifiers, potentialEqualityCheck, env, maxMismatch))
@@ -625,7 +625,7 @@ public class ClassifierUtil {
 				.collect(Collectors.toList());
 	}
 
-	private static <T extends IMatchable<T>> RankResult<T> rank(T src, T dst, Collection<IClassifier<T>> classifiers, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env, double maxMismatch) {
+	private static <T extends Matchable<T>> RankResult<T> rank(T src, T dst, Collection<IClassifier<T>> classifiers, BiPredicate<T, T> potentialEqualityCheck, ClassEnvironment env, double maxMismatch) {
 		assert src.getEnv() != dst.getEnv();
 
 		if (!potentialEqualityCheck.test(src, dst)) return null;
@@ -703,7 +703,7 @@ public class ClassifierUtil {
 		}
 	}
 
-	public static <T extends IMatchable<T>> double classifyPosition(T a, T b,
+	public static <T extends Matchable<T>> double classifyPosition(T a, T b,
 			ToIntFunction<T> positionSupplier,
 			BiFunction<T, Integer, T> siblingSupplier,
 			Function<T, T[]> siblingsSupplier) {

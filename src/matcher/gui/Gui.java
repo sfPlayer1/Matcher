@@ -119,10 +119,24 @@ public class Gui extends Application {
 		return sortMatchesAlphabetically;
 	}
 
-	public void setSortMatchesAlphabetically(boolean sortMatchesAlphabetically) {
-		if (this.sortMatchesAlphabetically == sortMatchesAlphabetically) return;
+	public void setSortMatchesAlphabetically(boolean value) {
+		if (this.sortMatchesAlphabetically == value) return;
 
-		this.sortMatchesAlphabetically = sortMatchesAlphabetically;
+		this.sortMatchesAlphabetically = value;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange();
+		}
+	}
+
+	public boolean isUseClassTreeView() {
+		return useClassTreeView;
+	}
+
+	public void setUseClassTreeView(boolean value) {
+		if (this.useClassTreeView == value) return;
+
+		this.useClassTreeView = value;
 
 		for (IGuiComponent c : components) {
 			c.onViewChange();
@@ -325,6 +339,7 @@ public class Gui extends Application {
 
 	private SortKey sortKey = SortKey.Name;
 	private boolean sortMatchesAlphabetically;
+	private boolean useClassTreeView;
 	private boolean showNonInputs;
 
 	private NameType nameType = NameType.MAPPED_PLAIN;

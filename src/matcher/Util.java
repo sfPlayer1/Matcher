@@ -123,7 +123,7 @@ public class Util {
 		return sb.toString();
 	}
 
-	public static enum AFElementType {
+	public enum AFElementType {
 		Class(1), Method(2), Field(4), Parameter(8), InnerClass(16);
 
 		private AFElementType(int assoc) {
@@ -176,6 +176,127 @@ public class Util {
 		}
 
 		return true;
+	}
+
+	public static int compareNatural(String a, String b) {
+		final int lenA = a.length();
+		final int lenB = b.length();
+		int posA = 0;
+		int lastSize = 0;
+
+		for (int max = Math.min(lenA, lenB); posA < max; ) {
+			int cA = Character.codePointAt(a, posA);
+			int cB = Character.codePointAt(b, posA);
+
+			if (cA != cB) break;
+
+			lastSize = Character.charCount(cA);
+			posA += lastSize;
+		}
+
+		if (posA == lenA && lenA == lenB) return 0;
+
+		int posB = posA = posA - lastSize;
+		int endA = -1;
+		int endB = -1;
+
+		for (;;) {
+			int startA = posA;
+			boolean isNumA = false;
+
+			while (posA < lenA) {
+				int c = Character.codePointAt(a, posA);
+
+				if ((c >= '0' && c <= '9') != isNumA) {
+					if (posA == startA) {
+						isNumA = !isNumA; // isNum had the wrong initial value
+					} else {
+						if (endA < posA) {
+							endA = posA;
+
+							do {
+								endA += Character.charCount(c);
+							} while (endA < lenA && (c = Character.codePointAt(a, endA)) != '.' && c != '/');
+						}
+
+						break;
+					}
+				} else if (c == '.' || c == '/') {
+					endA = posA; // unconditionally mark end to handle 0-length segments (those won't be re-visited)
+					if (posA == startA) posA++; // consume only if first to avoid polluting comparisons within segments, otherwise trigger revisit
+					break;
+				} else if (c == '$') {
+					if (posA == startA) posA++;
+					break;
+				}
+
+				posA += Character.charCount(c);
+			}
+
+			int startB = posB;
+			boolean isNumB = false;
+
+			while (posB < lenB) {
+				int c = Character.codePointAt(b, posB);
+
+				if ((c >= '0' && c <= '9') != isNumB) {
+					if (posB == startB) {
+						isNumB = !isNumB;
+					} else {
+						if (endB < posB) {
+							endB = posB;
+
+							do {
+								endB += Character.charCount(c);
+							} while (endB < lenB && (c = Character.codePointAt(b, endB)) != '.' && c != '/');
+						}
+
+						break;
+					}
+				} else if (c == '.' || c == '/') {
+					endB = posB;
+					if (posB == startB) posB++;
+					break;
+				} else if (c == '$') {
+					if (posB == startB) posB++;
+					break;
+				}
+
+				posB += Character.charCount(c);
+			}
+
+			boolean hasEndA = endA >= startA && endA < lenA; // segment separator exists after current region
+			boolean hasEndB = endB >= startB && endB < lenB;
+
+			if (hasEndA != hasEndB) {
+				return hasEndA ? 1 : -1;
+			}
+
+			if (isNumA && isNumB) {
+				int segLenA = posA - startA;
+				int segLenB = posB - startB;
+
+				if (segLenA != segLenB) {
+					return segLenA < segLenB ? -1 : 1;
+				}
+			}
+
+			while (startA < posA) {
+				if (startB == posB) return 1;
+
+				int cA = Character.codePointAt(a, startA);
+				int cB = Character.codePointAt(b, startB);
+
+				if (cA != cB) {
+					return cA < cB ? -1 : 1;
+				}
+
+				startA += Character.charCount(cA);
+				startB += Character.charCount(cB);
+			}
+
+			if (startB != posB) return -1;
+		}
 	}
 
 	public static final Object asmNodeSync = new Object();

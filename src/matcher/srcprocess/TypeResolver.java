@@ -28,7 +28,7 @@ import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.NameType;
 import matcher.type.ClassEnv;
-import matcher.type.IMatchable;
+import matcher.type.Matchable;
 import matcher.type.MethodInstance;
 
 class TypeResolver {
@@ -230,7 +230,7 @@ class TypeResolver {
 		return env.getClsByName(name, nameType);
 	}
 
-	public String getName(IMatchable<?> e) {
+	public String getName(Matchable<?> e) {
 		return e.getName(nameType);
 	}
 

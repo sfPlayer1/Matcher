@@ -15,6 +15,7 @@ import org.objectweb.asm.tree.MethodNode;
 
 import matcher.NameType;
 import matcher.Util;
+import matcher.classifier.ClassifierUtil;
 import matcher.type.Signature.MethodSignature;
 
 public final class MethodInstance extends MemberInstance<MethodInstance> {
@@ -269,6 +270,56 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		if (uid < 0) return null;
 
 		return "method_"+uid;
+	}
+
+	@Override
+	public boolean isFullyMatched(boolean recursive) {
+		if (matchedInstance == null) return false;
+
+		boolean anyUnmatched = false;
+
+		for (MethodVarInstance v : args) {
+			if (!v.hasMatch()) {
+				anyUnmatched = true;
+				break;
+			}
+		}
+
+		if (anyUnmatched) {
+			for (MethodVarInstance a : args) {
+				if (a.hasMatch()) continue;
+
+				// check for any potential match to ignore methods that are impossible to match
+				for (MethodVarInstance b : matchedInstance.args) {
+					if (!b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
+						return false;
+					}
+				}
+			}
+		}
+
+		anyUnmatched = false;
+
+		for (MethodVarInstance v : vars) {
+			if (!v.hasMatch()) {
+				anyUnmatched = true;
+				break;
+			}
+		}
+
+		if (anyUnmatched) {
+			for (MethodVarInstance a : vars) {
+				if (a.hasMatch()) continue;
+
+				for (MethodVarInstance b : matchedInstance.vars) {
+					if (!b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
+						return false;
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 	static String getId(String name, String desc) {
