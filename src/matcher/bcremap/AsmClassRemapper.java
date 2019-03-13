@@ -226,8 +226,6 @@ public class AsmClassRemapper extends ClassRemapper {
 			super.visitLocalVariable(name, desc, signature, start, end, index);
 		}
 
-
-
 		@Override
 		public void visitEnd() {
 			checkState();

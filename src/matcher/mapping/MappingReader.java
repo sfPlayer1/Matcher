@@ -106,6 +106,29 @@ public class MappingReader {
 
 			if (line.isEmpty()) continue;
 
+			if (line.charAt(0) == '#') { // comment
+				final String nextUidPrefix = "# INTERMEDIARY-COUNTER ";
+
+				if (line.startsWith(nextUidPrefix)) { // next uid spec: # INTERMEDIARY-COUNTER <type> <id>
+					int pos = line.indexOf(' ', nextUidPrefix.length());
+					if (pos == -1) throw new IOException("invalid tiny line (malformed intermediary counter): "+line);
+
+					String metaKey;
+
+					switch (line.substring(nextUidPrefix.length(), pos)) {
+					case "class": metaKey = Mappings.metaUidNextClass; break;
+					case "method": metaKey = Mappings.metaUidNextMethod; break;
+					case "field": metaKey = Mappings.metaUidNextField; break;
+					default:
+						throw new IOException("invalid tiny line (unknown intermediary counter): "+line);
+					}
+
+					mappingAcceptor.acceptMeta(metaKey, line.substring(pos + 1));
+				}
+
+				continue;
+			}
+
 			String[] parts = line.split("\t");
 			if (parts.length < 3) throw new IOException("invalid tiny line (missing columns): "+line);
 

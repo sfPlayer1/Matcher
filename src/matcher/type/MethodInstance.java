@@ -131,8 +131,13 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 			assert var.name != null;
 			assert method.args.length == 0 || var.index > method.args[method.args.length - 1].lvIndex;
 
+			int startInsn = il.indexOf(var.start);
+			int endInsn = il.indexOf(var.end);
+
+			assert startInsn >= 0 && endInsn >= 0;
+
 			ret[i] = new MethodVarInstance(method, false, i, var.index, asmNode.localVariables.indexOf(var),
-					method.getEnv().getCreateClassInstance(var.desc), il.indexOf(var.start), il.indexOf(var.end),
+					method.getEnv().getCreateClassInstance(var.desc), startInsn, endInsn,
 					var.name, method.nameObfuscated || method.cls.nameObfuscated);
 		}
 
@@ -208,6 +213,50 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		return isArg ? getArg(id) : getVar(id);
 	}
 
+	public MethodVarInstance getArgOrVar(int lvIndex, int pos) {
+		return getArgOrVar(lvIndex, pos, pos + 1);
+	}
+
+	public MethodVarInstance getArgOrVar(int lvIndex, int start, int end) {
+		if (args.length > 0 && lvIndex <= args[args.length - 1].getLvIndex()) {
+			for (int i = 0; i < args.length; i++) {
+				MethodVarInstance arg = args[i];
+
+				if (arg.getLvIndex() == lvIndex) {
+					assert arg.getStartInsn() < 0
+					|| start < arg.getEndInsn() && end > arg.getStartInsn()
+					|| arg.getStartInsn() < end && arg.getEndInsn() > start;
+
+					return arg;
+				}
+			}
+		} else {
+			MethodVarInstance candidate = null;
+			boolean conflict = false;
+
+			for (int i = 0; i < vars.length; i++) {
+				MethodVarInstance var = vars[i];
+				if (var.getLvIndex() != lvIndex) continue;
+
+				if (start < var.getEndInsn() && end > var.getStartInsn()) { // requested interval within var interval (assumes matcher's interval never too loose)
+					return var;
+				} else if (var.getStartInsn() < end && var.getEndInsn() > start) { // var interval within requested interval, only allow unique match
+					if (candidate != null) {
+						conflict = true;
+					} else {
+						candidate = var;
+					}
+				}
+			}
+
+			if (candidate != null && !conflict) {
+				return candidate;
+			}
+		}
+
+		return null;
+	}
+
 	public MethodVarInstance[] getArgs() {
 		return args;
 	}
@@ -269,7 +318,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		int uid = getUid();
 		if (uid < 0) return null;
 
-		return "method_"+uid;
+		return cls.env.getGlobal().methodUidPrefix+uid;
 	}
 
 	@Override

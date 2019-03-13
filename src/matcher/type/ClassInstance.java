@@ -104,7 +104,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			return elementClass.isPrimitive() || elementClass.isArray() ? "["+ret : "[L"+ret+";";
 		} else if (type == NameType.UID_PLAIN) {
 			int uid = getUid();
-			if (uid >= 0) return "class_"+uid;
+			if (uid >= 0) return env.getGlobal().classUidPrefix+uid;
 		}
 
 		boolean mapped = type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;

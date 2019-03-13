@@ -262,7 +262,7 @@ public class MethodClassifier {
 		public double getScore(MethodInstance methodA, MethodInstance methodB, ClassEnvironment env) {
 			if (!checkAsmNodes(methodA, methodB)) return compareAsmNodes(methodA, methodB);
 
-			return ClassifierUtil.compareInsns(methodA.getAsmNode().instructions, methodB.getAsmNode().instructions, env);
+			return ClassifierUtil.compareInsns(methodA, methodB);
 		}
 	};
 

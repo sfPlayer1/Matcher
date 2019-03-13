@@ -66,6 +66,11 @@ class EnigmaMappingState implements IMappingAcceptor{
 		// not supported
 	}
 
+	@Override
+	public void acceptMeta(String key, String value) {
+		// not supported
+	}
+
 	void save() throws IOException {
 		for (EnigmaMappingClass cls : classes.values()) {
 			String name = cls.mappedName != null ? cls.mappedName : cls.name;

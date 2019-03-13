@@ -153,8 +153,8 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	final int lvIndex;
 	final int asmIndex;
 	final ClassInstance type;
-	final int startInsn; // inclusive
-	final int endInsn; // exclusive
+	private final int startInsn; // inclusive
+	private final int endInsn; // exclusive
 	final String origName;
 	final boolean nameObfuscated;
 

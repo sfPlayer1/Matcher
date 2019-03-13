@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -22,22 +21,17 @@ import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.CheckBox;
 import javafx.scene.control.Dialog;
-import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.RadioButton;
 import javafx.scene.control.SeparatorMenuItem;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
 import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
-import matcher.gui.GuiConstants;
+import matcher.gui.menu.LoadMappingsPane.MappingsLoadSettings;
 import matcher.gui.menu.LoadProjectPane.ProjectLoadSettings;
 import matcher.gui.menu.SaveMappingsPane.MappingsSaveSettings;
 import matcher.mapping.MappingFormat;
@@ -181,52 +175,28 @@ public class FileMenu extends Menu {
 
 		if (file == null) return;
 
-		Dialog<boolean[]> dialog = new Dialog<>();
+		Dialog<MappingsLoadSettings> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
 		dialog.setTitle("Import Settings");
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-		GridPane grid = new GridPane();
-		grid.setHgap(GuiConstants.padding);
-		grid.setVgap(GuiConstants.padding);
+		LoadMappingsPane content = new LoadMappingsPane();
+		dialog.getDialogPane().setContent(content);
+		dialog.setResultConverter(button -> button == ButtonType.OK ? content.getSettings() : null);
 
-		grid.add(new Label("Target:"), 0, 0);
+		dialog.showAndWait().ifPresent(settings -> {
+			try {
+				ClassEnvironment env = gui.getMatcher().getEnv();
+				Mappings.load(file, format, settings.a ? env.getEnvA() : env.getEnvB(), settings.names, settings.replace);
+			} catch (IOException e) {
+				e.printStackTrace();
+				gui.showAlert(AlertType.ERROR, "Load error", "Error while loading mappings", e.getMessage());
+				return;
+			}
 
-		ToggleGroup targetGroup = new ToggleGroup();
-		RadioButton rbA = new RadioButton("A");
-		rbA.setToggleGroup(targetGroup);
-		rbA.setSelected(true);
-		grid.add(rbA, 1, 0);
-		RadioButton rbB = new RadioButton("B");
-		rbB.setToggleGroup(targetGroup);
-		grid.add(rbB, 2, 0);
-
-		CheckBox replaceBox = new CheckBox("Replace");
-		replaceBox.setSelected(true);
-		grid.add(replaceBox, 0, 1, 3, 1);
-
-		dialog.getDialogPane().setContent(grid);
-		dialog.setResultConverter(button -> button == ButtonType.OK ? new boolean[] { rbA.isSelected(), replaceBox.isSelected() } : null);
-
-		Optional<boolean[]> resultOpt = dialog.showAndWait();
-		if (!resultOpt.isPresent()) return;
-
-		boolean[] result = resultOpt.get();
-
-		boolean forA = result[0];
-		boolean replace = result[1];
-
-		try {
-			ClassEnvironment env = gui.getMatcher().getEnv();
-			Mappings.load(file, format, forA ? env.getEnvA() : env.getEnvB(), replace);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		}
-
-		gui.onMappingChange();
+			gui.onMappingChange();
+		});
 	}
 
 	private static List<ExtensionFilter> getMappingLoadExtensionFilters() {

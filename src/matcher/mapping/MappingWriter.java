@@ -316,6 +316,39 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 		}
 	}
 
+	@Override
+	public void acceptMeta(String key, String value) {
+		try {
+			switch (format) {
+			case TINY:
+			case TINY_GZIP:
+				switch (key) {
+				case Mappings.metaUidNextClass:
+				case Mappings.metaUidNextMethod:
+				case Mappings.metaUidNextField:
+					writer.write("# INTERMEDIARY-COUNTER ");
+					writer.write(key.equals(Mappings.metaUidNextClass) ? "class" : (key.equals(Mappings.metaUidNextMethod) ? "method" : "field"));
+					writer.write(' ');
+					writer.write(value);
+					writer.write('\n');
+					break;
+				default:
+					// not supported
+				}
+				break;
+			case MCP:
+			case SRG:
+				// not supported
+				break;
+			case ENIGMA:
+				enigmaState.acceptMeta(key, value);
+				break;
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
 	public void flush() throws IOException {
 		if (writer != null) writer.flush();
 	}

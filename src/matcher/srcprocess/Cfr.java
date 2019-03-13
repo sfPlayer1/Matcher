@@ -43,7 +43,7 @@ public class Cfr implements Decompiler {
 
 		@Override
 		public void informAnalysisRelativePathDetail(String usePath, String classFilePath) {
-			System.out.printf("informAnalysisRelativePathDetail %s %s%n", usePath, classFilePath);
+			//System.out.printf("informAnalysisRelativePathDetail %s %s%n", usePath, classFilePath);
 		}
 
 		@Override

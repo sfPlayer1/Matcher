@@ -100,7 +100,7 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 		int uid = getUid();
 		if (uid < 0) return null;
 
-		return "field_"+uid;
+		return cls.env.getGlobal().fieldUidPrefix+uid;
 	}
 
 	@Override

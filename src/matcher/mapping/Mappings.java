@@ -20,7 +20,7 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class Mappings {
-	public static void load(Path path, MappingFormat format, LocalClassEnv env, final boolean replace) throws IOException {
+	public static void load(Path path, MappingFormat format, LocalClassEnv env, final boolean isNames, final boolean replace) throws IOException {
 		int[] counts = new int[7];
 		Set<String> warnedClasses = new HashSet<>();
 
@@ -33,7 +33,42 @@ public class Mappings {
 					if (cls == null) {
 						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName+" ("+dstName+")");
 					} else {
-						if (!cls.hasMappedName() || replace) cls.setMappedName(dstName);
+						if (isNames) {
+							if (!cls.hasMappedName() || replace) cls.setMappedName(dstName);
+						} else {
+							String prefix = env.getGlobal().classUidPrefix;
+
+							if (!dstName.startsWith(prefix)) {
+								System.out.println("Invalid uid class name "+dstName);
+								return;
+							} else {
+								int lastPartStart = dstName.lastIndexOf('$') + 1;
+								String uidStr;
+
+								if (lastPartStart > prefix.length()) {
+									int subPrefixStart = prefix.lastIndexOf('/') + 1;
+
+									if (!dstName.startsWith(prefix.substring(subPrefixStart), lastPartStart)) {
+										System.out.println("Invalid uid class name "+dstName);
+										return;
+									} else {
+										uidStr = dstName.substring(lastPartStart + prefix.length() - subPrefixStart);
+									}
+								} else {
+									uidStr = dstName.substring(prefix.length());
+								}
+
+								int uid = Integer.parseInt(uidStr);
+
+								if (uid < 0) {
+									System.out.println("Invalid class uid "+uid);
+									return;
+								} else if (cls.getUid() < 0 || cls.getUid() > uid || replace) {
+									cls.setUid(uid);
+								}
+							}
+						}
+
 						counts[0]++;
 					}
 				}
@@ -60,9 +95,29 @@ public class Mappings {
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
 						System.out.println("can't find mapped method "+srcClsName+"/"+srcName+" ("+(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN)+"/" : "")+dstName+")");
 					} else {
-						if (!method.hasMappedName() || replace) {
-							for (MethodInstance m : method.getAllHierarchyMembers()) {
-								m.setMappedName(dstName);
+						if (isNames) {
+							if (!method.hasMappedName() || replace) {
+								for (MethodInstance m : method.getAllHierarchyMembers()) {
+									m.setMappedName(dstName);
+								}
+							}
+						} else {
+							String prefix = env.getGlobal().methodUidPrefix;
+
+							if (!dstName.startsWith(prefix)) {
+								System.out.println("Invalid uid method name "+dstName);
+								return;
+							} else {
+								int uid = Integer.parseInt(dstName.substring(prefix.length()));
+
+								if (uid < 0) {
+									System.out.println("Invalid method uid "+uid);
+									return;
+								} else if (method.getUid() < 0 || method.getUid() > uid || replace) {
+									for (MethodInstance m : method.getAllHierarchyMembers()) {
+										m.setUid(uid);
+									}
+								}
 							}
 						}
 
@@ -120,7 +175,12 @@ public class Mappings {
 							return;
 						}
 
-						if (!arg.hasMappedName() || replace) arg.setMappedName(dstArgName);
+						if (isNames) {
+							if (!arg.hasMappedName() || replace) arg.setMappedName(dstArgName);
+						} else {
+							// not applicable
+						}
+
 						counts[4]++;
 					}
 				}
@@ -160,7 +220,12 @@ public class Mappings {
 							return;
 						}
 
-						if (!arg.hasMappedName() || replace) arg.setMappedName(dstVarName);
+						if (isNames) {
+							if (!arg.hasMappedName() || replace) arg.setMappedName(dstVarName);
+						} else {
+							// not applicable
+						}
+
 						counts[4]++;
 					}
 				}
@@ -175,9 +240,29 @@ public class Mappings {
 					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
 						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN)+"/" : "")+dstName+")");
 					} else {
-						if (!field.hasMappedName() || replace) {
-							for (FieldInstance f : field.getAllHierarchyMembers()) {
-								f.setMappedName(dstName);
+						if (isNames) {
+							if (!field.hasMappedName() || replace) {
+								for (FieldInstance f : field.getAllHierarchyMembers()) {
+									f.setMappedName(dstName);
+								}
+							}
+						} else {
+							String prefix = env.getGlobal().fieldUidPrefix;
+
+							if (!dstName.startsWith(prefix)) {
+								System.out.println("Invalid uid field name "+dstName);
+								return;
+							} else {
+								int uid = Integer.parseInt(dstName.substring(prefix.length()));
+
+								if (uid < 0) {
+									System.out.println("Invalid field uid "+uid);
+									return;
+								} else if (field.getUid() < 0 || field.getUid() > uid || replace) {
+									for (FieldInstance f : field.getAllHierarchyMembers()) {
+										f.setUid(uid);
+									}
+								}
 							}
 						}
 
@@ -197,6 +282,29 @@ public class Mappings {
 					} else {
 						if (field.getMappedComment() == null || replace) field.setMappedComment(comment);
 						counts[6]++;
+					}
+				}
+
+				@Override
+				public void acceptMeta(String key, String value) {
+					if (!isNames) {
+						switch (key) {
+						case Mappings.metaUidNextClass: {
+							int val = Integer.parseInt(value);
+							if (replace || env.getGlobal().nextClassUid < val) env.getGlobal().nextClassUid = val;
+							break;
+						}
+						case Mappings.metaUidNextMethod: {
+							int val = Integer.parseInt(value);
+							if (replace || env.getGlobal().nextMethodUid < val) env.getGlobal().nextMethodUid = val;
+							break;
+						}
+						case Mappings.metaUidNextField: {
+							int val = Integer.parseInt(value);
+							if (replace || env.getGlobal().nextFieldUid < val) env.getGlobal().nextFieldUid = val;
+							break;
+						}
+						}
 					}
 				}
 			});
@@ -441,4 +549,8 @@ public class Mappings {
 			}
 		}
 	}
+
+	public static final String metaUidNextClass = "uid-next-class";
+	public static final String metaUidNextMethod = "uid-next-method";
+	public static final String metaUidNextField = "uid-next-field";
 }

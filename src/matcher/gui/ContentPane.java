@@ -18,6 +18,7 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 		this.gui = gui;
 		this.isSource = isSource;
 
+		setTabClosingPolicy(TabClosingPolicy.UNAVAILABLE);
 		init(selectionProvider);
 	}
 

@@ -558,4 +558,11 @@ public class ClassEnvironment implements ClassEnv {
 	private Pattern nonObfuscatedClassPatternB;
 	private Pattern nonObfuscatedMemberPatternA;
 	private Pattern nonObfuscatedMemberPatternB;
+
+	public String classUidPrefix = "class_";
+	public String methodUidPrefix = "method_";
+	public String fieldUidPrefix = "field_";
+	public int nextClassUid;
+	public int nextMethodUid;
+	public int nextFieldUid;
 }

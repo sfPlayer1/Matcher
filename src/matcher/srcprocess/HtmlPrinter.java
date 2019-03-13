@@ -24,7 +24,6 @@ import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.body.AnnotationDeclaration;
 import com.github.javaparser.ast.body.AnnotationMemberDeclaration;
 import com.github.javaparser.ast.body.BodyDeclaration;
-import com.github.javaparser.ast.body.CallableDeclaration;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.EnumConstantDeclaration;
@@ -157,29 +156,56 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 
 	private void printMembers(final NodeList<BodyDeclaration<?>> members, final Void arg) {
 		List<BodyDeclaration<?>> sortedMembers = new ArrayList<>(members);
-
-		sortedMembers.sort((a, b) -> {
-			if (a instanceof FieldDeclaration && b instanceof CallableDeclaration) {
-				return 1;
-			} else if (b instanceof FieldDeclaration && a instanceof CallableDeclaration) {
-				return -1;
-			} else if (a instanceof MethodDeclaration && !((MethodDeclaration) a).getModifiers().contains(Modifier.STATIC) && b instanceof ConstructorDeclaration) {
-				return 1;
-			} else if (b instanceof MethodDeclaration && !((MethodDeclaration) b).getModifiers().contains(Modifier.STATIC) && a instanceof ConstructorDeclaration) {
-				return -1;
-			} else {
-				return 0;
-			}
-		});
+		sortedMembers.sort(Comparator
+				.comparingInt(HtmlPrinter::getTypeIdx)
+				.thenComparing((a, b) -> {
+					// move instance methods after constructors
+					if (a.isConstructorDeclaration() && b.isMethodDeclaration() && !((MethodDeclaration) b).getModifiers().contains(Modifier.STATIC)) {
+						return -1;
+					} else if (b.isConstructorDeclaration() && a.isMethodDeclaration() && !((MethodDeclaration) a).getModifiers().contains(Modifier.STATIC)) {
+						return 1;
+					} else {
+						return 0;
+					}
+				}));
 
 		BodyDeclaration<?> prev = null;
 
 		for (final BodyDeclaration<?> member : sortedMembers) {
-			if (prev != null && (!prev.isFieldDeclaration() || !member.isFieldDeclaration())) printer.println();
+			if (prev != null &&
+					(!prev.isFieldDeclaration()
+							|| !member.isFieldDeclaration()
+							|| ((FieldDeclaration) prev).getModifiers().contains(Modifier.STATIC) && !((FieldDeclaration) member).getModifiers().contains(Modifier.STATIC))) {
+				printer.println();
+			}
+
 			member.accept(this, arg);
 			printer.println();
 
 			prev = member;
+		}
+	}
+
+	private static int getTypeIdx(BodyDeclaration<?> decl) {
+		// order: enum-cst mth/ctor/annotation static-init/static-field inst-init/inst-field inst-type static-type
+		// note: static-init <-> fields and inst-init <-> inst-field can't be reordered with each other as their order determines execution order
+
+		if (decl.isEnumConstantDeclaration()) {
+			return 0;
+		} else if (decl.isAnnotationMemberDeclaration() || decl.isCallableDeclaration()) {
+			return 1;
+		} else if (decl.isFieldDeclaration()) {
+			return ((FieldDeclaration) decl).getModifiers().contains(Modifier.STATIC) ? 2 : 3;
+		} else if (decl.isInitializerDeclaration()) {
+			return ((InitializerDeclaration) decl).isStatic() ? 2 : 3;
+		} else if (decl.isTypeDeclaration()) {
+			if (decl.isClassOrInterfaceDeclaration() && ((ClassOrInterfaceDeclaration) decl).isInterface() || ((TypeDeclaration<?>) decl).isStatic()) {
+				return 5;
+			} else {
+				return 4;
+			}
+		} else {
+			throw new RuntimeException("unknown body decl type: "+decl.getClass().getName());
 		}
 	}
 

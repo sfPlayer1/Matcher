@@ -6,6 +6,11 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.VarInsnNode;
+
 import matcher.type.ClassEnvironment;
 import matcher.type.MethodVarInstance;
 
@@ -14,6 +19,7 @@ public class MethodVarClassifier {
 		addClassifier(type, 10);
 		addClassifier(position, 3);
 		addClassifier(lvIndex, 2);
+		addClassifier(usage, 8);
 	}
 
 	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
@@ -59,6 +65,52 @@ public class MethodVarClassifier {
 		@Override
 		public double getScore(MethodVarInstance argA, MethodVarInstance argB, ClassEnvironment env) {
 			return argA.getLvIndex() == argB.getLvIndex() ? 1 : 0;
+		}
+	};
+
+	private static AbstractClassifier usage = new AbstractClassifier("usage") {
+		@Override
+		public double getScore(MethodVarInstance argA, MethodVarInstance argB, ClassEnvironment env) {
+			int[] map = ClassifierUtil.mapInsns(argA.getMethod(), argB.getMethod());
+			if (map == null) return 1;
+
+			InsnList ilA = argA.getMethod().getAsmNode().instructions;
+			InsnList ilB = argB.getMethod().getAsmNode().instructions;
+			int matched = 0;
+			int mismatched = 0;
+
+			for (int srcIdx = 0; srcIdx < map.length; srcIdx++) {
+				int dstIdx = map[srcIdx];
+				if (dstIdx < 0) continue;
+
+				AbstractInsnNode inA = ilA.get(srcIdx);
+				AbstractInsnNode inB = ilB.get(dstIdx);
+				int varA, varB;
+
+				if (inA.getType() == AbstractInsnNode.VAR_INSN) {
+					varA = ((VarInsnNode) inA).var;
+					varB = ((VarInsnNode) inB).var;
+				} else if (inA.getType() == AbstractInsnNode.IINC_INSN) {
+					varA = ((IincInsnNode) inA).var;
+					varB = ((IincInsnNode) inB).var;
+				} else {
+					continue;
+				}
+
+				if (varA == argA.getLvIndex() && (argA.getStartInsn() < 0 || srcIdx >= argA.getStartInsn() && srcIdx < argA.getEndInsn())) {
+					if (varB == argB.getLvIndex() && (argB.getStartInsn() < 0 || dstIdx >= argB.getStartInsn() && dstIdx < argB.getEndInsn())) {
+						matched++;
+					} else {
+						mismatched++;
+					}
+				}
+			}
+
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
 		}
 	};
 

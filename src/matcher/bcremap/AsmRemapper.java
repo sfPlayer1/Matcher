@@ -76,12 +76,12 @@ public class AsmRemapper extends Remapper {
 		MethodInstance method = cls.getMethod(methodName, methodDesc);
 		if (method == null) return name;
 
-		for (MethodVarInstance var : method.getArgs()) { // TODO: iterate all method vars once available
-			if (var.getLvIndex() == lvIndex && var.getEndInsn() > startInsn && var.getStartInsn() < endInsn) {
-				assert var.getType().getId().equals(desc);
+		MethodVarInstance var = method.getArgOrVar(lvIndex, startInsn, endInsn);
 
-				return var.getName(nameType);
-			}
+		if (var != null) {
+			assert var.getType().getId().equals(desc);
+
+			return var.getName(nameType);
 		}
 
 		return name;

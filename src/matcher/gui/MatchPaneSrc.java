@@ -116,7 +116,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private class SrcListCell<T extends Matchable<? extends T>> extends StyledListCell<T> {
 		@Override
 		protected String getText(T item) {
-			return getCellText(item);
+			return getCellText(item, true);
 		}
 
 		@Override
@@ -131,7 +131,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			if (item instanceof String) {
 				return (String) item;
 			} else if (item instanceof Matchable<?>) {
-				return getCellText((Matchable<?>) item);
+				return getCellText((Matchable<?>) item, false);
 			} else {
 				return "";
 			}
@@ -149,9 +149,9 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		}
 	}
 
-	private String getCellText(Matchable<?> item) {
-		String name = getName(item);
-		String mappedName = getMappedName(item);
+	private String getCellText(Matchable<?> item, boolean full) {
+		String name = getName(item, full);
+		String mappedName = getMappedName(item, full);
 
 		if (name.equals(mappedName)) {
 			return name;
@@ -357,11 +357,19 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private String getName(Matchable<?> m) {
-		return m.getDisplayName(gui.getNameType().withMapped(false).withUnmatchedTmp(true), m instanceof ClassInstance);
+		return getName(m, true);
+	}
+
+	private String getName(Matchable<?> m, boolean full) {
+		return m.getDisplayName(gui.getNameType().withMapped(false).withUnmatchedTmp(true), full && m instanceof ClassInstance);
 	}
 
 	private String getMappedName(Matchable<?> m) {
-		return m.getDisplayName(gui.getNameType().withMapped(true).withUnmatchedTmp(true), m instanceof ClassInstance);
+		return getMappedName(m, true);
+	}
+
+	private String getMappedName(Matchable<?> m, boolean full) {
+		return m.getDisplayName(gui.getNameType().withMapped(true).withUnmatchedTmp(true), full && m instanceof ClassInstance);
 	}
 
 	@Override
