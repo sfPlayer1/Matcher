@@ -138,7 +138,7 @@ public class MappingReader {
 				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
 				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty dst class): "+line);
 
-				mappingAcceptor.acceptClass(parts[1], parts[2]);
+				mappingAcceptor.acceptClass(parts[1], parts[2], false);
 				break;
 			case "CLS-CMT":
 				if (parts.length != 3) throw new IOException("invalid tiny line (extra columns): "+line);
@@ -259,7 +259,7 @@ public class MappingReader {
 					if (parts.length < 2 || parts.length > 3) throw new IOException("invalid enigma line (missing/extra columns): "+line);
 					contextStack.add("C"+parts[1]);
 					indent++;
-					if (parts.length == 3) mappingAcceptor.acceptClass(parts[1], parts[2]);
+					if (parts.length == 3) mappingAcceptor.acceptClass(parts[1], parts[2], false);
 					break;
 				case "METHOD": {
 					if (parts.length < 3 || parts.length > 4) throw new IOException("invalid enigma line (missing/extra columns): "+line);
@@ -475,7 +475,7 @@ public class MappingReader {
 					if (parts[1].isEmpty()) throw new IOException("invalid srg line (empty src class): "+line);
 					if (parts[2].isEmpty()) throw new IOException("invalid srg line (empty dst class): "+line);
 
-					mappingAcceptor.acceptClass(parts[1], parts[2]);
+					mappingAcceptor.acceptClass(parts[1], parts[2], true);
 					if (clsReverseMap != null) clsReverseMap.put(parts[2], parts[1]);
 					break;
 				case "MD:": {

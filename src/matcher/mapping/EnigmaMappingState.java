@@ -17,10 +17,16 @@ class EnigmaMappingState implements IMappingAcceptor{
 	}
 
 	@Override
-	public void acceptClass(String srcName, String dstName) {
+	public void acceptClass(String srcName, String dstName, boolean includesOuterNames) {
 		if (dstName != null && dstName.isEmpty()) throw new IllegalArgumentException("empty dst name for "+srcName);
 
-		getClass(srcName).mappedName = dstName;
+		EnigmaMappingClass cls = getClass(srcName);
+
+		if (dstName != null) {
+			if (includesOuterNames) dstName = dstName.substring(dstName.lastIndexOf('$') + 1);
+
+			cls.mappedName = dstName;
+		}
 	}
 
 	@Override

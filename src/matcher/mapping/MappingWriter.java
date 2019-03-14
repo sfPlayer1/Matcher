@@ -61,12 +61,14 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 	}
 
 	@Override
-	public void acceptClass(String srcName, String dstName) {
+	public void acceptClass(String srcName, String dstName, boolean includesOuterNames) {
 		try {
 			switch (format) {
 			case TINY:
 			case TINY_GZIP:
 				if (dstName != null) {
+					if (includesOuterNames) dstName = dstName.substring(dstName.lastIndexOf('$') + 1);
+
 					writer.write("CLASS\t");
 					writer.write(srcName);
 					writer.write('\t');
@@ -76,6 +78,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				break;
 			case SRG:
 				if (dstName != null) {
+					if (!includesOuterNames) throw new IllegalArgumentException("srg requires outer name context");
+
 					writer.write("CL: ");
 					writer.write(srcName);
 					writer.write(' ');
@@ -84,7 +88,7 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				}
 				break;
 			case ENIGMA:
-				enigmaState.acceptClass(srcName, dstName);
+				enigmaState.acceptClass(srcName, dstName, includesOuterNames);
 				break;
 			}
 		} catch (IOException e) {

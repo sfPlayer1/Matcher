@@ -27,14 +27,26 @@ public class Mappings {
 		try {
 			MappingReader.read(path, format, new IMappingAcceptor() {
 				@Override
-				public void acceptClass(String srcName, String dstName) {
+				public void acceptClass(String srcName, String dstName, boolean includesOuterNames) {
 					ClassInstance cls = env.getLocalClsByName(srcName);
 
 					if (cls == null) {
 						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName+" ("+dstName+")");
 					} else {
 						if (isNames) {
-							if (!cls.hasMappedName() || replace) cls.setMappedName(dstName);
+							if (!cls.hasMappedName() || replace) {
+								int innerNameStart = dstName.lastIndexOf('$') + 1;
+
+								if (innerNameStart > 0) {
+									if (!includesOuterNames) {
+										System.out.println("Ignoring extra outer name parts for "+dstName);
+									}
+
+									dstName = dstName.substring(innerNameStart);
+								}
+
+								cls.setMappedName(dstName);
+							}
 						} else {
 							String prefix = env.getGlobal().classUidPrefix;
 
@@ -42,17 +54,21 @@ public class Mappings {
 								System.out.println("Invalid uid class name "+dstName);
 								return;
 							} else {
-								int lastPartStart = dstName.lastIndexOf('$') + 1;
+								int innerNameStart = dstName.lastIndexOf('$') + 1;
 								String uidStr;
 
-								if (lastPartStart > prefix.length()) {
+								if (innerNameStart > 0) {
+									if (!includesOuterNames) {
+										System.out.println("Ignoring extra outer name parts for "+dstName);
+									}
+
 									int subPrefixStart = prefix.lastIndexOf('/') + 1;
 
-									if (!dstName.startsWith(prefix.substring(subPrefixStart), lastPartStart)) {
+									if (!dstName.startsWith(prefix.substring(subPrefixStart), innerNameStart)) {
 										System.out.println("Invalid uid class name "+dstName);
 										return;
 									} else {
-										uidStr = dstName.substring(lastPartStart + prefix.length() - subPrefixStart);
+										uidStr = dstName.substring(innerNameStart + prefix.length() - subPrefixStart);
 									}
 								} else {
 									uidStr = dstName.substring(prefix.length());
@@ -354,7 +370,7 @@ public class Mappings {
 					continue; // no data for the class, skip
 				}
 
-				writer.acceptClass(srcClsName, dstClsName);
+				writer.acceptClass(srcClsName, dstClsName, true);
 
 				// comment
 
