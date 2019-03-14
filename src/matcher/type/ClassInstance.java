@@ -160,12 +160,18 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		int dims = getArrayDimensions();
 
 		if (dims > 0) {
-			StringBuilder sb = new StringBuilder(ret.length() + dims);
+			StringBuilder sb;
 
-			if (ret.endsWith(";")) { // reference, e.g. [Lx;
+			if (lastChar != ';') { // primitive array, ret is in plain name form from above
+				assert !ret.startsWith("[") && !ret.endsWith(";");
+
+				sb = new StringBuilder(ret.length() + 2 * dims);
+				sb.append(ret);
+			} else { // reference array, in dot separated id form
+				assert ret.startsWith("[") && ret.endsWith(";");
+
+				sb = new StringBuilder(ret.length() + dims - 2);
 				sb.append(ret, dims + 1, ret.length() - 1);
-			} else { // primitive, e.g. [LZ
-				sb.append(ret, dims, ret.length());
 			}
 
 			for (int i = 0; i < dims; i++) {
