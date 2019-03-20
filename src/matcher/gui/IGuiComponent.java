@@ -19,5 +19,5 @@ public interface IGuiComponent {
 	default void onClassSelect(ClassInstance cls) { }
 	default void onMethodSelect(MethodInstance method) { }
 	default void onFieldSelect(FieldInstance field) { }
-	default void onMethodArgSelect(MethodVarInstance arg) { }
+	default void onMethodVarSelect(MethodVarInstance arg) { }
 }

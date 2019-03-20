@@ -7,13 +7,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import javafx.geometry.Orientation;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
 import matcher.classifier.ClassClassifier;
+import matcher.classifier.ClassifierLevel;
 import matcher.classifier.FieldClassifier;
 import matcher.classifier.MethodClassifier;
+import matcher.classifier.MethodVarClassifier;
 import matcher.classifier.RankResult;
+import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.Matchable;
@@ -37,118 +39,165 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		components.add(content);
 		getItems().add(content);
 
-		// lists
+		// match list
 
-		SplitPane verticalPane = new SplitPane();
-		getItems().add(verticalPane);
-
-		// class list
-
-		classList.setCellFactory(ignore -> new DstListCell<>());
-		classList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+		matchList.setCellFactory(ignore -> new DstListCell());
+		matchList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
 			if (suppressChangeEvents || oldValue == newValue) return;
 
-			onClassSelect(newValue != null ? newValue.getSubject() : null);
+			Matchable<?> oldSel = oldValue != null ? oldValue.getSubject() : null;
+			Matchable<?> newSel = newValue != null ? newValue.getSubject() : null;
+
+			announceSelectionChange(oldSel, newSel);
 		});
 
-		verticalPane.getItems().add(classList);
-
-		// member list
-
-		memberList.setCellFactory(ignore -> new DstListCell<MemberInstance<?>>());
-		memberList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-			if (suppressChangeEvents || oldValue == newValue) return;
-
-			boolean wasMethod = oldValue != null && oldValue.getSubject() instanceof MethodInstance;
-			boolean wasField = oldValue != null && oldValue.getSubject() instanceof FieldInstance;
-			boolean isMethod = newValue != null && newValue.getSubject() instanceof MethodInstance;
-			boolean isField = newValue != null && newValue.getSubject() instanceof FieldInstance;
-
-			if (wasMethod && isField
-					|| wasField && isMethod) {
-				if (wasMethod) {
-					onMethodSelect(null);
-				} else {
-					onFieldSelect(null);
-				}
-			}
-
-			if (isMethod || newValue == null && wasMethod) {
-				onMethodSelect(isMethod ? (MethodInstance) newValue.getSubject() : null);
-			} else {
-				onFieldSelect(isField ? (FieldInstance) newValue.getSubject() : null);
-			}
-		});
-
-		verticalPane.getItems().add(memberList);
+		getItems().add(matchList);
 
 		// positioning
 
-		verticalPane.setOrientation(Orientation.VERTICAL);
-		verticalPane.setDividerPosition(0, 0.65);
-
-		SplitPane.setResizableWithParent(verticalPane, false);
+		SplitPane.setResizableWithParent(matchList, false);
 		setDividerPosition(0, 1 - 0.25);
 
 		srcPane.addListener(srcListener);
 	}
 
-	private class DstListCell<T extends Matchable<? extends T>> extends StyledListCell<RankResult<T>> {
+	private class DstListCell extends StyledListCell<RankResult<? extends Matchable<?>>> {
 		@Override
-		protected String getText(RankResult<T> item) {
+		protected String getText(RankResult<? extends Matchable<?>> item) {
 			boolean full = item.getSubject() instanceof ClassInstance;
 
 			return String.format("%.3f %s", item.getScore(), item.getSubject().getDisplayName(gui.getNameType(), full));
 		}
 	}
 
+	private void announceSelectionChange(Matchable<?> oldSel, Matchable<?> newSel) {
+		if (oldSel == newSel) return;
+
+		ClassInstance oldClass, newClass;
+		MethodInstance oldMethod, newMethod;
+		MethodVarInstance oldMethodVar, newMethodVar;
+		FieldInstance oldField, newField;
+
+		if (oldSel == null) {
+			oldClass = null;
+			oldMethod = null;
+			oldMethodVar = null;
+			oldField = null;
+		} else {
+			oldClass = getClass(oldSel);
+			oldMethod = getMethod(oldSel);
+			oldMethodVar = getMethodVar(oldSel);
+			oldField = getField(oldSel);
+		}
+
+		if (newSel == null) {
+			newClass = null;
+			newMethod = null;
+			newMethodVar = null;
+			newField = null;
+		} else {
+			newClass = getClass(newSel);
+			newMethod = getMethod(newSel);
+			newMethodVar = getMethodVar(newSel);
+			newField = getField(newSel);
+		}
+
+		if (newClass != oldClass) onClassSelect(newClass);
+		if (newMethod != oldMethod) onMethodSelect(newMethod);
+		if (newMethodVar != oldMethodVar) onMethodVarSelect(newMethodVar);
+		if (newField != oldField) onFieldSelect(newField);
+	}
+
 	@Override
 	public ClassInstance getSelectedClass() {
-		RankResult<ClassInstance> result = classList.getSelectionModel().getSelectedItem();
+		RankResult<? extends Matchable<?>> result = matchList.getSelectionModel().getSelectedItem();
+		if (result == null) return null;
 
-		return result != null ? result.getSubject() : null;
+		return getClass(result.getSubject());
+	}
+
+	private static ClassInstance getClass(Matchable<?> m) {
+		if (m instanceof ClassInstance) {
+			return (ClassInstance) m;
+		} else if (m instanceof MemberInstance<?>) {
+			return ((MemberInstance<?>) m).getCls();
+		} else if (m instanceof MethodVarInstance) {
+			return ((MethodVarInstance) m).getMethod().getCls();
+		} else {
+			throw new IllegalStateException();
+		}
 	}
 
 	@Override
 	public MethodInstance getSelectedMethod() {
-		RankResult<MemberInstance<?>> result = memberList.getSelectionModel().getSelectedItem();
+		RankResult<? extends Matchable<?>> result = matchList.getSelectionModel().getSelectedItem();
 		if (result == null) return null;
 
-		return result.getSubject() instanceof MethodInstance ? (MethodInstance) result.getSubject() : null;
+		return getMethod(result.getSubject());
+	}
+
+	private static MethodInstance getMethod(Matchable<?> m) {
+		if (m instanceof ClassInstance || m instanceof FieldInstance) {
+			return null;
+		} else if (m instanceof MethodInstance) {
+			return (MethodInstance) m;
+		} else if (m instanceof MethodVarInstance) {
+			return ((MethodVarInstance) m).getMethod();
+		} else {
+			throw new IllegalStateException();
+		}
 	}
 
 	@Override
 	public FieldInstance getSelectedField() {
-		RankResult<MemberInstance<?>> result = memberList.getSelectionModel().getSelectedItem();
+		RankResult<? extends Matchable<?>> result = matchList.getSelectionModel().getSelectedItem();
 		if (result == null) return null;
 
-		return result.getSubject() instanceof FieldInstance ? (FieldInstance) result.getSubject() : null;
+		return getField(result.getSubject());
+	}
+
+	private static FieldInstance getField(Matchable<?> m) {
+		if (m instanceof ClassInstance || m instanceof MethodInstance || m instanceof MethodVarInstance) {
+			return null;
+		} else if (m instanceof FieldInstance) {
+			return (FieldInstance) m;
+		} else {
+			throw new IllegalStateException();
+		}
 	}
 
 	@Override
 	public MethodVarInstance getSelectedMethodArg() {
-		return null;
+		RankResult<? extends Matchable<?>> result = matchList.getSelectionModel().getSelectedItem();
+		if (result == null) return null;
+
+		return getMethodVar(result.getSubject());
+	}
+
+	private static MethodVarInstance getMethodVar(Matchable<?> m) {
+		if (m instanceof ClassInstance || m instanceof MethodInstance || m instanceof FieldInstance) {
+			return null;
+		} else if (m instanceof MethodVarInstance) {
+			return (MethodVarInstance) m;
+		} else {
+			throw new IllegalStateException();
+		}
 	}
 
 	@Override
 	public RankResult<?> getSelectedRankResult(MatchType type) {
+		RankResult<? extends Matchable<?>> result = matchList.getSelectionModel().getSelectedItem();
+		if (result == null) return null;
+
 		switch (type) {
 		case Class:
-			return classList.getSelectionModel().getSelectedItem();
+			return result.getSubject() instanceof ClassInstance ? result : null;
 		case Method:
-		case Field: {
-			RankResult<MemberInstance<?>> result = memberList.getSelectionModel().getSelectedItem();
-
-			if (result == null
-					|| type == MatchType.Method && !(result.getSubject() instanceof MethodInstance)
-					|| type == MatchType.Field && !(result.getSubject() instanceof FieldInstance)) {
-				return null;
-			} else {
-				return result;
-			}
-		}
+			return result.getSubject() instanceof MethodInstance ? result : null;
+		case Field:
+			return result.getSubject() instanceof FieldInstance ? result : null;
 		case MethodArg:
-			return null;
+			return result.getSubject() instanceof MethodVarInstance ? result : null;
 		}
 
 		throw new IllegalArgumentException("invalid type: "+type);
@@ -175,8 +224,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			cmp = getScoreComparator();
 		}
 
-		memberList.getItems().sort(cmp);
-		classList.getItems().sort(cmp);
+		matchList.getItems().sort(cmp);
 
 		suppressChangeEvents = false;
 
@@ -185,18 +233,8 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 	@Override
 	public void onMatchChange(Set<MatchType> types) {
-		if (types.contains(MatchType.Class)) {
-			srcListener.onClassSelect(srcPane.getSelectedClass());
-		}
-
-		if (types.contains(MatchType.Method)) {
-			MethodInstance m = srcPane.getSelectedMethod();
-			if (m != null) srcListener.onMethodSelect(m);
-		}
-
-		if (types.contains(MatchType.Field)) {
-			FieldInstance m = srcPane.getSelectedField();
-			if (m != null) srcListener.onFieldSelect(m);
+		if (!types.isEmpty()) {
+			srcListener.onSelect();
 		}
 
 		IFwdGuiComponent.super.onMatchChange(types);
@@ -218,20 +256,81 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	private class SrcListener implements IGuiComponent {
 		@Override
 		public void onClassSelect(ClassInstance cls) {
-			final int cClassId = ++classId;
+			onSelect();
+		}
 
-			classList.getItems().clear();
-			memberList.getItems().clear();
+		@Override
+		public void onMethodSelect(MethodInstance method) {
+			onSelect();
+		}
 
-			if (cls == null) return;
-			if (cmpClasses == null) return;
+		@Override
+		public void onMethodVarSelect(MethodVarInstance arg) {
+			onSelect();
+		}
 
-			Gui.runAsyncTask(() -> ClassClassifier.rankParallel(cls, cmpClasses.toArray(new ClassInstance[0]), gui.getMatcher().getAutoMatchLevel(), gui.getEnv(), Double.POSITIVE_INFINITY))
+		@Override
+		public void onFieldSelect(FieldInstance field) {
+			onSelect();
+		}
+
+		void onSelect() {
+			final int cTaskId = ++taskId;
+
+			RankResult<? extends Matchable<?>> curSelection = matchList.getSelectionModel().getSelectedItem();
+			ClassInstance cls = srcPane.getSelectedClass();
+
+			// refresh selection only early if there's a new selection or the src class selection changed to suppress class selection changes
+			// from (temporarily) clearing matchList and reentering onSelect while async ranking is ongoing
+
+			if (curSelection != null) oldSelection = curSelection.getSubject();
+
+			if (oldSelection != null && (cls == null || MatchPaneDst.getClass(oldSelection).getMatch() != cls)) {
+				announceSelectionChange(oldSelection, null);
+				oldSelection = null;
+			}
+
+			suppressChangeEvents = true;
+			matchList.getItems().clear();
+			suppressChangeEvents = false;
+
+			ClassifierLevel matchLevel = gui.getMatcher().getAutoMatchLevel();
+			ClassEnvironment env = gui.getEnv();
+			double maxMismatch = Double.POSITIVE_INFINITY;
+
+			Callable<List<? extends RankResult<? extends Matchable<?>>>> ranker;
+
+			if (cls != null) {
+				boolean hasClsMatch = cls.hasMatch();
+				MethodInstance method;
+				FieldInstance field;
+
+				if (hasClsMatch && (method = srcPane.getSelectedMethod()) != null && method.getCls() == cls) {
+					MethodVarInstance var;
+
+					if (method.hasMatch() && (var = srcPane.getSelectedMethodArg()) != null && var.getMethod() == method) {
+						MethodVarInstance[] cmp = var.isArg() ? method.getMatch().getArgs() : method.getMatch().getVars();
+
+						ranker = () -> MethodVarClassifier.rank(var, cmp, matchLevel, env, maxMismatch);
+					} else { // unmatched method or no method var selected
+						ranker = () -> MethodClassifier.rank(method, cls.getMatch().getMethods(), matchLevel, env, maxMismatch);
+					}
+				} else if (hasClsMatch && (field = srcPane.getSelectedField()) != null && field.getCls() == cls) {
+					ranker = () -> FieldClassifier.rank(field, cls.getMatch().getFields(), matchLevel, env, maxMismatch);
+				} else { // unmatched class or no member/method var selected
+					ranker = () -> ClassClassifier.rankParallel(cls, cmpClasses.toArray(new ClassInstance[0]), matchLevel, env, maxMismatch);
+				}
+			} else { // no class selected
+				return;
+			}
+
+			// update matches list
+			Gui.runAsyncTask(ranker)
 			.whenComplete((res, exc) -> {
 				if (exc != null) {
 					exc.printStackTrace();
-				} else if (cClassId == classId) {
-					RankResult<ClassInstance> best;
+				} else if (taskId == cTaskId) {
+					RankResult<? extends Matchable<?>> best;
 
 					if (!res.isEmpty()) {
 						best = res.get(0);
@@ -243,96 +342,33 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 						best = null;
 					}
 
-					classList.getItems().setAll(res);
+					suppressChangeEvents = true;
 
-					/*if (prevMatchSelection != null) { // reselect the previously selected entry
-						for (int i = 0; i < classList.getItems().size(); i++) {
-							if (classList.getItems().get(i).getSubject() == prevMatchSelection) {
-								classList.getSelectionModel().select(i);
-								break;
-							}
-						}
-					}*/
+					matchList.getItems().setAll(res);
 
-					if (classList.getSelectionModel().isEmpty()) {
-						classList.getSelectionModel().select(best);
-					}
-				}
-			});
-		}
+					if (matchList.getSelectionModel().isEmpty()) {
+						matchList.getSelectionModel().select(best);
 
-		@Override
-		public void onMethodSelect(MethodInstance method) {
-			onMemberSelect(method);
-		}
-
-		@Override
-		public void onFieldSelect(FieldInstance field) {
-			onMemberSelect(field);
-		}
-
-		@SuppressWarnings("unchecked")
-		private void onMemberSelect(MemberInstance<?> member) {
-			final int cMemberId = ++memberId;
-
-			memberList.getItems().clear();
-
-			if (member == null) return;
-			if (member.getCls().getMatch() == null) return;
-
-			Callable<List<? extends RankResult<? extends MemberInstance<?>>>> ranker;
-
-			if (member instanceof MethodInstance) {
-				ranker = () -> MethodClassifier.rank((MethodInstance) member, member.getCls().getMatch().getMethods(), gui.getMatcher().getAutoMatchLevel(), gui.getEnv());
-			} else {
-				ranker = () -> FieldClassifier.rank((FieldInstance) member, member.getCls().getMatch().getFields(), gui.getMatcher().getAutoMatchLevel(), gui.getEnv());
-			}
-
-			// update matches list
-			Gui.runAsyncTask(ranker)
-			.whenComplete((res, exc) -> {
-				if (exc != null) {
-					exc.printStackTrace();
-				} else if (cMemberId == memberId) {
-					RankResult<MemberInstance<?>> best;
-
-					if (!res.isEmpty()) {
-						best = (RankResult<MemberInstance<?>>) res.get(0);
-
-						if (gui.isSortMatchesAlphabetically()) {
-							res.sort(getNameComparator());
-						}
+						announceSelectionChange(oldSelection, best != null ? best.getSubject() : null);
 					} else {
-						best = null;
+						announceSelectionChange(oldSelection, matchList.getSelectionModel().getSelectedItem().getSubject());
 					}
+					System.out.println("new: "+matchList.getSelectionModel().getSelectedItem());
+					suppressChangeEvents = false;
 
-					memberList.getItems().setAll((List<RankResult<MemberInstance<?>>>) res);
-
-					/*if (prevMatchSelection != null) { // reselect the previously selected entry
-						for (int i = 0; i < memberList.getItems().size(); i++) {
-							if (memberList.getItems().get(i).getSubject() == prevMatchSelection) {
-								memberList.getSelectionModel().select(i);
-								break;
-							}
-						}
-					}*/
-
-					if (memberList.getSelectionModel().isEmpty()) {
-						memberList.getSelectionModel().select(best);
-					}
+					oldSelection = null;
 				}
 			});
 		}
 
-		private int classId;
-		private int memberId;
+		private int taskId;
+		private Matchable<?> oldSelection;
 	}
 
 	private final Gui gui;
 	private final MatchPaneSrc srcPane;
 	private final Collection<IGuiComponent> components = new ArrayList<>();
-	private final ListView<RankResult<ClassInstance>> classList = new ListView<>();
-	private final ListView<RankResult<MemberInstance<?>>> memberList = new ListView<>();
+	private final ListView<RankResult<? extends Matchable<?>>> matchList = new ListView<>();
 	private final SrcListener srcListener = new SrcListener();
 	private List<ClassInstance> cmpClasses;
 

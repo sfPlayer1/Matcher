@@ -66,9 +66,9 @@ public interface IFwdGuiComponent extends IGuiComponent {
 	}
 
 	@Override
-	default void onMethodArgSelect(MethodVarInstance arg) {
+	default void onMethodVarSelect(MethodVarInstance arg) {
 		for (IGuiComponent c : getComponents()) {
-			c.onMethodArgSelect(arg);
+			c.onMethodVarSelect(arg);
 		}
 	}
 }
