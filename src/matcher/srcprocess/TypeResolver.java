@@ -62,20 +62,33 @@ class TypeResolver {
 	}
 
 	public ClassInstance getCls(Node node) {
+		StringBuilder sb = new StringBuilder();
+
+		if (pkg != null) {
+			sb.append(pkg);
+			sb.append('/');
+		}
+
+		int pkgEnd = sb.length();
+
 		do {
 			if (node instanceof ClassOrInterfaceDeclaration || node instanceof EnumDeclaration) {
 				TypeDeclaration<?> typeDecl = (TypeDeclaration<?>) node;
 
-				String name = typeDecl.getName().getIdentifier();
-				if (pkg != null) name = pkg+"/"+name;
+				String namePart = typeDecl.getName().getIdentifier();
 
-				ClassInstance cls = getClsByName(name);
-
-				return cls;
+				if (sb.length() > pkgEnd) {
+					sb.insert(pkgEnd, '$');
+					sb.insert(pkgEnd, namePart);
+				} else {
+					sb.append(namePart);
+				}
 			}
 		} while ((node = node.getParentNode().orElse(null)) != null);
 
-		throw new IllegalStateException();
+		ClassInstance cls = getClsByName(sb.toString());
+
+		return cls;
 	}
 
 	public <T extends CallableDeclaration<T> & NodeWithParameters<T>> MethodInstance getMethod(T methodDecl) {
@@ -90,13 +103,13 @@ class TypeResolver {
 		}
 
 		for (Parameter p : methodDecl.getParameters()) {
-			sb.append(toDesc(p.getType()));
+			sb.append(toDesc(p.getType(), rootCls));
 		}
 
 		sb.append(')');
 
 		if (methodDecl instanceof NodeWithType) {
-			sb.append(toDesc(((NodeWithType<?, ?>) methodDecl).getType()));
+			sb.append(toDesc(((NodeWithType<?, ?>) methodDecl).getType(), rootCls));
 		} else {
 			sb.append('V');
 		}
@@ -118,7 +131,7 @@ class TypeResolver {
 		if (cls == null) return null;
 
 		String name = var.getName().getIdentifier();
-		String desc = toDesc(var.getType());
+		String desc = toDesc(var.getType(), rootCls);
 
 		return cls.getField(name, desc, nameType);
 	}
@@ -133,7 +146,7 @@ class TypeResolver {
 		return cls.getField(name, desc, nameType);
 	}
 
-	private String toDesc(Type type) {
+	private String toDesc(Type type, ClassInstance context) {
 		if (type instanceof PrimitiveType) {
 			PrimitiveType t = (PrimitiveType) type;
 
@@ -176,33 +189,47 @@ class TypeResolver {
 
 			assert name.indexOf('.') == -1;
 
+			// direct lookup (for fully qualified name without nested classes)
+			ClassInstance cls = getClsByName(name);
+			if (cls != null) return ClassInstance.getId(name);
+
+			// nested lookup (if name is a nested class of the context class)
+			String nestedName = getName(context) + '$' + name.replace('/', '$');
+			cls = getClsByName(nestedName);
+			if (cls != null) return ClassInstance.getId(nestedName);
+
 			int pkgEnd = name.lastIndexOf('/');
+			int nameEnd = name.length();
 
 			for (;;) {
-				String cName = name.substring(pkgEnd + 1).replace('/', '$');
+				if (pkgEnd == -1) { // non-fqn (fqn without package was already checked)
+					String cName = name.substring(pkgEnd + 1, nameEnd);
+					String suffix = name.substring(nameEnd).replace('/', '$');
 
-				if (pkgEnd == -1) {
-					String importedName = imports.get(name);
+					// plain import lookup
+					String importedName = imports.get(cName);
 
 					if (importedName != null) {
-						return ClassInstance.getId(importedName);
+						return ClassInstance.getId(importedName.concat(suffix));
 					}
 
+					// wildcard import lookup
 					for (String wildcardImport : wildcardImports) {
-						String fullName = wildcardImport.concat(cName);
-						ClassInstance cls = getClsByName(fullName);
+						String fullName = wildcardImport + cName + suffix;
+						cls = getClsByName(fullName);
 						if (cls != null) return ClassInstance.getId(fullName);
 					}
 
 					break;
 				}
 
-				cName = name.substring(0, pkgEnd + 1).concat(cName);
+				nameEnd = pkgEnd;
+				pkgEnd = name.lastIndexOf('/', nameEnd - 1);
 
-				ClassInstance cls = getClsByName(cName);
-				if (cls != null) ClassInstance.getId(cName);
-
-				pkgEnd = name.lastIndexOf('/', pkgEnd - 1);
+				// direct lookup (for fully qualified name with nested classes)
+				String fullName = name.substring(0, nameEnd).concat(name.substring(nameEnd).replace('/', '$'));
+				cls = getClsByName(fullName);
+				if (cls != null) return ClassInstance.getId(fullName);
 			}
 
 			return ClassInstance.getId(name);
@@ -218,7 +245,7 @@ class TypeResolver {
 
 			StringBuilder ret = new StringBuilder();
 			for (int i = 0; i < dims; i++) ret.append('[');
-			ret.append(toDesc(componentType));
+			ret.append(toDesc(componentType, context));
 
 			return ret.toString();
 		} else {

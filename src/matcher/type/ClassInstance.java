@@ -99,9 +99,16 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		if (type == NameType.PLAIN) {
 			return getName();
 		} else if (elementClass != null) {
-			String ret = elementClass.getName(type);
+			boolean isPrimitive = elementClass.isPrimitive();
+			StringBuilder ret = new StringBuilder();
 
-			return elementClass.isPrimitive() || elementClass.isArray() ? "["+ret : "[L"+ret+";";
+			ret.append(id, 0, getArrayDimensions());
+
+			if (!isPrimitive) ret.append('L');
+			ret.append(elementClass.getName(type));
+			if (!isPrimitive) ret.append(';');
+
+			return ret.toString();
 		} else if (type == NameType.UID_PLAIN) {
 			int uid = getUid();
 			if (uid >= 0) return env.getGlobal().classUidPrefix+uid;
@@ -493,7 +500,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public FieldInstance getField(String name, String desc, NameType nameType) {
-		if (nameType == NameType.PLAIN || desc != null && !desc.endsWith(";")) return getField(name, desc);
+		if (nameType == NameType.PLAIN) return getField(name, desc);
 
 		FieldInstance ret = null;
 
@@ -507,7 +514,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			if (desc != null) {
 				String clsMappedName = field.type.getName(nameType);
 
-				if (desc.endsWith(";")) {
+				if (desc.startsWith("[") || !desc.endsWith(";")) {
 					if (!desc.equals(clsMappedName)) continue;
 				} else {
 					if (desc.length() != clsMappedName.length() + 2 || !desc.startsWith(clsMappedName, 1)) continue;
