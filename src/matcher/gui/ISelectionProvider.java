@@ -11,7 +11,7 @@ public interface ISelectionProvider {
 	ClassInstance getSelectedClass();
 	MethodInstance getSelectedMethod();
 	FieldInstance getSelectedField();
-	MethodVarInstance getSelectedMethodArg();
+	MethodVarInstance getSelectedMethodVar();
 
 	default RankResult<?> getSelectedRankResult(MatchType type) {
 		return null;

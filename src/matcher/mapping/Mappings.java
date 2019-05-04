@@ -157,40 +157,11 @@ public class Mappings {
 				}
 
 				@Override
-				public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvIndex, String dstArgName) {
-					ClassInstance cls = env.getLocalClsByName(srcClsName);
-					MethodInstance method;
+				public void acceptMethodArg(String srcClsName, String srcMethodName, String srcMethodDesc,
+						int argIndex, int lvIndex, String srcArgName, String dstArgName) {
+					MethodVarInstance arg = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, argIndex, lvIndex, -1, -1, true);
 
-					if (cls == null) {
-						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
-						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
-					} else if (argIndex < -1 || argIndex >= method.getArgs().length) {
-						System.out.println("invalid arg index "+argIndex+" for method "+method);
-					} else if (lvIndex < -1 || lvIndex >= method.getArgs().length * 2 + 1) {
-						System.out.println("invalid lvt index "+lvIndex+" for method "+method);
-					} else {
-						if (argIndex == -1) {
-							if (lvIndex <= -1) {
-								System.out.println("missing arg+lvt index "+lvIndex+" for method "+method);
-								return;
-							} else {
-								argIndex = findVarIndex(method.getArgs(), lvIndex);
-
-								if (argIndex == -1) {
-									System.out.println("invalid lvt index "+lvIndex+" for method "+method);
-									return;
-								}
-							}
-						}
-
-						MethodVarInstance arg = method.getArg(argIndex);
-
-						if (lvIndex != -1 && arg.getLvIndex() != lvIndex) {
-							System.out.println("mismatched lvt index "+lvIndex+" for method "+method);
-							return;
-						}
-
+					if (arg != null) {
 						if (isNames) {
 							if (!arg.hasMappedName() || replace) arg.setMappedName(dstArgName);
 						} else {
@@ -202,7 +173,55 @@ public class Mappings {
 				}
 
 				@Override
-				public void acceptMethodVar(String srcClsName, String srcName, String srcDesc, int varIndex, int lvIndex, String dstVarName) {
+				public void acceptMethodArgComment(String srcClsName, String srcMethodName, String srcMethodDesc,
+						int argIndex, int lvIndex, String comment) {
+					MethodVarInstance arg = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, argIndex, lvIndex, -1, -1, true);
+
+					if (arg != null) {
+						if (isNames) {
+							if (arg.getMappedComment() == null || replace) arg.setMappedComment(comment);
+						} else {
+							// not applicable
+						}
+
+						//counts[4]++;
+					}
+				}
+
+				@Override
+				public void acceptMethodVar(String srcClsName, String srcMethodName, String srcMethodDesc,
+						int varIndex, int lvIndex, int startOpIdx, int asmIndex, String srcArgName, String dstVarName) {
+					MethodVarInstance var = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, varIndex, lvIndex, startOpIdx, asmIndex, false);
+
+					if (var != null) {
+						if (isNames) {
+							if (!var.hasMappedName() || replace) var.setMappedName(dstVarName);
+						} else {
+							// not applicable
+						}
+
+						counts[4]++;
+					}
+				}
+
+				@Override
+				public void acceptMethodVarComment(String srcClsName, String srcMethodName, String srcMethodDesc,
+						int varIndex, int lvIndex, int startOpIdx, int asmIndex, String comment) {
+					MethodVarInstance var = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, varIndex, lvIndex, startOpIdx, asmIndex, false);
+
+					if (var != null) {
+						if (isNames) {
+							if (var.getMappedComment() == null || replace) var.setMappedComment(comment);
+						} else {
+							// not applicable
+						}
+
+						//counts[4]++;
+					}
+				}
+
+				private MethodVarInstance getMethodVar(String srcClsName, String srcName, String srcDesc,
+						int varIndex, int lvIndex, int startOpIdx, int asmIndex, boolean isArg) {
 					ClassInstance cls = env.getLocalClsByName(srcClsName);
 					MethodInstance method;
 
@@ -210,40 +229,50 @@ public class Mappings {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
 						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
-					} else if (varIndex < -1 || varIndex >= method.getVars().length) {
+					} else if (varIndex < -1 || varIndex >= (isArg ? method.getArgs() : method.getVars()).length) {
 						System.out.println("invalid var index "+varIndex+" for method "+method);
-					} else if (lvIndex < -1 || lvIndex >= method.getVars().length * 2 + 1) {
-						System.out.println("invalid lvt index "+lvIndex+" for method "+method);
+					} else if (lvIndex < -1 || lvIndex >= (isArg ? method.getArgs() : method.getVars()).length * 2 + 1) {
+						System.out.println("invalid lv index "+lvIndex+" for method "+method);
+					} else if (asmIndex < -1) {
+						System.out.println("invalid lv asm index "+asmIndex+" for method "+method);
 					} else {
 						if (varIndex == -1) {
-							if (lvIndex <= -1) {
-								System.out.println("missing arg+lvt index "+lvIndex+" for method "+method);
-								return;
-							} else {
-								varIndex = findVarIndex(method.getVars(), lvIndex);
+							if (asmIndex >= 0) {
+								varIndex = findVarIndexByAsm(isArg ? method.getArgs() : method.getVars(), asmIndex);
 
 								if (varIndex == -1) {
-									System.out.println("invalid lvt index "+lvIndex+" for method "+method);
-									return;
+									System.out.println("invalid lv asm index "+asmIndex+" for method "+method);
+									return null;
+								}
+							} else if (lvIndex <= -1) {
+								System.out.println("missing arg+lvt index "+lvIndex+" for method "+method);
+								return null;
+							} else {
+								varIndex = findVarIndexByLv(isArg ? method.getArgs() : method.getVars(), lvIndex, startOpIdx);
+
+								if (varIndex == -1) {
+									System.out.println("invalid lv index "+lvIndex+" for method "+method);
+									return null;
 								}
 							}
 						}
 
-						MethodVarInstance arg = method.getVar(varIndex);
+						MethodVarInstance var = isArg ? method.getArg(varIndex) : method.getVar(varIndex);
 
-						if (lvIndex != -1 && arg.getLvIndex() != lvIndex) {
-							System.out.println("mismatched lvt index "+lvIndex+" for method "+method);
-							return;
+						if (lvIndex != -1 && var.getLvIndex() != lvIndex) {
+							System.out.println("mismatched lv index "+lvIndex+" for method "+method);
+							return null;
 						}
 
-						if (isNames) {
-							if (!arg.hasMappedName() || replace) arg.setMappedName(dstVarName);
-						} else {
-							// not applicable
+						if (asmIndex != -1 && var.getAsmIndex() != asmIndex) {
+							System.out.println("mismatched lv asm index "+asmIndex+" for method "+method);
+							return null;
 						}
 
-						counts[4]++;
+						return var;
 					}
+
+					return null;
 				}
 
 				@Override
@@ -333,9 +362,23 @@ public class Mappings {
 				counts[0], counts[2], counts[4], counts[5], counts[1], counts[3], counts[6]);
 	}
 
-	private static int findVarIndex(MethodVarInstance[] vars, int lvIndex) {
+	private static int findVarIndexByLv(MethodVarInstance[] vars, int lvIndex, int startOpcodeIdx) {
+		MethodVarInstance ret = null;
+
 		for (MethodVarInstance arg : vars) {
-			if (arg.getLvIndex() == lvIndex) return arg.getIndex();
+			if (arg.getLvIndex() == lvIndex
+					&& arg.getStartOpIdx() >= startOpcodeIdx // assumes matcher's startInsn is not early, also works with startInsn == -1
+					&& (ret == null || arg.getStartOpIdx() < ret.getStartOpIdx())) {
+				ret = arg;
+			}
+		}
+
+		return ret != null ? ret.getIndex() : -1;
+	}
+
+	private static int findVarIndexByAsm(MethodVarInstance[] vars, int asmIndex) {
+		for (MethodVarInstance arg : vars) {
+			if (arg.getAsmIndex() == asmIndex) return arg.getIndex();
 		}
 
 		return -1;
@@ -349,6 +392,7 @@ public class Mappings {
 
 		List<MethodInstance> methods = new ArrayList<>();
 		List<FieldInstance> fields = new ArrayList<>();
+		List<MethodVarInstance> vars = new ArrayList<>();
 		Set<Set<MethodInstance>> exportedHierarchies = verbosity == MappingsExportVerbosity.MINIMAL ? Util.newIdentityHashSet() : null;
 
 		try (MappingWriter writer = new MappingWriter(file, format, srcType, dstType)) {
@@ -385,6 +429,8 @@ public class Mappings {
 				methods.sort(MemberInstance.nameComparator);
 
 				for (MethodInstance m : methods) {
+					assert m.getCls() == cls;
+
 					String srcName = m.getName(srcType);
 					String desc = getDesc(m, srcType);
 					String dstName = m.getName(dstType);
@@ -406,24 +452,64 @@ public class Mappings {
 						if (comment != null) writer.acceptMethodComment(srcClsName, srcName, desc, comment);
 					}
 
+					// method args
+
 					if (format.supportsArgs) {
 						for (MethodVarInstance arg : m.getArgs()) {
+							if (shouldExport(arg, format, srcType, dstType)) vars.add(arg);
+						}
+
+						// TODO: sort vars
+
+						for (MethodVarInstance arg : vars) {
+							assert arg.getMethod() == m;
+
+							String srcVarName = arg.getName(srcType);
 							String dstVarName = arg.getName(dstType);
 
-							if (dstVarName != null && !dstVarName.equals(arg.getName(srcType))) {
-								writer.acceptMethodArg(srcClsName, srcName, desc, arg.getIndex(), arg.getLvIndex(), dstVarName);
+							if (dstVarName != null && !dstVarName.equals(srcVarName)) {
+								writer.acceptMethodArg(srcClsName, srcName, desc, arg.getIndex(), arg.getLvIndex(), srcVarName, dstVarName);
+							}
+
+							if (format.supportsComments) {
+								String comment = arg.getMappedComment();
+								if (comment != null) writer.acceptMethodArgComment(srcClsName, srcName, desc, arg.getIndex(), arg.getLvIndex(), comment);
 							}
 						}
+
+						vars.clear();
 					}
 
+					// method vars
+
 					if (format.supportsLocals) {
-						for (MethodVarInstance var : m.getVars()) {
+						for (MethodVarInstance arg : m.getVars()) {
+							if (shouldExport(arg, format, srcType, dstType)) vars.add(arg);
+						}
+
+						// TODO: sort vars
+
+						for (MethodVarInstance var : vars) {
+							assert var.getMethod() == m;
+
+							String srcVarName = var.getName(srcType);
 							String dstVarName = var.getName(dstType);
 
-							if (dstVarName != null && !dstVarName.equals(var.getName(srcType))) {
-								writer.acceptMethodVar(srcClsName, srcName, desc, var.getIndex(), var.getLvIndex(), dstVarName);
+							if (dstVarName != null && !dstVarName.equals(srcVarName)) {
+								writer.acceptMethodVar(srcClsName, srcName, desc,
+										var.getIndex(), var.getLvIndex(), var.getStartOpIdx(), var.getAsmIndex(),
+										srcVarName, dstVarName);
+							}
+
+							if (format.supportsComments) {
+								String comment = var.getMappedComment();
+								if (comment != null) writer.acceptMethodVarComment(srcClsName, srcName, desc,
+										var.getIndex(), var.getLvIndex(), var.getStartOpIdx(), var.getAsmIndex(),
+										comment);
 							}
 						}
+
+						vars.clear();
 					}
 				}
 
@@ -438,6 +524,8 @@ public class Mappings {
 				fields.sort(MemberInstance.nameComparator);
 
 				for (FieldInstance f : fields) {
+					assert f.getCls() == cls;
+
 					String srcName = f.getName(srcType);
 					String desc = getDesc(f, srcType);
 					String dstName = f.getName(dstType);
@@ -477,7 +565,8 @@ public class Mappings {
 		String srcName = var.getName(srcType);
 		String dstName = var.getName(dstType);
 
-		return dstName != null && !dstName.equals(srcName);
+		return dstName != null && !dstName.equals(srcName)
+				|| format.supportsComments && var.getMappedComment() != null;
 	}
 
 	private static boolean shouldExport(FieldInstance field, MappingFormat format, NameType srcType, NameType dstType) {
@@ -556,6 +645,12 @@ public class Mappings {
 
 				for (MethodVarInstance arg : method.getArgs()) {
 					arg.setMappedName(null);
+					arg.setMappedComment(null);
+				}
+
+				for (MethodVarInstance var : method.getVars()) {
+					var.setMappedName(null);
+					var.setMappedComment(null);
 				}
 			}
 

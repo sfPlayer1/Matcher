@@ -71,7 +71,10 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private void announceSelectionChange(Matchable<?> oldSel, Matchable<?> newSel) {
-		if (oldSel == newSel) return;
+		if (oldSel == newSel) {
+			onMatchListRefresh();
+			return;
+		}
 
 		ClassInstance oldClass, newClass;
 		MethodInstance oldMethod, newMethod;
@@ -167,7 +170,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	@Override
-	public MethodVarInstance getSelectedMethodArg() {
+	public MethodVarInstance getSelectedMethodVar() {
 		RankResult<? extends Matchable<?>> result = matchList.getSelectionModel().getSelectedItem();
 		if (result == null) return null;
 
@@ -196,7 +199,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			return result.getSubject() instanceof MethodInstance ? result : null;
 		case Field:
 			return result.getSubject() instanceof FieldInstance ? result : null;
-		case MethodArg:
+		case MethodVar:
 			return result.getSubject() instanceof MethodVarInstance ? result : null;
 		}
 
@@ -308,7 +311,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				if (hasClsMatch && (method = srcPane.getSelectedMethod()) != null && method.getCls() == cls) {
 					MethodVarInstance var;
 
-					if (method.hasMatch() && (var = srcPane.getSelectedMethodArg()) != null && var.getMethod() == method) {
+					if (method.hasMatch() && (var = srcPane.getSelectedMethodVar()) != null && var.getMethod() == method) {
 						MethodVarInstance[] cmp = var.isArg() ? method.getMatch().getArgs() : method.getMatch().getVars();
 
 						ranker = () -> MethodVarClassifier.rank(var, cmp, matchLevel, env, maxMismatch);
@@ -353,7 +356,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 					} else {
 						announceSelectionChange(oldSelection, matchList.getSelectionModel().getSelectedItem().getSubject());
 					}
-					System.out.println("new: "+matchList.getSelectionModel().getSelectedItem());
+
 					suppressChangeEvents = false;
 
 					oldSelection = null;

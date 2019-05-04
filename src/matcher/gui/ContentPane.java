@@ -12,6 +12,7 @@ import matcher.gui.tab.HierarchyTab;
 import matcher.gui.tab.MemberScoresTab;
 import matcher.gui.tab.MethodInfoTab;
 import matcher.gui.tab.SourcecodeTab;
+import matcher.gui.tab.VarInfoTab;
 
 public class ContentPane extends TabPane implements IFwdGuiComponent {
 	public ContentPane(Gui gui, ISelectionProvider selectionProvider, boolean isSource) {
@@ -52,6 +53,12 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 		FieldInfoTab fITab = new FieldInfoTab(gui, selectionProvider, isSource);
 		components.add(fITab);
 		getTabs().add(fITab);
+
+		// var info tab
+
+		VarInfoTab vITab = new VarInfoTab(gui, selectionProvider, isSource);
+		components.add(vITab);
+		getTabs().add(vITab);
 
 		// hierarchy tab
 

@@ -69,6 +69,17 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		verticalPane.getItems().add(memberList);
 
+		// method var list
+
+		varList.setCellFactory(ignore -> new SrcListCell<MethodVarInstance>());
+		varList.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+			if (suppressChangeEvents || oldValue == newValue) return;
+
+			onMethodVarSelect(newValue);
+		});
+
+		verticalPane.getItems().add(varList);
+
 		// content
 
 		ContentPane content = new ContentPane(gui, this, true);
@@ -78,7 +89,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		// positioning
 
 		verticalPane.setOrientation(Orientation.VERTICAL);
-		verticalPane.setDividerPosition(0, 0.65);
+		verticalPane.setDividerPositions(0.65, 0.9);
 
 		SplitPane.setResizableWithParent(verticalPane, false);
 		setDividerPosition(0, 0.25);
@@ -191,6 +202,26 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	@Override
+	public void onMethodSelect(MethodInstance method) {
+		List<MethodVarInstance> items = varList.getItems();
+		items.clear();
+
+		if (method != null) {
+			for (MethodVarInstance m : method.getArgs()) {
+				items.add(m);
+			}
+
+			for (MethodVarInstance m : method.getVars()) {
+				items.add(m);
+			}
+
+			items.sort(getVarComparator());
+		}
+
+		IFwdGuiComponent.super.onMethodSelect(method);
+	}
+
+	@Override
 	public ClassInstance getSelectedClass() {
 		if (useClassTree) {
 			TreeItem<Object> item = classTree.getSelectionModel().getSelectedItem();
@@ -216,8 +247,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	@Override
-	public MethodVarInstance getSelectedMethodArg() {
-		return null;
+	public MethodVarInstance getSelectedMethodVar() {
+		return varList.getSelectionModel().getSelectedItem();
 	}
 
 	@Override
@@ -356,6 +387,20 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		throw new IllegalStateException("unhandled sort key: "+gui.getSortKey());
 	}
 
+	@SuppressWarnings("unchecked")
+	private Comparator<MethodVarInstance> getVarComparator() {
+		switch (gui.getSortKey()) {
+		case Name:
+			return varTypeComparator.thenComparing(this::getName, clsNameComparator);
+		case MappedName:
+			return varTypeComparator.thenComparing(this::getMappedName, clsNameComparator);
+		case MatchStatus:
+			return ((Comparator<MethodVarInstance>) matchStatusComparator).thenComparing(varTypeComparator).thenComparing(this::getName, clsNameComparator);
+		}
+
+		throw new IllegalStateException("unhandled sort key: "+gui.getSortKey());
+	}
+
 	private String getName(Matchable<?> m) {
 		return getName(m, true);
 	}
@@ -390,8 +435,12 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		refreshClassList(); // unconditional because it could affect the fully matched status
 
-		if (types.contains(MatchType.Method) || types.contains(MatchType.Field) || types.contains(MatchType.MethodArg)) {
+		if (types.contains(MatchType.Method) || types.contains(MatchType.Field) || types.contains(MatchType.MethodVar)) {
 			memberList.refresh();
+		}
+
+		if (types.contains(MatchType.MethodVar)) {
+			varList.refresh();
 		}
 
 		IFwdGuiComponent.super.onMatchChange(types);
@@ -410,6 +459,14 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			return 0;
 		} else {
 			return aIsMethod ? -1 : 1;
+		}
+	};
+
+	private static final Comparator<MethodVarInstance> varTypeComparator = (a, b) -> {
+		if (a.isArg() == b.isArg()) {
+			return 0;
+		} else {
+			return a.isArg() ? -1 : 1;
 		}
 	};
 
@@ -443,6 +500,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private ListView<ClassInstance> classList;
 	private TreeView<Object> classTree;
 	private final ListView<MemberInstance<?>> memberList = new ListView<>();
+	private final ListView<MethodVarInstance> varList = new ListView<>();
 
 	private boolean suppressChangeEvents;
 }

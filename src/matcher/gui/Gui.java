@@ -286,7 +286,7 @@ public class Gui extends Application {
 		return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
 	}
 
-	public static Path requestFile(String title, Window parent, List<ExtensionFilter> extensionFilters, boolean isOpen) {
+	public static SelectedFile requestFile(String title, Window parent, List<ExtensionFilter> extensionFilters, boolean isOpen) {
 		FileChooser fileChooser = new FileChooser();
 
 		fileChooser.setTitle(title);
@@ -303,7 +303,17 @@ public class Gui extends Application {
 
 		lastChooserFile = file.getParentFile();
 
-		return file.toPath();
+		return new SelectedFile(file.toPath(), fileChooser.getSelectedExtensionFilter());
+	}
+
+	public static class SelectedFile {
+		SelectedFile(Path path, ExtensionFilter filter) {
+			this.path = path;
+			this.filter = filter;
+		}
+
+		public final Path path;
+		public final ExtensionFilter filter;
 	}
 
 	public static Path requestDir(String title, Window parent) {

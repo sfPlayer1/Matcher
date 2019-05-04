@@ -219,10 +219,6 @@ public class AsmClassRemapper extends ClassRemapper {
 
 			name = remapper.mapLocalVariableName(className, methodName, methodDesc, name, desc, index, startInsn, endInsn);
 
-			if (!Util.isValidJavaIdentifier(name)) {
-				name = "lv"+(lvIndex++);
-			}
-
 			super.visitLocalVariable(name, desc, signature, start, end, index);
 		}
 
@@ -232,7 +228,6 @@ public class AsmClassRemapper extends ClassRemapper {
 
 			insnIndex = 0;
 			labels.clear();
-			lvIndex = 0 ;
 			methodName = methodDesc = null;
 
 			super.visitEnd();
@@ -246,7 +241,6 @@ public class AsmClassRemapper extends ClassRemapper {
 
 		protected int insnIndex;
 		protected Map<Label, Integer> labels = new IdentityHashMap<>();
-		protected int lvIndex;
 	}
 
 	protected final AsmRemapper remapper;

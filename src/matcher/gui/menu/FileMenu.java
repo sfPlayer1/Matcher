@@ -31,6 +31,7 @@ import javafx.stage.Window;
 import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
+import matcher.gui.Gui.SelectedFile;
 import matcher.gui.menu.LoadMappingsPane.MappingsLoadSettings;
 import matcher.gui.menu.LoadProjectPane.ProjectLoadSettings;
 import matcher.gui.menu.SaveMappingsPane.MappingsSaveSettings;
@@ -74,11 +75,11 @@ public class FileMenu extends Menu {
 
 		menuItem = new MenuItem("Save mappings");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMappings(false));
+		menuItem.setOnAction(event -> saveMappings(null));
 
 		menuItem = new MenuItem("Save mappings (Enigma)");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMappings(true));
+		menuItem.setOnAction(event -> saveMappings(MappingFormat.ENIGMA));
 
 		menuItem = new MenuItem("Clear mappings");
 		getItems().add(menuItem);
@@ -131,8 +132,10 @@ public class FileMenu extends Menu {
 	}
 
 	private void loadProject() {
-		Path file = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
-		if (file == null) return;
+		SelectedFile res = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
+		if (res == null) return;
+
+		Path file = res.path;
 
 		Dialog<ProjectLoadSettings> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
@@ -168,7 +171,9 @@ public class FileMenu extends Menu {
 		Path file;
 
 		if (format == null || format.hasSingleFile()) {
-			file = Gui.requestFile("Select mapping file", window, getMappingLoadExtensionFilters(), true);
+			SelectedFile res = Gui.requestFile("Select mapping file", window, getMappingLoadExtensionFilters(), true); // TODO: pre-select format if non-null
+			file = res.path;
+			format = getFormat(res.filter.getDescription());
 		} else {
 			file = Gui.requestDir("Select mapping dir", window);
 		}
@@ -184,11 +189,12 @@ public class FileMenu extends Menu {
 		LoadMappingsPane content = new LoadMappingsPane();
 		dialog.getDialogPane().setContent(content);
 		dialog.setResultConverter(button -> button == ButtonType.OK ? content.getSettings() : null);
+		final MappingFormat loadFormat = format;
 
 		dialog.showAndWait().ifPresent(settings -> {
 			try {
 				ClassEnvironment env = gui.getMatcher().getEnv();
-				Mappings.load(file, format, settings.a ? env.getEnvA() : env.getEnvB(), settings.names, settings.replace);
+				Mappings.load(file, loadFormat, settings.a ? env.getEnvA() : env.getEnvB(), settings.names, settings.replace);
 			} catch (IOException e) {
 				e.printStackTrace();
 				gui.showAlert(AlertType.ERROR, "Load error", "Error while loading mappings", e.getMessage());
@@ -217,18 +223,20 @@ public class FileMenu extends Menu {
 		return ret;
 	}
 
-	private void saveMappings(boolean toDir) {
+	private void saveMappings(MappingFormat format) {
 		Window window = gui.getScene().getWindow();
 		Path path;
-		String ext;
 
-		if (!toDir) {
+		if (format == null || format.hasSingleFile()) {
 			FileChooser fileChooser = new FileChooser();
 			fileChooser.setTitle("Save mapping file");
 
-			for (MappingFormat format : MappingFormat.values()) {
-				if (format.hasSingleFile()) {
-					fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.name, "*."+format.fileExt));
+			for (MappingFormat f : MappingFormat.values()) {
+				if (f.hasSingleFile()) {
+					FileChooser.ExtensionFilter filter = new FileChooser.ExtensionFilter(f.name, "*."+f.fileExt);
+					fileChooser.getExtensionFilters().add(filter);
+
+					if (f == format) fileChooser.setSelectedExtensionFilter(filter);
 				}
 			}
 
@@ -236,7 +244,7 @@ public class FileMenu extends Menu {
 			if (file == null) return;
 
 			path = file.toPath();
-			ext = fileChooser.getSelectedExtensionFilter().getDescription();
+			format = getFormat(fileChooser.getSelectedExtensionFilter().getDescription());
 		} else {
 			path = Gui.requestDir("Save mapping dir", window);
 			if (path == null) return;
@@ -255,14 +263,10 @@ public class FileMenu extends Menu {
 					return;
 				}
 			}
-
-			ext = null;
 		}
 
-		MappingFormat format = getFormat(path);
-
 		if (format == null) {
-			format = getFormat(ext);
+			format = getFormat(path);
 			if (format == null) throw new IllegalStateException("mapping format detection failed");
 
 			if (format.hasSingleFile()) {
@@ -376,10 +380,10 @@ public class FileMenu extends Menu {
 	}
 
 	private void loadMatches() {
-		Path file = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
-		if (file == null) return;
+		SelectedFile res = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
+		if (res == null) return;
 
-		MatchesIo.read(file, null, false, gui.getMatcher(), progress -> {});
+		MatchesIo.read(res.path, null, false, gui.getMatcher(), progress -> {});
 		gui.onMatchChange(EnumSet.allOf(MatchType.class));
 	}
 
@@ -388,8 +392,10 @@ public class FileMenu extends Menu {
 	}
 
 	private void saveMatches() {
-		Path path = Gui.requestFile("Save matches file", gui.getScene().getWindow(), Arrays.asList(new FileChooser.ExtensionFilter("Matches", "*.match")), false);
-		if (path == null) return;
+		SelectedFile res = Gui.requestFile("Save matches file", gui.getScene().getWindow(), Arrays.asList(new FileChooser.ExtensionFilter("Matches", "*.match")), false);
+		if (res == null) return;
+
+		Path path = res.path;
 
 		if (!path.getFileName().toString().toLowerCase(Locale.ENGLISH).endsWith(".match")) {
 			path = path.resolveSibling(path.getFileName().toString()+".match");

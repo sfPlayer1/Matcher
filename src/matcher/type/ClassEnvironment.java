@@ -562,6 +562,8 @@ public class ClassEnvironment implements ClassEnv {
 	public String classUidPrefix = "class_";
 	public String methodUidPrefix = "method_";
 	public String fieldUidPrefix = "field_";
+	public String argUidPrefix = "arg_";
+	public String varUidPrefix = "var_";
 	public int nextClassUid;
 	public int nextMethodUid;
 	public int nextFieldUid;

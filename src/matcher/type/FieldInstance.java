@@ -108,7 +108,7 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 		return matchedInstance != null;
 	}
 
-	static String getId(String name, String desc) {
+	public static String getId(String name, String desc) {
 		return name+";;"+desc;
 	}
 

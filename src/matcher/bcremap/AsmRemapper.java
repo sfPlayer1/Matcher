@@ -81,7 +81,7 @@ public class AsmRemapper extends Remapper {
 		if (var != null) {
 			assert var.getType().getId().equals(desc);
 
-			return var.getName(nameType);
+			name = var.getName(nameType);
 		}
 
 		return name;

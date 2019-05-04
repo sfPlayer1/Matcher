@@ -167,6 +167,8 @@ public class Util {
 	}
 
 	public static boolean isValidJavaIdentifier(String s) {
+		if (s.isEmpty()) return false;
+
 		int cp = s.codePointAt(0);
 		if (!Character.isJavaIdentifierStart(cp)) return false;
 

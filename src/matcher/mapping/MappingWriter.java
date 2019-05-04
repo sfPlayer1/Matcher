@@ -13,24 +13,30 @@ import java.nio.file.StandardOpenOption;
 import java.util.zip.GZIPOutputStream;
 
 import matcher.NameType;
+import matcher.mapping.MappingState.ArgMappingState;
+import matcher.mapping.MappingState.VarMappingState;
 
 public class MappingWriter implements IMappingAcceptor, Closeable {
 	public MappingWriter(Path file, MappingFormat format, NameType srcType, NameType dstType) throws IOException {
+		this.file = file;
 		this.format = format;
+		this.srcType = srcType;
+		this.dstType = dstType;
 
 		switch (format) {
 		case TINY:
 		case SRG:
 			writer = Files.newBufferedWriter(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-			enigmaState = null;
+			state = null;
 			break;
 		case TINY_GZIP:
 			writer = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Files.newOutputStream(file)), StandardCharsets.UTF_8));
-			enigmaState = null;
+			state = null;
 			break;
 		case ENIGMA:
+		case TINY_2:
 			writer = null;
-			enigmaState = new EnigmaMappingState(file);
+			state = new MappingState();
 			break;
 		default:
 			throw new IllegalArgumentException("invalid  mapping format: "+format.name());
@@ -38,16 +44,16 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 
 		if (format == MappingFormat.TINY || format == MappingFormat.TINY_GZIP) {
 			writer.write("v1\t");
-			writer.write(getTinyNameType(srcType));
+			writer.write(getTinyTypeName(srcType));
 			writer.write('\t');
-			writer.write(getTinyNameType(dstType));
+			writer.write(getTinyTypeName(dstType));
 			writer.write('\n');
 		}
 	}
 
-	private static String getTinyNameType(NameType type) {
+	static String getTinyTypeName(NameType type) {
 		switch (type) {
-		case MAPPED_PLAIN: return "pomf";
+		case MAPPED_PLAIN: return "named";
 		case PLAIN: return "official";
 		case LOCTMP_PLAIN:
 		case TMP_PLAIN:
@@ -55,7 +61,7 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 		case UID_PLAIN: return "intermediary";
 		case MAPPED_LOCTMP_PLAIN:
 		case MAPPED_TMP_PLAIN:
-			return "pomf-tmp";
+			return "named-tmp";
 		default: throw new IllegalArgumentException();
 		}
 	}
@@ -87,9 +93,9 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 					writer.write('\n');
 				}
 				break;
-			case ENIGMA:
-				enigmaState.acceptClass(srcName, dstName, includesOuterNames);
-				break;
+			default:
+				if (!includesOuterNames) throw new IllegalArgumentException("outer name context required");
+				if (dstName != null) state.getClass(srcName).mappedName = dstName;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -111,9 +117,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			case ENIGMA:
-				enigmaState.acceptClassComment(srcName, comment);
-				break;
+			default:
+				state.getClass(srcName).comment = comment;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -155,9 +160,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 					writer.write('\n');
 				}
 				break;
-			case ENIGMA:
-				enigmaState.acceptMethod(srcClsName, srcName, srcDesc, dstClsName, dstName, dstDesc);
-				break;
+			default:
+				if (dstName != null) state.getClass(srcClsName).getMethod(srcName, srcDesc).mappedName = dstName;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -183,9 +187,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			case ENIGMA:
-				enigmaState.acceptMethodComment(srcClsName, srcName, srcDesc, comment);
-				break;
+			default:
+				state.getClass(srcClsName).getMethod(srcName, srcDesc).comment = comment;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -193,7 +196,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 	}
 
 	@Override
-	public void acceptMethodArg(String srcClsName, String srcName, String srcDesc, int argIndex, int lvIndex, String dstArgName) {
+	public void acceptMethodArg(String srcClsName, String srcMethodName, String srcMethodDesc,
+			int argIndex, int lvIndex, String srcArgName, String dstArgName) {
 		try {
 			switch (format) {
 			case TINY:
@@ -201,9 +205,9 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				writer.write("MTH-ARG\t");
 				writer.write(srcClsName);
 				writer.write('\t');
-				writer.write(srcDesc);
+				writer.write(srcMethodDesc);
 				writer.write('\t');
-				writer.write(srcName);
+				writer.write(srcMethodName);
 				writer.write('\t');
 				writer.write(Integer.toString(argIndex));
 				writer.write('\t');
@@ -213,9 +217,12 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			case ENIGMA:
-				enigmaState.acceptMethodArg(srcClsName, srcName, srcDesc, argIndex, lvIndex, dstArgName);
-				break;
+			default:
+				if (srcArgName != null || dstArgName != null) {
+					ArgMappingState argState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getArg(argIndex, lvIndex);
+					argState.name = srcArgName;
+					argState.mappedName = dstArgName;
+				}
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -223,7 +230,22 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 	}
 
 	@Override
-	public void acceptMethodVar(String srcClsName, String srcName, String srcDesc, int varIndex, int lvIndex, String dstVarName) {
+	public void acceptMethodArgComment(String srcClsName, String srcMethodName, String srcMethodDesc,
+			int argIndex, int lvIndex, String comment) {
+		switch (format) {
+		case TINY:
+		case TINY_GZIP:
+		case SRG:
+			// not supported
+			break;
+		default:
+			state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getArg(argIndex, lvIndex).comment = comment;
+		}
+	}
+
+	@Override
+	public void acceptMethodVar(String srcClsName, String srcMethodName, String srcMethodDesc,
+			int varIndex, int lvIndex, int startOpIdx, int asmIndex, String srcVarName, String dstVarName) {
 		try {
 			switch (format) {
 			case TINY:
@@ -231,9 +253,9 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 				writer.write("MTH-VAR\t");
 				writer.write(srcClsName);
 				writer.write('\t');
-				writer.write(srcDesc);
+				writer.write(srcMethodDesc);
 				writer.write('\t');
-				writer.write(srcName);
+				writer.write(srcMethodName);
 				writer.write('\t');
 				writer.write(Integer.toString(varIndex));
 				writer.write('\t');
@@ -243,12 +265,29 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			case ENIGMA:
-				enigmaState.acceptMethodVar(srcClsName, srcName, srcDesc, varIndex, lvIndex, dstVarName);
-				break;
+			default:
+				if (srcVarName != null || dstVarName != null) {
+					VarMappingState varState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getVar(varIndex, lvIndex, startOpIdx, asmIndex);
+					varState.name = srcVarName;
+					varState.mappedName = dstVarName;
+				}
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public void acceptMethodVarComment(String srcClsName, String srcMethodName, String srcMethodDesc,
+			int varIndex, int lvIndex, int startOpIdx, int asmIndex, String comment) {
+		switch (format) {
+		case TINY:
+		case TINY_GZIP:
+		case SRG:
+			// not supported
+			break;
+		default:
+			state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getArg(varIndex, lvIndex).comment = comment;
 		}
 	}
 
@@ -283,9 +322,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 					writer.write('\n');
 				}
 				break;
-			case ENIGMA:
-				enigmaState.acceptField(srcClsName, srcName, srcDesc, dstClsName, dstName, dstDesc);
-				break;
+			default:
+				if (dstName != null) state.getClass(srcClsName).getField(srcName, srcDesc).mappedName = dstName;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -311,9 +349,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			case ENIGMA:
-				enigmaState.acceptFieldComment(srcClsName, srcName, srcDesc, comment);
-				break;
+			default:
+				state.getClass(srcClsName).getField(srcName, srcDesc).comment = comment;
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -344,9 +381,8 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			case ENIGMA:
-				enigmaState.acceptMeta(key, value);
-				break;
+			default:
+				state.metaMap.put(key, value);
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -360,7 +396,19 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 	@Override
 	public void close() throws IOException {
 		if (writer != null) writer.close();
-		if (enigmaState != null) enigmaState.save();
+
+		if (state != null) {
+			switch (format) {
+			case ENIGMA:
+				EnigmaImpl.write(file, state);
+				break;
+			case TINY_2:
+				Tiny2Impl.write(file, state, srcType, dstType);
+				break;
+			default:
+				throw new UnsupportedOperationException();
+			}
+		}
 	}
 
 	private static String escape(String str) {
@@ -396,7 +444,10 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 		}
 	}
 
+	private final Path file;
 	private final MappingFormat format;
+	private final NameType srcType;
+	private final NameType dstType;
 	private final Writer writer;
-	private final EnigmaMappingState enigmaState;
+	private final MappingState state;
 }

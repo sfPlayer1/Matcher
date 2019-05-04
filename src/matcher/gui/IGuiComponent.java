@@ -20,4 +20,6 @@ public interface IGuiComponent {
 	default void onMethodSelect(MethodInstance method) { }
 	default void onFieldSelect(FieldInstance field) { }
 	default void onMethodVarSelect(MethodVarInstance arg) { }
+
+	default void onMatchListRefresh() { }
 }

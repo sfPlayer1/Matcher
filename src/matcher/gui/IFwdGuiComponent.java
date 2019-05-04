@@ -71,4 +71,10 @@ public interface IFwdGuiComponent extends IGuiComponent {
 			c.onMethodVarSelect(arg);
 		}
 	}
+
+	default void onMatchListRefresh() {
+		for (IGuiComponent c : getComponents()) {
+			c.onMatchListRefresh();
+		}
+	}
 }

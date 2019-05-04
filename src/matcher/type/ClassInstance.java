@@ -803,7 +803,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public void setMappedName(String mappedName) {
-		assert mappedName.indexOf('$') == -1;
+		assert mappedName == null || mappedName.indexOf('$') == -1;
 
 		this.mappedName = mappedName;
 	}

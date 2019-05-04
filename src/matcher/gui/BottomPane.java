@@ -20,6 +20,7 @@ import matcher.type.FieldInstance;
 import matcher.type.MatchType;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
+import matcher.type.MethodVarInstance;
 
 public class BottomPane extends StackPane implements IGuiComponent {
 	public BottomPane(Gui gui, MatchPaneSrc srcPane, MatchPaneDst dstPane) {
@@ -40,17 +41,11 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		StackPane.setAlignment(center, Pos.CENTER);
 		center.setAlignment(Pos.CENTER);
 
-		matchClassButton.setText("match classes");
-		matchClassButton.setOnAction(event -> matchClasses());
-		matchClassButton.setDisable(true);
+		matchButton.setText("match");
+		matchButton.setOnAction(event -> match());
+		matchButton.setDisable(true);
 
-		center.getChildren().add(matchClassButton);
-
-		matchMemberButton.setText("match members");
-		matchMemberButton.setOnAction(event -> matchMembers());
-		matchMemberButton.setDisable(true);
-
-		center.getChildren().add(matchMemberButton);
+		center.getChildren().add(matchButton);
 
 		matchPerfectMembersButton.setText("match 100% members");
 		matchPerfectMembersButton.setOnAction(event -> matchPerfectMembers());
@@ -76,6 +71,12 @@ public class BottomPane extends StackPane implements IGuiComponent {
 
 		right.getChildren().add(unmatchMemberButton);
 
+		unmatchVarButton.setText("unmatch vars");
+		unmatchVarButton.setOnAction(event -> unmatchVar());
+		unmatchVarButton.setDisable(true);
+
+		right.getChildren().add(unmatchVarButton);
+
 		SelectListener selectListener = new SelectListener();
 		srcPane.addListener(selectListener);
 		dstPane.addListener(selectListener);
@@ -83,34 +84,29 @@ public class BottomPane extends StackPane implements IGuiComponent {
 
 	@Override
 	public void onMatchChange(Set<MatchType> types) {
-		if (types.contains(MatchType.Class)) {
-			updateClassMatchButtons();
-		}
-
-		if (types.contains(MatchType.Class) || types.contains(MatchType.Method) || types.contains(MatchType.Field)) {
-			updateMemberMatchButtons();
+		if (!types.isEmpty()) {
+			updateMatchButtons();
 		}
 	}
 
-	private void updateClassMatchButtons() {
+	private void updateMatchButtons() {
 		ClassInstance clsA = srcPane.getSelectedClass();
 		ClassInstance clsB = dstPane.getSelectedClass();
 
-		matchClassButton.setDisable(!canMatchClasses(clsA, clsB));
-		unmatchClassButton.setDisable(!canUnmatchClass(clsA));
-	}
-
-	private void updateMemberMatchButtons() {
 		MemberInstance<?> memberA = srcPane.getSelectedMethod();
 		if (memberA == null) memberA = srcPane.getSelectedField();
-
 		MemberInstance<?> memberB = dstPane.getSelectedMethod();
 		if (memberB == null) memberB = dstPane.getSelectedField();
 
-		matchMemberButton.setDisable(!canMatchMembers(memberA, memberB));
-		unmatchMemberButton.setDisable(!canUnmatchMember(memberA));
+		MethodVarInstance varA = srcPane.getSelectedMethodVar();
+		MethodVarInstance varB = dstPane.getSelectedMethodVar();
 
-		matchPerfectMembersButton.setDisable(!canMatchPerfectMembers(srcPane.getSelectedClass()));
+		matchButton.setDisable(!canMatchClasses(clsA, clsB) && !canMatchMembers(memberA, memberB) && !canMatchVars(varA, varB));
+		unmatchClassButton.setDisable(!canUnmatchClass(clsA));
+		unmatchMemberButton.setDisable(!canUnmatchMember(memberA));
+		unmatchVarButton.setDisable(!canUnmatchVar(varA));
+
+		matchPerfectMembersButton.setDisable(!canMatchPerfectMembers(clsA));
 	}
 
 	// match / unmatch actions implementation
@@ -119,35 +115,47 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		return clsA != null && clsB != null && clsA.getMatch() != clsB;
 	}
 
-	private void matchClasses() {
-		ClassInstance clsA = srcPane.getSelectedClass();
-		ClassInstance clsB = dstPane.getSelectedClass();
-
-		if (!canMatchClasses(clsA, clsB)) return;
-
-		gui.getMatcher().match(clsA, clsB);
-		gui.onMatchChange(EnumSet.allOf(MatchType.class));
-	}
-
 	private boolean canMatchMembers(MemberInstance<?> memberA, MemberInstance<?> memberB) {
 		return memberA != null && memberB != null && memberA.getClass() == memberB.getClass() && memberA.getMatch() != memberB;
 	}
 
-	private void matchMembers() {
+	private boolean canMatchVars(MethodVarInstance varA, MethodVarInstance varB) {
+		return varA != null && varB != null && varA.isArg() == varB.isArg() && varA.getMatch() != varB;
+	}
+
+	private void match() {
+		ClassInstance clsA = srcPane.getSelectedClass();
+		ClassInstance clsB = dstPane.getSelectedClass();
+
+		if (canMatchClasses(clsA, clsB)) {
+			gui.getMatcher().match(clsA, clsB);
+			gui.onMatchChange(EnumSet.allOf(MatchType.class));
+			return;
+		}
+
 		MemberInstance<?> memberA = srcPane.getSelectedMethod();
 		if (memberA == null) memberA = srcPane.getSelectedField();
-
 		MemberInstance<?> memberB = dstPane.getSelectedMethod();
 		if (memberB == null) memberB = dstPane.getSelectedField();
 
-		if (!canMatchMembers(memberA, memberB)) return;
+		if (canMatchMembers(memberA, memberB)) {
+			if (memberA instanceof MethodInstance) {
+				gui.getMatcher().match((MethodInstance) memberA, (MethodInstance) memberB);
+				gui.onMatchChange(EnumSet.of(MatchType.Method));
+			} else {
+				gui.getMatcher().match((FieldInstance) memberA, (FieldInstance) memberB);
+				gui.onMatchChange(EnumSet.of(MatchType.Field));
+			}
 
-		if (memberA instanceof MethodInstance) {
-			gui.getMatcher().match((MethodInstance) memberA, (MethodInstance) memberB);
-			gui.onMatchChange(EnumSet.of(MatchType.Method));
-		} else {
-			gui.getMatcher().match((FieldInstance) memberA, (FieldInstance) memberB);
-			gui.onMatchChange(EnumSet.of(MatchType.Field));
+			return;
+		}
+
+		MethodVarInstance varA = srcPane.getSelectedMethodVar();
+		MethodVarInstance varB = dstPane.getSelectedMethodVar();
+
+		if (canMatchVars(varA, varB)) {
+			gui.getMatcher().match(varA, varB);
+			gui.onMatchChange(EnumSet.of(MatchType.MethodVar));
 		}
 	}
 
@@ -256,36 +264,58 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		gui.getMatcher().unmatch(member);
 
 		if (member instanceof MethodInstance) {
-			gui.onMatchChange(EnumSet.of(MatchType.Method));
+			gui.onMatchChange(EnumSet.of(MatchType.Method, MatchType.MethodVar));
 		} else {
 			gui.onMatchChange(EnumSet.of(MatchType.Field));
 		}
 	}
 
+	private boolean canUnmatchVar(MethodVarInstance var) {
+		return var != null && var.getMatch() != null;
+	}
+
+	private void unmatchVar() {
+		MethodVarInstance var = srcPane.getSelectedMethodVar();
+		if (!canUnmatchVar(var)) return;
+
+		gui.getMatcher().unmatch(var);
+		gui.onMatchChange(EnumSet.of(MatchType.MethodVar));
+	}
+
+
 	private class SelectListener implements IGuiComponent {
 		@Override
 		public void onClassSelect(ClassInstance cls) {
-			updateClassMatchButtons();
-			updateMemberMatchButtons();
+			updateMatchButtons();
 		}
 
 		@Override
 		public void onMethodSelect(MethodInstance method) {
-			updateMemberMatchButtons();
+			updateMatchButtons();
 		}
 
 		@Override
 		public void onFieldSelect(FieldInstance field) {
-			updateMemberMatchButtons();
+			updateMatchButtons();
+		}
+
+		@Override
+		public void onMethodVarSelect(MethodVarInstance arg) {
+			updateMatchButtons();
+		}
+
+		@Override
+		public void onMatchListRefresh() {
+			updateMatchButtons();
 		}
 	}
 
 	private final Gui gui;
 	private final MatchPaneSrc srcPane;
 	private final MatchPaneDst dstPane;
-	private final Button matchClassButton = new Button();
-	private final Button matchMemberButton = new Button();
+	private final Button matchButton = new Button();
 	private final Button matchPerfectMembersButton = new Button();
 	private final Button unmatchClassButton = new Button();
 	private final Button unmatchMemberButton = new Button();
+	private final Button unmatchVarButton = new Button();
 }

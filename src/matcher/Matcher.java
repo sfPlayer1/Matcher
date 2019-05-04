@@ -228,6 +228,13 @@ public class Matcher {
 						arg.setMatch(null);
 					}
 				}
+
+				for (MethodVarInstance var : m.getVars()) {
+					if (var.getMatch() != null) {
+						var.getMatch().setMatch(null);
+						var.setMatch(null);
+					}
+				}
 			}
 		}
 
@@ -345,6 +352,10 @@ public class Matcher {
 			for (MethodVarInstance arg : ((MethodInstance) m).getArgs()) {
 				unmatch(arg);
 			}
+
+			for (MethodVarInstance var : ((MethodInstance) m).getVars()) {
+				unmatch(var);
+			}
 		}
 
 		m.getMatch().setMatch(null);
@@ -384,7 +395,7 @@ public class Matcher {
 
 		do {
 			matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
-			matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
+			matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
 		} while (matchedAny);
 
 		env.getCache().clear();
@@ -562,6 +573,10 @@ public class Matcher {
 
 	public boolean autoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		return autoMatchMethodVars(true, MethodInstance::getArgs, level, absThreshold, relThreshold, progressReceiver);
+	}
+
+	public boolean autoMatchMethodVars(DoubleConsumer progressReceiver) {
+		return autoMatchMethodArgs(autoMatchLevel, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
 	}
 
 	public boolean autoMatchMethodVars(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
@@ -839,4 +854,6 @@ public class Matcher {
 	private final double relFieldAutoMatchThreshold = 0.085;
 	private final double absMethodArgAutoMatchThreshold = 0.85;
 	private final double relMethodArgAutoMatchThreshold = 0.085;
+	private final double absMethodVarAutoMatchThreshold = 0.85;
+	private final double relMethodVarAutoMatchThreshold = 0.085;
 }

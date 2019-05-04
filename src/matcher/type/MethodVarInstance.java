@@ -1,10 +1,11 @@
 package matcher.type;
 
 import matcher.NameType;
+import matcher.Util;
 
 public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	MethodVarInstance(MethodInstance method, boolean isArg, int index, int lvIndex, int asmIndex,
-			ClassInstance type, int startInsn, int endInsn,
+			ClassInstance type, int startInsn, int endInsn, int startOpIdx,
 			String origName, boolean nameObfuscated) {
 		this.method = method;
 		this.isArg = isArg;
@@ -14,6 +15,7 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		this.type = type;
 		this.startInsn = startInsn;
 		this.endInsn = endInsn;
+		this.startOpIdx = startOpIdx;
 		this.origName = origName;
 		this.nameObfuscated = nameObfuscated;
 	}
@@ -50,9 +52,17 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		return endInsn;
 	}
 
+	public int getStartOpIdx() {
+		return startOpIdx;
+	}
+
 	@Override
 	public String getId() {
 		return Integer.toString(index);
+	}
+
+	public String getTypedId() {
+		return (isArg ? "arg" : "lv").concat(getId());
 	}
 
 	@Override
@@ -63,10 +73,11 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	@Override
 	public String getName(NameType type) {
 		if (type == NameType.PLAIN) {
-			return origName;
+			return hasValidOrigName() ? origName : getTypedId();
 		} else if (type == NameType.UID_PLAIN) {
+			ClassEnvironment env = method.cls.env.getGlobal();
 			int uid = getUid();
-			if (uid >= 0) return (isArg ? "arg_" : "var_")+index;
+			if (uid >= 0) return (isArg ? env.argUidPrefix : env.varUidPrefix)+uid;
 		}
 
 		boolean mapped = type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
@@ -87,10 +98,31 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
 		} else {
-			ret = origName;
+			ret = hasValidOrigName() ? origName : getTypedId();
 		}
 
 		return ret;
+	}
+
+	private boolean hasValidOrigName() {
+		if (origName == null
+				|| !Util.isValidJavaIdentifier(origName)
+				|| origName.startsWith("arg") && origName.length() > 3 && origName.charAt(3) >= '0' && origName.charAt(3) <= '9' // conflicts with argX typed id
+				|| origName.startsWith("lv") && origName.length() > 2 && origName.charAt(2) >= '0' && origName.charAt(2) <= '9') { // conflicts with lvX typed id
+			return false;
+		}
+
+		// check if unique
+
+		for (MethodVarInstance var : method.getArgs()) {
+			if (var != this && origName.equals(var.origName)) return false;
+		}
+
+		for (MethodVarInstance var : method.getVars()) {
+			if (var != this && origName.equals(var.origName)) return false;
+		}
+
+		return true;
 	}
 
 	@Override
@@ -114,7 +146,11 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 
 	@Override
 	public int getUid() {
-		throw new UnsupportedOperationException();
+		return uid;
+	}
+
+	public void setUid(int uid) {
+		this.uid = uid;
 	}
 
 	@Override
@@ -124,6 +160,22 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 
 	public void setMappedName(String mappedName) {
 		this.mappedName = mappedName;
+	}
+
+	public String getMappedComment() {
+		if (mappedComment != null) {
+			return mappedComment;
+		} else if (matchedInstance != null) {
+			return matchedInstance.mappedComment;
+		} else {
+			return null;
+		}
+	}
+
+	public void setMappedComment(String comment) {
+		if (comment != null && comment.isEmpty()) comment = null;
+
+		this.mappedComment = comment;
 	}
 
 	@Override
@@ -144,7 +196,7 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 
 	@Override
 	public String toString() {
-		return method.toString()+":"+index;
+		return method+":"+getTypedId();
 	}
 
 	final MethodInstance method;
@@ -155,11 +207,14 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	final ClassInstance type;
 	private final int startInsn; // inclusive
 	private final int endInsn; // exclusive
+	private final int startOpIdx;
 	final String origName;
 	final boolean nameObfuscated;
 
 	private String tmpName;
+	private int uid = -1;
 
 	private String mappedName;
+	String mappedComment;
 	private MethodVarInstance matchedInstance;
 }

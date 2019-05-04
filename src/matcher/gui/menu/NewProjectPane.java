@@ -32,6 +32,7 @@ import javafx.stage.Window;
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
+import matcher.gui.Gui.SelectedFile;
 
 public class NewProjectPane extends GridPane {
 	NewProjectPane(ProjectConfig config, Window window, Node okButton) {
@@ -177,8 +178,8 @@ public class NewProjectPane extends GridPane {
 		Button button = new Button("add");
 		footer.getChildren().add(button);
 		button.setOnAction(event -> {
-			Path path = Gui.requestFile("Select file to add", window, getInputLoadExtensionFilters(), true);
-			if (path != null && !list.getItems().contains(path)) list.getItems().add(path);
+			SelectedFile res = Gui.requestFile("Select file to add", window, getInputLoadExtensionFilters(), true);
+			if (res != null && !list.getItems().contains(res.path)) list.getItems().add(res.path);
 		});
 
 		Button removeButton = new Button("remove");

@@ -3,6 +3,7 @@ package matcher.mapping;
 public enum MappingFormat {
 	TINY("Tiny", "tiny", true, true, false),
 	TINY_GZIP("Tiny (gzipped)", "tiny.gz", true, true, false),
+	TINY_2("Tiny v2", "tiny", true, true, true),
 	ENIGMA("Enigma", null, false, true, false),
 	MCP("MCP", null, true, true, false),
 	SRG("SRG", "srg", false, false, false);

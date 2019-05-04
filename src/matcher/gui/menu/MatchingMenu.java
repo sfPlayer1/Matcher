@@ -59,7 +59,15 @@ public class MatchingMenu extends Menu {
 		menuItem.setOnAction(event -> gui.runProgressTask(
 				"Auto matching method args...",
 				gui.getMatcher()::autoMatchMethodArgs,
-				() -> gui.onMatchChange(EnumSet.of(MatchType.MethodArg)),
+				() -> gui.onMatchChange(EnumSet.of(MatchType.MethodVar)),
+				Throwable::printStackTrace));
+
+		menuItem = new MenuItem("Auto method var match");
+		getItems().add(menuItem);
+		menuItem.setOnAction(event -> gui.runProgressTask(
+				"Auto matching method vars...",
+				gui.getMatcher()::autoMatchMethodVars,
+				() -> gui.onMatchChange(EnumSet.of(MatchType.MethodVar)),
 				Throwable::printStackTrace));
 
 		getItems().add(new SeparatorMenuItem());

@@ -80,7 +80,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 				}
 			}
 
-			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvIdx, asmIndex, type, startInsn, endInsn, name, name == null || method.nameObfuscated || method.cls.nameObfuscated);
+			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvIdx, asmIndex, type, startInsn, endInsn, 0, name, name == null || method.nameObfuscated || method.cls.nameObfuscated);
 			args[i] = arg;
 
 			method.classRefs.add(type);
@@ -133,11 +133,17 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 
 			int startInsn = il.indexOf(var.start);
 			int endInsn = il.indexOf(var.end);
-
 			assert startInsn >= 0 && endInsn >= 0;
 
+			AbstractInsnNode start = var.start;
+			int startOpIdx = 0;
+
+			while ((start = start.getPrevious()) != null) {
+				if (start.getOpcode() >= 0) startOpIdx++;
+			}
+
 			ret[i] = new MethodVarInstance(method, false, i, var.index, asmNode.localVariables.indexOf(var),
-					method.getEnv().getCreateClassInstance(var.desc), startInsn, endInsn,
+					method.getEnv().getCreateClassInstance(var.desc), startInsn, endInsn, startOpIdx,
 					var.name, method.nameObfuscated || method.cls.nameObfuscated);
 		}
 
@@ -371,7 +377,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		return true;
 	}
 
-	static String getId(String name, String desc) {
+	public static String getId(String name, String desc) {
 		return name+desc;
 	}
 

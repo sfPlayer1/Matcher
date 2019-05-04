@@ -14,14 +14,15 @@ import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.body.VariableDeclarator;
-import com.github.javaparser.ast.comments.BlockComment;
 import com.github.javaparser.ast.comments.Comment;
+import com.github.javaparser.ast.comments.JavadocComment;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 import matcher.NameType;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
+import matcher.type.MethodVarInstance;
 
 public class SrcDecorator {
 	public static String decorate(String src, ClassInstance cls, NameType nameType) {
@@ -89,14 +90,47 @@ public class SrcDecorator {
 			Comment c = n.getComment().get();
 
 			if (c.isLineComment()) {
-				c = new BlockComment(c.getContent());
+				c = new JavadocComment(c.getContent());
 				n.setComment(c);
 			}
 
 			c.setContent("\n * "+comment.replace("\n", "\n * ")+'\n'+c.getContent());
 		} else {
-			n.setComment(new BlockComment("\n * "+comment.replace("\n", "\n * ")+"\n "));
+			n.setComment(new JavadocComment("\n * "+comment.replace("\n", "\n * ")+"\n "));
 		}
+	}
+
+	private static void handleMethodComment(MethodInstance method, Node n, TypeResolver resolver) {
+		String comment = method.getMappedComment();
+		StringBuilder argComments = null;
+
+		for (MethodVarInstance arg : method.getArgs()) {
+			String argComment = arg.getMappedComment();
+
+			if (argComment != null) {
+				if (argComments == null) argComments = new StringBuilder();
+
+				argComments.append("@param ");
+				argComments.append(resolver.getName(arg));
+				argComments.append(' ');
+				argComments.append(argComment.replace("\n", "\n  "));
+				argComments.append('\n');
+			}
+		}
+
+		if (argComments != null) {
+			int pos;
+
+			if (comment == null) {
+				comment = argComments.toString();
+			} else if ((pos = comment.indexOf("@return")) >= 0) {
+				comment = comment.substring(0, pos) + argComments + comment.substring(pos);
+			} else {
+				comment = comment + '\n' + argComments.subSequence(0, argComments.length() - 1); // trailing \n to leading
+			}
+		}
+
+		handleComment(comment, n);
 	}
 
 	private static final VoidVisitorAdapter<TypeResolver> remapVisitor = new VoidVisitorAdapter<TypeResolver>() {
@@ -132,7 +166,7 @@ public class SrcDecorator {
 			//System.out.println("ctor "+n.getName().getIdentifier()+" = "+m+" at "+n.getRange());
 
 			if (m != null) {
-				handleComment(m.getMappedComment(), n);
+				handleMethodComment(m, n, resolver);
 			}
 
 			n.getBody().accept(this, resolver);
@@ -150,7 +184,7 @@ public class SrcDecorator {
 			//System.out.println("mth "+n.getName().getIdentifier()+" = "+m+" at "+n.getRange());
 
 			if (m != null) {
-				handleComment(m.getMappedComment(), n);
+				handleMethodComment(m, n, resolver);
 			}
 
 			n.getBody().ifPresent(l -> l.accept(this, resolver));

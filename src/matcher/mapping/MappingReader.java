@@ -4,21 +4,16 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 public class MappingReader {
@@ -32,7 +27,7 @@ public class MappingReader {
 					ByteBuffer buffer = ByteBuffer.wrap(header);
 
 					while (buffer.hasRemaining()) {
-						if (channel.read(buffer) == -1) throw new IOException("invalid/truncated tiny mapping file");
+						if (channel.read(buffer) == -1) throw new IOException("invalid/truncated mapping file");
 					}
 
 					if (header[0] == (byte) 0x1f && header[1] == (byte) 0x8b && header[2] == (byte) 0x08) { // gzip with deflate header
@@ -43,6 +38,9 @@ public class MappingReader {
 						switch (headerStr) {
 						case "v1\t":
 							format = MappingFormat.TINY;
+							break;
+						case "tin":
+							format = MappingFormat.TINY_2;
 							break;
 						case "PK:":
 						case "CL:":
@@ -62,13 +60,16 @@ public class MappingReader {
 
 		switch (format) {
 		case TINY:
-			readtiny(file, mappingAcceptor);
+			readTiny(file, mappingAcceptor);
 			break;
 		case TINY_GZIP:
 			readGzTiny(file, mappingAcceptor);
 			break;
+		case TINY_2:
+			readTiny2(file, mappingAcceptor);
+			break;
 		case ENIGMA:
-			readEnigma(file, mappingAcceptor);
+			EnigmaImpl.read(file, mappingAcceptor);
 			break;
 		case MCP:
 			readMcp(file, mappingAcceptor);
@@ -81,7 +82,7 @@ public class MappingReader {
 		}
 	}
 
-	public static void readtiny(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readTiny(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			readTiny(reader, mappingAcceptor);
 		}
@@ -179,9 +180,9 @@ public class MappingReader {
 				if (parts[5].isEmpty()) throw new IOException("invalid tiny line (empty dst method arg/var name): "+line);
 
 				if (parts[0].equals("MTH-ARG")) {
-					mappingAcceptor.acceptMethodArg(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, parts[5]);
+					mappingAcceptor.acceptMethodArg(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, null, parts[5]);
 				} else {
-					mappingAcceptor.acceptMethodVar(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, parts[5]);
+					mappingAcceptor.acceptMethodVar(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, -1, -1, null, parts[5]);
 				}
 
 				break;
@@ -215,105 +216,9 @@ public class MappingReader {
 		if (firstLine) throw new IOException("invalid tiny mapping file");
 	}
 
-	public static void readEnigma(Path dir, IMappingAcceptor mappingAcceptor) throws IOException {
-		try (Stream<Path> stream = Files.find(dir,
-				Integer.MAX_VALUE,
-				(path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".mapping"),
-				FileVisitOption.FOLLOW_LINKS)) {
-			stream.forEach(file -> readEnigmaFile(file, mappingAcceptor));
-		} catch (UncheckedIOException e) {
-			throw e.getCause();
-		}
-	}
-
-	private static void readEnigmaFile(Path file, IMappingAcceptor mappingAcceptor) {
+	public static void readTiny2(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
-			String line;
-			Queue<String> contextStack = Collections.asLifoQueue(new ArrayDeque<>());
-			int indent = 0;
-
-			while ((line = reader.readLine()) != null) {
-				if (line.isEmpty()) continue;
-
-				int newIndent = 0;
-				while (newIndent < line.length() && line.charAt(newIndent) == '\t') newIndent++;
-				int indentChange = newIndent - indent;
-
-				if (indentChange != 0) {
-					if (indentChange < 0) {
-						for (int i = 0; i < -indentChange; i++) {
-							contextStack.remove();
-						}
-
-						indent = newIndent;
-					} else {
-						throw new IOException("invalid enigma line (invalid indentation change): "+line);
-					}
-				}
-
-				line = line.substring(indent);
-				String[] parts = line.split(" ");
-
-				switch (parts[0]) {
-				case "CLASS":
-					if (parts.length < 2 || parts.length > 3) throw new IOException("invalid enigma line (missing/extra columns): "+line);
-					contextStack.add("C"+parts[1]);
-					indent++;
-					if (parts.length == 3) mappingAcceptor.acceptClass(parts[1], parts[2], false);
-					break;
-				case "METHOD": {
-					if (parts.length < 3 || parts.length > 4) throw new IOException("invalid enigma line (missing/extra columns): "+line);
-					if (!parts[parts.length - 1].startsWith("(")) throw new IOException("invalid enigma line (invalid method desc): "+line);
-					String context = contextStack.peek();
-					if (context == null || context.charAt(0) != 'C') throw new IOException("invalid enigma line (method without class): "+line);
-					contextStack.add("M"+parts[1]+parts[parts.length - 1]);
-					indent++;
-					if (parts.length == 4) mappingAcceptor.acceptMethod(context.substring(1), parts[1], parts[3], null, parts[2], null);
-					break;
-				}
-				case "ARG":
-				case "VAR": {
-					if (parts.length != 3) throw new IOException("invalid enigma line (missing/extra columns): "+line);
-					String methodContext = contextStack.poll();
-					if (methodContext == null || methodContext.charAt(0) != 'M') throw new IOException("invalid enigma line (arg without method): "+line);
-					String classContext = contextStack.peek();
-					if (classContext == null || classContext.charAt(0) != 'C') throw new IllegalStateException();
-					contextStack.add(methodContext);
-					int methodDescStart = methodContext.indexOf('(');
-					assert methodDescStart != -1;
-
-					String srcClsName = classContext.substring(1);
-					String srcMethodName = methodContext.substring(1, methodDescStart);
-					String srcMethodDesc = methodContext.substring(methodDescStart);
-					int index = Integer.parseInt(parts[1]);
-					int lvIndex = -1;
-					String name = parts[2];
-
-					if (EnigmaMappingState.LEGACY) {
-						lvIndex = index;
-						index = -1;
-					}
-
-					if (parts[0].equals("ARG")) {
-						mappingAcceptor.acceptMethodArg(srcClsName, srcMethodName, srcMethodDesc, index, lvIndex, name);
-					} else {
-						mappingAcceptor.acceptMethodVar(srcClsName, srcMethodName, srcMethodDesc, index, lvIndex, name);
-					}
-
-					break;
-				}
-				case "FIELD":
-					if (parts.length != 4) throw new IOException("invalid enigma line (missing/extra columns): "+line);
-					String context = contextStack.peek();
-					if (context == null || context.charAt(0) != 'C') throw new IOException("invalid enigma line (field without class): "+line);
-					mappingAcceptor.acceptField(context.substring(1), parts[1], parts[3], null, parts[2], null);
-					break;
-				default:
-					throw new IOException("invalid enigma line (unknown type): "+line);
-				}
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			Tiny2Impl.read(reader, mappingAcceptor);
 		}
 	}
 
@@ -518,7 +423,7 @@ public class MappingReader {
 								String name = paramNameMap.get("p_"+id+"_"+i+"_");
 
 								if (name != null) {
-									mappingAcceptor.acceptMethodArg(srcCls, srcName, srcDesc, -1, i, name);
+									mappingAcceptor.acceptMethodArg(srcCls, srcName, srcDesc, -1, i, null, name);
 								}
 							}
 						}
@@ -624,7 +529,7 @@ public class MappingReader {
 					String name = paramNameMap.get(line.substring(i, end));
 
 					if (name != null) {
-						mappingAcceptor.acceptMethodArg(cls, "<init>", desc, -1, Integer.parseInt(line.substring(pos2 + 1, end - 1)), name);
+						mappingAcceptor.acceptMethodArg(cls, "<init>", desc, -1, Integer.parseInt(line.substring(pos2 + 1, end - 1)), null, name);
 					}
 
 					i = end;
