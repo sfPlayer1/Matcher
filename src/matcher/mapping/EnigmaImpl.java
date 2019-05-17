@@ -144,7 +144,8 @@ class EnigmaImpl {
 
 		if (clsState.mappedName != null) {
 			writer.write(' ');
-			writer.write(clsState.mappedName);
+			int pos = clsState.mappedName.lastIndexOf('$');
+			writer.write(pos < 0 ? clsState.mappedName : clsState.mappedName.substring(pos + 1));
 		}
 
 		writer.write('\n');
@@ -203,7 +204,7 @@ class EnigmaImpl {
 					for (ArgMappingState arg : args) {
 						writer.write(prefix);
 						writer.write("\t\tARG ");
-						writer.write(Integer.toString(arg.index));
+						writer.write(Integer.toString(arg.lvIndex));
 
 						if (arg.mappedName != null) {
 							writer.write(' ');

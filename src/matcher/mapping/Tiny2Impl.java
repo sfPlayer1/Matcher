@@ -29,7 +29,7 @@ class Tiny2Impl {
 		}
 
 		String[] namespaces = Arrays.copyOfRange(parts, 3, parts.length);
-		int nsA = 0;
+		int nsA = 0; // non-0 would have to handle desc in foreign namespace
 		int nsB = 1;
 		int partCountHint = 2 + namespaces.length; // suitable for members, which should be the majority
 		int lineNumber = 1;
