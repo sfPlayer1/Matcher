@@ -178,8 +178,10 @@ public class NewProjectPane extends GridPane {
 		Button button = new Button("add");
 		footer.getChildren().add(button);
 		button.setOnAction(event -> {
-			SelectedFile res = Gui.requestFile("Select file to add", window, getInputLoadExtensionFilters(), true);
-			if (res != null && !list.getItems().contains(res.path)) list.getItems().add(res.path);
+			List<SelectedFile> res = Gui.openMultipleFiles("Select file to add", window, getInputLoadExtensionFilters());
+			for (SelectedFile each : res) {
+				if (!list.getItems().contains(each.path)) list.getItems().add(each.path);
+			}
 		});
 
 		Button removeButton = new Button("remove");
