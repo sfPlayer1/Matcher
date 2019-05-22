@@ -20,7 +20,7 @@ class MappingState {
 		int pos = name.lastIndexOf('$');
 
 		if (pos > 0) {
-			ret.innerClasses.add(getClass(name.substring(0, pos)));
+			getClass(name.substring(0, pos)).innerClasses.add(ret);
 		}
 
 		return ret;
