@@ -196,6 +196,11 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
+	public Matchable<?> getOwner() {
+		return null;
+	}
+
+	@Override
 	public ClassEnv getEnv() {
 		return env;
 	}

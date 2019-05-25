@@ -126,6 +126,11 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	}
 
 	@Override
+	public Matchable<?> getOwner() {
+		return method;
+	}
+
+	@Override
 	public ClassEnv getEnv() {
 		return method.getEnv();
 	}

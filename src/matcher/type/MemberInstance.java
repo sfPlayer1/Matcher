@@ -55,12 +55,10 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		if (mapped && mappedName != null) {
 			// MAPPED_*, local name available
 			ret = mappedName;
-		} else if (mapped && matchedInstance != null && matchedInstance.mappedName != null) {
+		} else if (mapped && cls.isInput() && (ret = getMappedName()) != null) {
 			// MAPPED_*, remote name available
-			ret = matchedInstance.mappedName;
-		} else if (tmp && (nameObfuscated || !mapped) && matchedInstance != null && matchedInstance.tmpName != null) {
+		} else if (tmp && cls.isInput() && (nameObfuscated || !mapped) && (ret = getTmpName()) != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
-			ret = matchedInstance.tmpName;
 		} else if ((tmp || locTmp) && (nameObfuscated || !mapped) && tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
@@ -84,6 +82,11 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 
 	public abstract String getDesc();
 	public abstract boolean isReal();
+
+	@Override
+	public Matchable<?> getOwner() {
+		return cls;
+	}
 
 	@Override
 	public ClassEnv getEnv() {
@@ -139,6 +142,8 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 
 	@SuppressWarnings("unchecked")
 	public T getMatchedHierarchyMember() {
+		assert hierarchyMembers != null; // only available for input classes
+
 		if (getMatch() != null) return (T) this;
 
 		ClassEnv reqEnv = cls.getEnv();
@@ -155,7 +160,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	public Set<T> getAllHierarchyMembers() {
-		assert hierarchyMembers != null;
+		assert hierarchyMembers != null; // only available for input classes
 
 		return hierarchyMembers;
 	}
@@ -163,6 +168,24 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	@Override
 	public boolean hasLocalTmpName() {
 		return tmpName != null;
+	}
+
+	private String getTmpName() {
+		assert hierarchyMembers != null; // only available for input classes
+
+		if (tmpName != null) {
+			return tmpName;
+		} else if (matchedInstance != null && matchedInstance.tmpName != null) {
+			return matchedInstance.tmpName;
+		} else if (hierarchyMembers.size() > 1) {
+			for (MemberInstance<?> m : hierarchyMembers) {
+				if (m.matchedInstance != null && m.matchedInstance.tmpName != null) {
+					return m.matchedInstance.tmpName;
+				}
+			}
+		}
+
+		return null;
 	}
 
 	public void setTmpName(String tmpName) {
@@ -192,7 +215,25 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 
 	@Override
 	public boolean hasMappedName() {
-		return mappedName != null || matchedInstance != null && matchedInstance.mappedName != null;
+		return getMappedName() != null;
+	}
+
+	private String getMappedName() {
+		assert hierarchyMembers != null; // only available for input classes
+
+		if (mappedName != null) {
+			return mappedName;
+		} else if (matchedInstance != null && matchedInstance.mappedName != null) {
+			return matchedInstance.mappedName;
+		} else if (hierarchyMembers != null && hierarchyMembers.size() > 1) {
+			for (MemberInstance<?> m : hierarchyMembers) {
+				if (m.matchedInstance != null && m.matchedInstance.mappedName != null) {
+					return m.matchedInstance.mappedName;
+				}
+			}
+		}
+
+		return null;
 	}
 
 	public void setMappedName(String mappedName) {

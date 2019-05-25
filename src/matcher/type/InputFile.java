@@ -22,7 +22,13 @@ public class InputFile {
 		}
 	}
 
+	public InputFile(String fileName) {
+		this(fileName, unknownSize, null);
+	}
+
 	public InputFile(String fileName, long size, byte[] sha256) {
+		if (fileName == null) throw new IllegalArgumentException();
+
 		this.path = null;
 		this.fileName = fileName;
 		this.size = size;
@@ -52,6 +58,32 @@ public class InputFile {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (!(obj instanceof InputFile)) return false;
+
+		InputFile o = (InputFile) obj;
+
+		try {
+			return (path == null || o.path == null || Files.isSameFile(path, o.path))
+					&& (fileName == null || o.fileName == null || fileName.equals(o.fileName))
+					&& (size < 0 || o.size < 0 || size == o.size)
+					&& (sha256 == null || o.sha256 == null || Arrays.equals(sha256, o.sha256));
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public int hashCode() {
+		return getFileName().hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return getFileName();
 	}
 
 	private static String getSanitizedFileName(Path path) {
@@ -89,6 +121,8 @@ public class InputFile {
 		final MessageDigest digest;
 		final ByteBuffer buffer;
 	}
+
+	public static final long unknownSize = -1;
 
 	private static final ThreadLocal<TlData> tlData = ThreadLocal.withInitial(TlData::new);
 

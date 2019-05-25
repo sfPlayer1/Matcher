@@ -233,6 +233,11 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	@Override
+	public MemberInstance<?> getSelectedMember() {
+		return memberList.getSelectionModel().getSelectedItem();
+	}
+
+	@Override
 	public MethodInstance getSelectedMethod() {
 		MemberInstance<?> member = memberList.getSelectionModel().getSelectedItem();
 

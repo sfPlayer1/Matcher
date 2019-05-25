@@ -14,6 +14,7 @@ public interface Matchable<T> {
 	boolean hasMappedName();
 	boolean hasLocalTmpName();
 
+	Matchable<?> getOwner();
 	ClassEnv getEnv();
 
 	int getUid();
