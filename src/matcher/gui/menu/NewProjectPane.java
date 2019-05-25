@@ -1,12 +1,18 @@
 package matcher.gui.menu;
 
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import javafx.beans.InvalidationListener;
 import javafx.collections.FXCollections;
@@ -184,6 +190,22 @@ public class NewProjectPane extends GridPane {
 			}
 		});
 
+		Button addDirecotyButton = new Button("add directory");
+		footer.getChildren().add(addDirecotyButton);
+		addDirecotyButton.setOnAction(event -> {
+			Path res = Gui.requestDir("Select directory to add", window);
+			try (Stream<Path> stream = Files.walk(res, 128)) {
+				stream.filter(Files::isRegularFile)
+						.filter(getInputLoadExtensionMatcher()::matches)
+						.forEach(path -> {
+							if (!list.getItems().contains(path)) {
+								list.getItems().add(path);
+							}
+						});
+			} catch (IOException ignored) {
+			}
+		});
+
 		Button removeButton = new Button("remove");
 		footer.getChildren().add(removeButton);
 		removeButton.setOnAction(event -> {
@@ -268,6 +290,10 @@ public class NewProjectPane extends GridPane {
 
 	private static List<ExtensionFilter> getInputLoadExtensionFilters() {
 		return Arrays.asList(new FileChooser.ExtensionFilter("Java archive", "*.jar"));
+	}
+
+	private static PathMatcher getInputLoadExtensionMatcher() {
+		return FileSystems.getDefault().getPathMatcher("glob:**.jar");
 	}
 
 	private Node createMiscPane() {

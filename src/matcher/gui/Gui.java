@@ -309,7 +309,7 @@ public class Gui extends Application {
 		return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
 	}
 
-	private static FileChooser setupFileChooser(String title, Window parent, List<ExtensionFilter> extensionFilters) {
+	private static FileChooser setupFileChooser(String title, List<ExtensionFilter> extensionFilters) {
 		FileChooser fileChooser = new FileChooser();
 
 		fileChooser.setTitle(title);
@@ -326,7 +326,7 @@ public class Gui extends Application {
 	}
 
 	public static List<SelectedFile> openMultipleFiles(String title, Window parent, List<ExtensionFilter> extensionFilters) {
-		FileChooser fileChooser = setupFileChooser(title, parent, extensionFilters);
+		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
 
 		List<File> file = fileChooser.showOpenMultipleDialog(parent);
 		if (file == null || file.isEmpty()) return Collections.emptyList();
@@ -337,7 +337,7 @@ public class Gui extends Application {
 	}
 
 	public static SelectedFile requestFile(String title, Window parent, List<ExtensionFilter> extensionFilters, boolean isOpen) {
-		FileChooser fileChooser = setupFileChooser(title, parent, extensionFilters);
+		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
 
 		File file = isOpen ? fileChooser.showOpenDialog(parent) : fileChooser.showSaveDialog(parent);
 		if (file == null) return null;
