@@ -12,12 +12,38 @@ public class MainMenuBar extends MenuBar implements IGuiComponent {
 	}
 
 	private void init() {
-		getMenus().add(new FileMenu(gui));
-		getMenus().add(new MatchingMenu(gui));
-		getMenus().add(new MappingMenu(gui));
-		getMenus().add(new UidMenu(gui));
-		getMenus().add(new ViewMenu(gui));
+		getMenus().add(fileMenu = new FileMenu(gui));
+		getMenus().add(matchingMenu = new MatchingMenu(gui));
+		getMenus().add(mappingMenu = new MappingMenu(gui));
+		getMenus().add(uidMenu = new UidMenu(gui));
+		getMenus().add(viewMenu = new ViewMenu(gui));
+	}
+
+	public FileMenu getFileMenu() {
+		return fileMenu;
+	}
+
+	public MatchingMenu getMatchingMenu() {
+		return matchingMenu;
+	}
+
+	public MappingMenu getMappingMenu() {
+		return mappingMenu;
+	}
+
+	public UidMenu getUidMenu() {
+		return uidMenu;
+	}
+
+	public ViewMenu getViewMenu() {
+		return viewMenu;
 	}
 
 	private final Gui gui;
+
+	private FileMenu fileMenu;
+	private MatchingMenu matchingMenu;
+	private MappingMenu mappingMenu;
+	private UidMenu uidMenu;
+	private ViewMenu viewMenu;
 }

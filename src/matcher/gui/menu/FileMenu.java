@@ -14,6 +14,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -103,6 +104,10 @@ public class FileMenu extends Menu {
 	}
 
 	private void newProject() {
+		newProject(Config.getProjectConfig());
+	}
+
+	public void newProject(ProjectConfig config) {
 		Dialog<ProjectConfig> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
@@ -110,7 +115,7 @@ public class FileMenu extends Menu {
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
 		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
-		NewProjectPane content = new NewProjectPane(Config.getProjectConfig(), dialog.getOwner(), okButton);
+		NewProjectPane content = new NewProjectPane(config, dialog.getOwner(), okButton);
 
 		dialog.getDialogPane().setContent(content);
 		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
@@ -137,19 +142,7 @@ public class FileMenu extends Menu {
 
 		Path file = res.path;
 
-		Dialog<ProjectLoadSettings> dialog = new Dialog<>();
-		//dialog.initModality(Modality.APPLICATION_MODAL);
-		dialog.setResizable(true);
-		dialog.setTitle("Project paths");
-		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
-
-		LoadProjectPane content = new LoadProjectPane(Config.getInputDirs(), Config.getVerifyInputFiles(), dialog.getOwner(), okButton);
-		dialog.getDialogPane().setContent(content);
-		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
-
-		dialog.showAndWait().ifPresent(newConfig -> {
+		requestProjectLoadSettings(newConfig -> {
 			if (newConfig.paths.isEmpty()) return;
 
 			Config.setInputDirs(newConfig.paths);
@@ -164,6 +157,22 @@ public class FileMenu extends Menu {
 					() -> gui.onProjectChange(),
 					Throwable::printStackTrace);
 		});
+	}
+
+	public void requestProjectLoadSettings(Consumer<? super ProjectLoadSettings> consumer) {
+		Dialog<ProjectLoadSettings> dialog = new Dialog<>();
+		//dialog.initModality(Modality.APPLICATION_MODAL);
+		dialog.setResizable(true);
+		dialog.setTitle("Project paths");
+		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
+
+		LoadProjectPane content = new LoadProjectPane(Config.getInputDirs(), Config.getVerifyInputFiles(), dialog.getOwner(), okButton);
+		dialog.getDialogPane().setContent(content);
+		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
+
+		dialog.showAndWait().ifPresent(consumer);
 	}
 
 	private void loadMappings(MappingFormat format) {

@@ -6,6 +6,7 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -107,7 +108,7 @@ public class Matcher {
 		init(config, progressReceiver);
 	}
 
-	private static List<Path> resolvePaths(List<Path> inputDirs, List<InputFile> inputFiles) throws IOException {
+	public static List<Path> resolvePaths(Collection<Path> inputDirs, Collection<InputFile> inputFiles) throws IOException {
 		List<Path> ret = new ArrayList<>(inputFiles.size());
 
 		for (InputFile inputFile : inputFiles) {

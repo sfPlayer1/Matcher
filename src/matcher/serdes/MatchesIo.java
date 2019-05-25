@@ -75,7 +75,7 @@ public class MatchesIo {
 						}
 
 						int pos = line.indexOf('\t', 2);
-						long size = -1;
+						long size = InputFile.unknownSize;
 						byte[] hash = null;
 
 						if (pos == -1) {
@@ -353,7 +353,7 @@ public class MatchesIo {
 		out.write('\n');
 	}
 
-	private static enum ParserState {
+	private enum ParserState {
 		START, HEADER, FILES_A, FILES_B, CP_FILES, CP_FILES_A, CP_FILES_B, CONTENT;
 	}
 }

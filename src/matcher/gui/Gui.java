@@ -61,23 +61,28 @@ public class Gui extends Application {
 		contentRowConstraints.setVgrow(Priority.ALWAYS);
 		border.getRowConstraints().addAll(defaultRowConstraints, contentRowConstraints, defaultRowConstraints);
 
-		MainMenuBar menu = new MainMenuBar(this);
+		menu = new MainMenuBar(this);
 		components.add(menu);
 		border.add(menu, 0, 0, 2, 1);
 
-		MatchPaneSrc srcPane = new MatchPaneSrc(this);
+		srcPane = new MatchPaneSrc(this);
 		components.add(srcPane);
 		border.add(srcPane, 0, 1);
 
-		MatchPaneDst dstPane = new MatchPaneDst(this, srcPane);
+		dstPane = new MatchPaneDst(this, srcPane);
 		components.add(dstPane);
 		border.add(dstPane, 1, 1);
 
-		BottomPane bottomPane = new BottomPane(this, srcPane, dstPane);
+		bottomPane = new BottomPane(this, srcPane, dstPane);
 		components.add(bottomPane);
 		border.add(bottomPane, 0, 2, 2, 1);
 
 		scene = new Scene(border);
+
+		for (Consumer<Gui> l : loadListeners) {
+			l.accept(this);
+		}
+
 		stage.setScene(scene);
 		stage.setTitle("Matcher");
 		stage.show();
@@ -98,6 +103,22 @@ public class Gui extends Application {
 
 	public Scene getScene() {
 		return scene;
+	}
+
+	public MainMenuBar getMenu() {
+		return menu;
+	}
+
+	public MatchPaneSrc getSrcPane() {
+		return srcPane;
+	}
+
+	public MatchPaneDst getDstPane() {
+		return dstPane;
+	}
+
+	public BottomPane getBottomPane() {
+		return bottomPane;
 	}
 
 	public SortKey getSortKey() {
@@ -339,6 +360,8 @@ public class Gui extends Application {
 		Name, MappedName, MatchStatus;
 	}
 
+	public static final List<Consumer<Gui>> loadListeners = new ArrayList<>();
+
 	private static final ExecutorService threadPool = Executors.newCachedThreadPool();
 
 	private ClassEnvironment env;
@@ -346,6 +369,11 @@ public class Gui extends Application {
 
 	private Scene scene;
 	private final Collection<IGuiComponent> components = new ArrayList<>();
+
+	private MainMenuBar menu;
+	private MatchPaneSrc srcPane;
+	private MatchPaneDst dstPane;
+	private BottomPane bottomPane;
 
 	private SortKey sortKey = SortKey.Name;
 	private boolean sortMatchesAlphabetically;
