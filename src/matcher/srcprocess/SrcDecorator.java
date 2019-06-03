@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseProblemException;
+import com.github.javaparser.ParserConfiguration.LanguageLevel;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -25,6 +26,10 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class SrcDecorator {
+	private static void setup() {
+		JavaParser.getStaticConfiguration().setLanguageLevel(LanguageLevel.RAW);
+	}
+
 	public static String decorate(String src, ClassInstance cls, NameType nameType) {
 		if (cls.getOuterClass() != null) {
 			// replace <outer>.<inner> with <outer>$<inner> since . is not a legal identifier within class names and thus gets rejected by JavaParser
@@ -221,4 +226,8 @@ public class SrcDecorator {
 			n.getAnnotations().forEach(p -> p.accept(this, arg));*/
 		}
 	};
+
+	static {
+		setup();
+	}
 }

@@ -3,7 +3,9 @@ package matcher.gui;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javafx.collections.FXCollections;
 import javafx.geometry.Orientation;
@@ -258,7 +260,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 	@Override
 	public void onProjectChange() {
-		updateLists(true);
+		updateLists(true, true);
 
 		IFwdGuiComponent.super.onProjectChange();
 	}
@@ -271,7 +273,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 			((SplitPane) getItems().get(0)).getItems().set(0, createClassList());
 
-			updateLists(true);
+			updateLists(true, true);
 
 			if (selected != null) {
 				if (useClassTree) {
@@ -288,13 +290,13 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 				}
 			}
 		} else {
-			updateLists(true);
+			updateLists(true, true);
 		}
 
 		IFwdGuiComponent.super.onViewChange();
 	}
 
-	private void updateLists(boolean updateContents) {
+	private void updateLists(boolean updateContents, boolean updateMembers) {
 		Comparator<ClassInstance> clsComparator = getClassComparator();
 		Comparator<MemberInstance<?>> memberComparator = getMemberComparator();
 
@@ -303,57 +305,101 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		suppressChangeEvents = true;
 
+		List<ClassInstance> classes = updateContents ? gui.getEnv().getDisplayClassesA(!gui.isShowNonInputs()) : null;
+
+
 		if (useClassTree) {
-			NameType nameType = gui.getNameType()
-					.withMapped(gui.getSortKey() == SortKey.MappedName)
-					.withUnmatchedTmp(true);
-
-			List<ClassInstance> classes = gui.getEnv().getDisplayClassesA(!gui.isShowNonInputs());
-			classes.sort(clsComparator);
-
-			List<TreeItem<Object>> items = new ArrayList<>();
-			String pkg = null;
-			List<TreeItem<Object>> pkgItems = null;
-			TreeItem<Object> toSelect = null;
-
-			for (ClassInstance cls : classes) {
-				String name = cls.getDisplayName(nameType, true);
-				int pos = name.lastIndexOf('.');
-
-				if (pos == -1) {
-					name = "<no package>";
-				} else {
-					name = name.substring(0, pos);
-				}
-
-				if (!name.equals(pkg)) {
-					TreeItem<Object> item = new TreeItem<>(name);
-					items.add(item);
-					pkgItems = item.getChildren();
-					pkg = name;
-				}
-
-				TreeItem<Object> item = new TreeItem<>(cls);
-				pkgItems.add(item);
-
-				if (cls == selClass) toSelect = item;
-			}
-
-			classTree.getRoot().getChildren().setAll(items);
-			if (toSelect != null) classTree.getSelectionModel().select(toSelect);
+			updateClassTree(classes, clsComparator, selClass);
 		} else {
 			if (updateContents) {
-				classList.setItems(FXCollections.observableList(gui.getEnv().getDisplayClassesA(!gui.isShowNonInputs())));
+				classList.setItems(FXCollections.observableList(classes));
+			} else {
+				classes = classList.getItems();
 			}
 
-			classList.getItems().sort(clsComparator);
+			classes.sort(clsComparator);
 			classList.getSelectionModel().select(selClass);
 		}
 
-		memberList.getItems().sort(memberComparator);
-		memberList.getSelectionModel().select(selMember);
+		if (updateMembers) {
+			memberList.getItems().sort(memberComparator);
+			memberList.getSelectionModel().select(selMember);
+		}
 
 		suppressChangeEvents = false;
+	}
+
+	private void updateClassTree(List<ClassInstance> newClasses, Comparator<ClassInstance> sortComparator, ClassInstance selectedClass) {
+		Map<String, List<TreeItem<Object>>> pkgNodeMap = null; // reuse pkg level nodes to keep their folding state
+
+		if (newClasses == null) {
+			newClasses = new ArrayList<>(2000);
+			pkgNodeMap = new HashMap<>(100);
+
+			for (TreeItem<Object> pkgItem : classTree.getRoot().getChildren()) {
+				pkgNodeMap.computeIfAbsent((String) pkgItem.getValue(), ignore -> new ArrayList<>()).add(pkgItem);
+
+				for (TreeItem<Object> item : pkgItem.getChildren()) {
+					newClasses.add((ClassInstance) item.getValue());
+				}
+
+				pkgItem.getChildren().clear();
+			}
+		}
+
+		newClasses.sort(sortComparator);
+
+		NameType nameType = gui.getNameType()
+				.withMapped(gui.getSortKey() == SortKey.MappedName)
+				.withUnmatchedTmp(true);
+
+		List<TreeItem<Object>> items = classTree.getRoot().getChildren();
+		items.clear();
+		String pkg = null;
+		List<TreeItem<Object>> pkgItems = null;
+		TreeItem<Object> toSelect = null;
+
+		for (ClassInstance cls : newClasses) {
+			ClassInstance outerCls = cls;
+
+			while (outerCls.getOuterClass() != null) {
+				outerCls = outerCls.getOuterClass();
+			}
+
+			String name = outerCls.getDisplayName(nameType, true);
+			int pos = name.lastIndexOf('.');
+
+			if (pos == -1) {
+				name = "<no package>";
+			} else {
+				name = name.substring(0, pos);
+			}
+
+			if (!name.equals(pkg)) {
+				TreeItem<Object> item;
+				List<TreeItem<Object>> pkgNode;
+
+				if (pkgNodeMap != null && (pkgNode = pkgNodeMap.remove(name)) != null) {
+					item = pkgNode.remove(0);
+					if (!pkgNode.isEmpty()) pkgNodeMap.put(name, pkgNode);
+				} else {
+					item = new TreeItem<>(name);
+				}
+
+				items.add(item);
+				pkgItems = item.getChildren();
+				pkg = name;
+			}
+
+			TreeItem<Object> item = new TreeItem<>(cls);
+			pkgItems.add(item);
+
+			if (cls == selectedClass) toSelect = item;
+		}
+
+		if (toSelect != null) {
+			classTree.getSelectionModel().select(toSelect);
+		}
 	}
 
 	private void refreshClassList() {
@@ -424,7 +470,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 	@Override
 	public void onMappingChange() {
-		updateLists(false);
+		updateLists(false, true);
 		refreshClassList();
 
 		memberList.refresh();
@@ -435,7 +481,9 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	@Override
 	public void onMatchChange(Set<MatchType> types) {
 		if (gui.getSortKey() == SortKey.MatchStatus) {
-			updateLists(false);
+			updateLists(false, true);
+		} else if (types.contains(MatchType.Class)) {
+			updateLists(false, false);
 		}
 
 		refreshClassList(); // unconditional because it could affect the fully matched status
