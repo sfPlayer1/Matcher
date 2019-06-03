@@ -310,6 +310,26 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		}
 	}
 
+	public Button getMatchButton() {
+		return matchButton;
+	}
+
+	public Button getMatchPerfectMembersButton() {
+		return matchPerfectMembersButton;
+	}
+
+	public Button getUnmatchClassButton() {
+		return unmatchClassButton;
+	}
+
+	public Button getUnmatchMemberButton() {
+		return unmatchMemberButton;
+	}
+
+	public Button getUnmatchVarButton() {
+		return unmatchVarButton;
+	}
+
 	private final Gui gui;
 	private final MatchPaneSrc srcPane;
 	private final MatchPaneDst dstPane;

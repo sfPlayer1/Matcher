@@ -78,6 +78,7 @@ public class Gui extends Application {
 		border.add(bottomPane, 0, 2, 2, 1);
 
 		scene = new Scene(border);
+		Shortcuts.init(this);
 
 		for (Consumer<Gui> l : loadListeners) {
 			l.accept(this);
