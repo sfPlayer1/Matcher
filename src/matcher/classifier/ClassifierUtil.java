@@ -50,13 +50,22 @@ public class ClassifierUtil {
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (a.isArray() != b.isArray()) return false;
 		if (a.isArray() && !checkPotentialEquality(a.getElementClass(), b.getElementClass())) return false;
-
-		boolean nameObfA = a.isNameObfuscated();
-		boolean nameObfB = b.isNameObfuscated();
-		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
-		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
+		if (!checkNameObfMatch(a, b)) return false;
 
 		return true;
+	}
+
+	private static boolean checkNameObfMatch(Matchable<?> a, Matchable<?> b) {
+		boolean nameObfA = a.isNameObfuscated();
+		boolean nameObfB = b.isNameObfuscated();
+
+		if (nameObfA && nameObfB) { // both obf
+			return true;
+		} else if (nameObfA != nameObfB) { // one obf
+			return !a.getEnv().getGlobal().assumeBothOrNoneObfuscated;
+		} else { // neither obf
+			return a.getName().equals(b.getName());
+		}
 	}
 
 	public static boolean checkPotentialEquality(MethodInstance a, MethodInstance b) {
@@ -64,11 +73,7 @@ public class ClassifierUtil {
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
-
-		boolean nameObfA = a.isNameObfuscated();
-		boolean nameObfB = b.isNameObfuscated();
-		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
-		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
+		if (!checkNameObfMatch(a, b)) return false;
 
 		return true;
 	}
@@ -78,11 +83,7 @@ public class ClassifierUtil {
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
-
-		boolean nameObfA = a.isNameObfuscated();
-		boolean nameObfB = b.isNameObfuscated();
-		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
-		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
+		if (!checkNameObfMatch(a, b)) return false;
 
 		return true;
 	}
@@ -93,11 +94,7 @@ public class ClassifierUtil {
 		if (b.getMatch() != null) return b.getMatch() == a;
 		if (a.isArg() != b.isArg()) return false;
 		if (!checkPotentialEquality(a.getMethod(), b.getMethod())) return false;
-
-		boolean nameObfA = a.isNameObfuscated();
-		boolean nameObfB = b.isNameObfuscated();
-		if (!nameObfA && !nameObfB) return a.getName().equals(b.getName());
-		if (assumeBothOrNoneObfuscated && (!nameObfA || !nameObfB)) return false;
+		if (!checkNameObfMatch(a, b)) return false;
 
 		return true;
 	}
@@ -172,6 +169,7 @@ public class ClassifierUtil {
 		}
 
 		final int total = setA.size() + setB.size();
+		final boolean assumeBothOrNoneObfuscated = setA.iterator().next().getEnv().getGlobal().assumeBothOrNoneObfuscated;
 		int unmatched = 0;
 
 		// precise matches, nameObfuscated a
@@ -207,7 +205,7 @@ public class ClassifierUtil {
 		for (Iterator<T> it = setA.iterator(); it.hasNext(); ) {
 			T a = it.next();
 
-			assert a.getMatch() == null && a.isNameObfuscated();
+			assert a.getMatch() == null && (!assumeBothOrNoneObfuscated || a.isNameObfuscated());
 			boolean found = false;
 
 			for (T b : setB) {
@@ -794,7 +792,6 @@ public class ClassifierUtil {
 		return (double) position / (size - 1);
 	}
 
-	private static final boolean assumeBothOrNoneObfuscated = true;
 	private static final double epsilon = 1e-6;
 
 	private static final CacheToken<int[]> ilMapCacheToken = new CacheToken<>();

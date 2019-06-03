@@ -182,7 +182,7 @@ public class Matcher {
 			if (!src.isNameObfuscated()) {
 				MethodInstance dst = b.getMethod(src.getId());
 
-				if (dst != null || (dst = b.getMethod(src.getName(), null)) != null) { // full match or name match with no alternatives
+				if ((dst != null || (dst = b.getMethod(src.getName(), null)) != null) && !dst.isNameObfuscated()) { // full match or name match with no alternatives
 					match(src, dst);
 					continue;
 				}
@@ -208,7 +208,7 @@ public class Matcher {
 			if (!src.isNameObfuscated()) {
 				FieldInstance dst = b.getField(src.getId());
 
-				if (dst != null || (dst = b.getField(src.getName(), null)) != null) { // full match or name match with no alternatives
+				if ((dst != null || (dst = b.getField(src.getName(), null)) != null) && !dst.isNameObfuscated()) { // full match or name match with no alternatives
 					match(src, dst);
 				}
 			}
@@ -223,19 +223,7 @@ public class Matcher {
 				m.getMatch().setMatch(null);
 				m.setMatch(null);
 
-				for (MethodVarInstance arg : m.getArgs()) {
-					if (arg.getMatch() != null) {
-						arg.getMatch().setMatch(null);
-						arg.setMatch(null);
-					}
-				}
-
-				for (MethodVarInstance var : m.getVars()) {
-					if (var.getMatch() != null) {
-						var.getMatch().setMatch(null);
-						var.setMatch(null);
-					}
-				}
+				unmatchArgsVars(m);
 			}
 		}
 
@@ -243,6 +231,22 @@ public class Matcher {
 			if (m.getMatch() != null) {
 				m.getMatch().setMatch(null);
 				m.setMatch(null);
+			}
+		}
+	}
+
+	private static void unmatchArgsVars(MethodInstance m) {
+		for (MethodVarInstance arg : m.getArgs()) {
+			if (arg.getMatch() != null) {
+				arg.getMatch().setMatch(null);
+				arg.setMatch(null);
+			}
+		}
+
+		for (MethodVarInstance var : m.getVars()) {
+			if (var.getMatch() != null) {
+				var.getMatch().setMatch(null);
+				var.setMatch(null);
 			}
 		}
 	}
@@ -255,9 +259,15 @@ public class Matcher {
 
 		System.out.println("match method "+a+" -> "+b+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
-		if (a.getMatch() != null) a.getMatch().setMatch(null);
-		if (b.getMatch() != null) b.getMatch().setMatch(null);
-		// TODO: unmatch vars
+		if (a.getMatch() != null) {
+			unmatchArgsVars(a);
+			a.getMatch().setMatch(null);
+		}
+
+		if (b.getMatch() != null) {
+			b.getMatch().setMatch(null);
+			unmatchArgsVars(b);
+		}
 
 		a.setMatch(b);
 		b.setMatch(a);
@@ -423,7 +433,8 @@ public class Matcher {
 	}
 
 	public boolean autoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && cls.isNameObfuscated() && cls.getMatch() == null;
+		boolean assumeBothOrNoneObfuscated = env.assumeBothOrNoneObfuscated;
+		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && (!assumeBothOrNoneObfuscated || cls.isNameObfuscated()) && cls.getMatch() == null;
 
 		List<ClassInstance> classes = env.getClassesA().stream()
 				.filter(filter)

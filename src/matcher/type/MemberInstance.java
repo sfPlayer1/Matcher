@@ -57,9 +57,15 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 			ret = mappedName;
 		} else if (mapped && cls.isInput() && (ret = getMappedName()) != null) {
 			// MAPPED_*, remote name available
-		} else if (tmp && cls.isInput() && (nameObfuscated || !mapped) && (ret = getTmpName()) != null) {
+		} else if (mapped && !nameObfuscated) {
+			// MAPPED_*, local deobf
+			ret = origName;
+		} else if (mapped && matchedInstance != null && !matchedInstance.nameObfuscated) {
+			// MAPPED_*, remote deobf
+			ret = matchedInstance.origName;
+		} else if (tmp && cls.isInput() && (ret = getTmpName()) != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
-		} else if ((tmp || locTmp) && (nameObfuscated || !mapped) && tmpName != null) {
+		} else if ((tmp || locTmp) && tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
 		} else {

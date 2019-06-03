@@ -559,6 +559,8 @@ public class ClassEnvironment implements ClassEnv {
 	private Pattern nonObfuscatedMemberPatternA;
 	private Pattern nonObfuscatedMemberPatternB;
 
+	public boolean assumeBothOrNoneObfuscated = false;
+
 	public String classUidPrefix = "class_";
 	public String methodUidPrefix = "method_";
 	public String fieldUidPrefix = "field_";
