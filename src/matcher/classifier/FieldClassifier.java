@@ -34,6 +34,7 @@ public class FieldClassifier {
 		addClassifier(initStrings, 8);
 		addClassifier(initCode, 10, ClassifierLevel.Intermediate, ClassifierLevel.Full, ClassifierLevel.Extra);
 		addClassifier(readRefsBci, 6, ClassifierLevel.Extra);
+		addClassifier(writeRefsBci, 6, ClassifierLevel.Extra);
 	}
 
 	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
@@ -184,6 +185,13 @@ public class FieldClassifier {
 	private static AbstractClassifier readRefsBci = new AbstractClassifier("read refs (bci)") {
 		@Override
 		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
+			String ownerA = fieldA.getCls().getName();
+			String nameA = fieldA.getName();
+			String descA = fieldA.getDesc();
+			String ownerB = fieldB.getCls().getName();
+			String nameB = fieldB.getName();
+			String descB = fieldB.getDesc();
+
 			int matched = 0;
 			int mismatched = 0;
 
@@ -208,15 +216,12 @@ public class FieldClassifier {
 					if (in.getOpcode() != Opcodes.GETFIELD && in.getOpcode() != Opcodes.GETSTATIC) continue;
 
 					FieldInsnNode fin = (FieldInsnNode) in;
-					ClassInstance owner = env.getClsByNameA(fin.owner);
-
-					if (owner == null || owner.getField(fin.name, fin.desc) != fieldA) continue;
+					if (!isSameField(fin, ownerA, nameA, descA, fieldA)) continue;
 
 					in = ilB.get(map[srcIdx]);
 					fin = (FieldInsnNode) in;
-					owner = env.getClsByNameB(fin.owner);
 
-					if (owner == null || owner.getField(fin.name, fin.desc) != fieldB) {
+					if (!isSameField(fin, ownerB, nameB, descB, fieldB)) {
 						mismatched++;
 					} else {
 						matched++;
@@ -231,6 +236,69 @@ public class FieldClassifier {
 			}
 		}
 	};
+
+	private static AbstractClassifier writeRefsBci = new AbstractClassifier("write refs (bci)") {
+		@Override
+		public double getScore(FieldInstance fieldA, FieldInstance fieldB, ClassEnvironment env) {
+			String ownerA = fieldA.getCls().getName();
+			String nameA = fieldA.getName();
+			String descA = fieldA.getDesc();
+			String ownerB = fieldB.getCls().getName();
+			String nameB = fieldB.getName();
+			String descB = fieldB.getDesc();
+
+			int matched = 0;
+			int mismatched = 0;
+
+			for (MethodInstance src : fieldA.getWriteRefs()) {
+				MethodInstance dst = src.getMatch();
+
+				if (dst == null || !fieldB.getWriteRefs().contains(dst)) {
+					mismatched++;
+					continue;
+				}
+
+				int[] map = ClassifierUtil.mapInsns(src, dst);
+				if (map == null) continue;
+
+				InsnList ilA = src.getAsmNode().instructions;
+				InsnList ilB = dst.getAsmNode().instructions;
+
+				for (int srcIdx = 0; srcIdx < map.length; srcIdx++) {
+					if (map[srcIdx] < 0) continue;
+
+					AbstractInsnNode in = ilA.get(srcIdx);
+					if (in.getOpcode() != Opcodes.PUTFIELD && in.getOpcode() != Opcodes.PUTSTATIC) continue;
+
+					FieldInsnNode fin = (FieldInsnNode) in;
+					if (!isSameField(fin, ownerA, nameA, descA, fieldA)) continue;
+
+					in = ilB.get(map[srcIdx]);
+					fin = (FieldInsnNode) in;
+
+					if (!isSameField(fin, ownerB, nameB, descB, fieldB)) {
+						mismatched++;
+					} else {
+						matched++;
+					}
+				}
+			}
+
+			if (matched == 0 && mismatched == 0) {
+				return 1;
+			} else {
+				return (double) matched / (matched + mismatched);
+			}
+		}
+	};
+
+	private static boolean isSameField(FieldInsnNode fin, String owner, String name, String desc, FieldInstance field) {
+		ClassInstance target;
+
+		return fin.name.equals(name)
+				&& fin.desc.equals(desc)
+				&& (fin.owner.equals(owner) || (target = field.getEnv().getClsByName(fin.owner)) != null && target.resolveField(name, desc) == field);
+	}
 
 	private static boolean checkAsmNodes(FieldInstance a, FieldInstance b) {
 		return a.getAsmNode() != null && b.getAsmNode() != null;

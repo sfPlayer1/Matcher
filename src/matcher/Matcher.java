@@ -857,7 +857,7 @@ public class Matcher {
 	private static final ExecutorService threadPool = Executors.newWorkStealingPool();
 
 	private final ClassEnvironment env;
-	private final ClassifierLevel autoMatchLevel = ClassifierLevel.Full;
+	private final ClassifierLevel autoMatchLevel = ClassifierLevel.Extra;
 	private final double absClassAutoMatchThreshold = 0.85;
 	private final double relClassAutoMatchThreshold = 0.085;
 	private final double absMethodAutoMatchThreshold = 0.85;

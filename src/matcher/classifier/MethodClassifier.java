@@ -9,11 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 
+import matcher.Util;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.MemberInstance;
@@ -269,6 +272,13 @@ public class MethodClassifier {
 	private static AbstractClassifier inRefsBci = new AbstractClassifier("in refs (bci)") {
 		@Override
 		public double getScore(MethodInstance methodA, MethodInstance methodB, ClassEnvironment env) {
+			String ownerA = methodA.getCls().getName();
+			String nameA = methodA.getName();
+			String descA = methodA.getDesc();
+			String ownerB = methodB.getCls().getName();
+			String nameB = methodB.getName();
+			String descB = methodB.getDesc();
+
 			int matched = 0;
 			int mismatched = 0;
 
@@ -292,18 +302,14 @@ public class MethodClassifier {
 					if (map[srcIdx] < 0) continue;
 
 					AbstractInsnNode in = ilA.get(srcIdx);
-					if (in.getType() != AbstractInsnNode.METHOD_INSN) continue;
+					int type = in.getType();
+					if (type != AbstractInsnNode.METHOD_INSN && type != AbstractInsnNode.INVOKE_DYNAMIC_INSN) continue;
 
-					MethodInsnNode min = (MethodInsnNode) in;
-					ClassInstance owner = env.getClsByNameA(min.owner);
-
-					if (owner == null || owner.getMethod(min.name, min.desc) != methodA) continue;
+					if (!isSameMethod(in, ownerA, nameA, descA, methodA)) continue;
 
 					in = ilB.get(map[srcIdx]);
-					min = (MethodInsnNode) in;
-					owner = env.getClsByNameB(min.owner);
 
-					if (owner == null || owner.getMethod(min.name, min.desc) != methodB) {
+					if (!isSameMethod(in, ownerB, nameB, descB, methodB)) {
 						mismatched++;
 					} else {
 						matched++;
@@ -318,6 +324,37 @@ public class MethodClassifier {
 			}
 		}
 	};
+
+	private static boolean isSameMethod(AbstractInsnNode in, String owner, String name, String desc, MethodInstance method) {
+		String sOwner, sName, sDesc;
+		boolean sItf;
+
+		if (in.getType() == AbstractInsnNode.METHOD_INSN) {
+			MethodInsnNode min = (MethodInsnNode) in;
+			sOwner = min.owner;
+			sName = min.name;
+			sDesc = min.desc;
+			sItf = min.itf;
+		} else {
+			InvokeDynamicInsnNode din = (InvokeDynamicInsnNode) in;
+			Handle impl = Util.getTargetHandle(din.bsm, din.bsmArgs);
+			if (impl == null) return false;
+
+			int tag = impl.getTag();
+			if (tag < Opcodes.H_INVOKEVIRTUAL || tag > Opcodes.H_INVOKEINTERFACE) return false;
+
+			sOwner = impl.getOwner();
+			sName = impl.getName();
+			sDesc = impl.getDesc();
+			sItf = Util.isCallToInterface(impl);
+		}
+
+		ClassInstance target;
+
+		return sName.equals(name)
+				&& sDesc.equals(desc)
+				&& (sOwner.equals(owner) || (target = method.getEnv().getClsByName(sOwner)) != null && target.resolveMethod(name, desc, sItf) == method);
+	}
 
 	private static boolean checkAsmNodes(MethodInstance a, MethodInstance b) {
 		return a.getAsmNode() != null && b.getAsmNode() != null;
