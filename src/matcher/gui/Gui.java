@@ -310,6 +310,28 @@ public class Gui extends Application {
 		return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
 	}
 
+	public static SelectedFile requestFile(String title, Window parent, List<ExtensionFilter> extensionFilters, boolean isOpen) {
+		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
+
+		File file = isOpen ? fileChooser.showOpenDialog(parent) : fileChooser.showSaveDialog(parent);
+		if (file == null) return null;
+
+		lastChooserFile = file.getParentFile();
+
+		return new SelectedFile(file.toPath(), fileChooser.getSelectedExtensionFilter());
+	}
+
+	public static List<SelectedFile> requestFiles(String title, Window parent, List<ExtensionFilter> extensionFilters) {
+		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
+
+		List<File> file = fileChooser.showOpenMultipleDialog(parent);
+		if (file == null || file.isEmpty()) return Collections.emptyList();
+
+		lastChooserFile = file.get(0).getParentFile();
+
+		return file.stream().map(file1 -> new SelectedFile(file1.toPath(), fileChooser.getSelectedExtensionFilter())).collect(Collectors.toList());
+	}
+
 	private static FileChooser setupFileChooser(String title, List<ExtensionFilter> extensionFilters) {
 		FileChooser fileChooser = new FileChooser();
 
@@ -324,28 +346,6 @@ public class Gui extends Application {
 			fileChooser.setInitialDirectory(lastChooserFile);
 
 		return fileChooser;
-	}
-
-	public static List<SelectedFile> openMultipleFiles(String title, Window parent, List<ExtensionFilter> extensionFilters) {
-		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
-
-		List<File> file = fileChooser.showOpenMultipleDialog(parent);
-		if (file == null || file.isEmpty()) return Collections.emptyList();
-
-		lastChooserFile = file.get(0).getParentFile();
-
-		return file.stream().map(file1 -> new SelectedFile(file1.toPath(), fileChooser.getSelectedExtensionFilter())).collect(Collectors.toList());
-	}
-
-	public static SelectedFile requestFile(String title, Window parent, List<ExtensionFilter> extensionFilters, boolean isOpen) {
-		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
-
-		File file = isOpen ? fileChooser.showOpenDialog(parent) : fileChooser.showSaveDialog(parent);
-		if (file == null) return null;
-
-		lastChooserFile = file.getParentFile();
-
-		return new SelectedFile(file.toPath(), fileChooser.getSelectedExtensionFilter());
 	}
 
 	public static class SelectedFile {
