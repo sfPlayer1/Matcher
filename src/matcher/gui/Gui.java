@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -12,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
+import java.util.stream.Collectors;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -308,7 +310,7 @@ public class Gui extends Application {
 		return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
 	}
 
-	public static SelectedFile requestFile(String title, Window parent, List<ExtensionFilter> extensionFilters, boolean isOpen) {
+	private static FileChooser setupFileChooser(String title, List<ExtensionFilter> extensionFilters) {
 		FileChooser fileChooser = new FileChooser();
 
 		fileChooser.setTitle(title);
@@ -318,7 +320,25 @@ public class Gui extends Application {
 			lastChooserFile = lastChooserFile.getParentFile();
 		}
 
-		if (lastChooserFile != null) fileChooser.setInitialDirectory(lastChooserFile);
+		if (lastChooserFile != null)
+			fileChooser.setInitialDirectory(lastChooserFile);
+
+		return fileChooser;
+	}
+
+	public static List<SelectedFile> openMultipleFiles(String title, Window parent, List<ExtensionFilter> extensionFilters) {
+		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
+
+		List<File> file = fileChooser.showOpenMultipleDialog(parent);
+		if (file == null || file.isEmpty()) return Collections.emptyList();
+
+		lastChooserFile = file.get(0).getParentFile();
+
+		return file.stream().map(file1 -> new SelectedFile(file1.toPath(), fileChooser.getSelectedExtensionFilter())).collect(Collectors.toList());
+	}
+
+	public static SelectedFile requestFile(String title, Window parent, List<ExtensionFilter> extensionFilters, boolean isOpen) {
+		FileChooser fileChooser = setupFileChooser(title, extensionFilters);
 
 		File file = isOpen ? fileChooser.showOpenDialog(parent) : fileChooser.showSaveDialog(parent);
 		if (file == null) return null;
