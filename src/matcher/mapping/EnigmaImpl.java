@@ -21,6 +21,7 @@ import matcher.mapping.MappingState.ClassMappingState;
 import matcher.mapping.MappingState.FieldMappingState;
 import matcher.mapping.MappingState.MethodMappingState;
 import matcher.mapping.MappingState.VarMappingState;
+import matcher.type.ClassInstance;
 
 class EnigmaImpl {
 	public static void read(Path dir, IMappingAcceptor mappingAcceptor) throws IOException {
@@ -63,12 +64,21 @@ class EnigmaImpl {
 				String[] parts = line.split(" ");
 
 				switch (parts[0]) {
-				case "CLASS":
+				case "CLASS": {
 					if (parts.length < 2 || parts.length > 3) throw new IOException("invalid enigma line (missing/extra columns): "+line);
-					contextStack.add("C"+parts[1]);
+
+					String srcName = parts[1];
+
+					if (!contextStack.isEmpty() && !ClassInstance.hasOuterName(srcName)) { // recent Enigma doesn't include the outer names, but the class must be an inner class
+						assert contextStack.peek().startsWith("C");
+						srcName = ClassInstance.getNestedName(contextStack.peek().substring(1), srcName);
+					}
+
+					contextStack.add("C"+srcName);
 					indent++;
-					if (parts.length == 3) mappingAcceptor.acceptClass(parts[1], parts[2], false);
+					if (parts.length == 3) mappingAcceptor.acceptClass(srcName, parts[2], false);
 					break;
+				}
 				case "METHOD": {
 					if (parts.length < 3 || parts.length > 4) throw new IOException("invalid enigma line (missing/extra columns): "+line);
 					if (!parts[parts.length - 1].startsWith("(")) throw new IOException("invalid enigma line (invalid method desc): "+line);
@@ -123,7 +133,7 @@ class EnigmaImpl {
 		file = file.toAbsolutePath();
 
 		for (ClassMappingState clsState : state.classMap.values()) {
-			if (clsState.name.indexOf('$') > 0) continue;
+			if (ClassInstance.hasOuterName(clsState.name)) continue;
 
 			String name = clsState.mappedName != null ? clsState.mappedName : clsState.name;
 			Path path = file.resolve(name+".mapping").toAbsolutePath();
@@ -140,12 +150,11 @@ class EnigmaImpl {
 	private static void writeClass(ClassMappingState clsState, String prefix, Writer writer) throws IOException {
 		writer.write(prefix);
 		writer.write("CLASS ");
-		writer.write(clsState.name);
+		writer.write(ClassInstance.getInnerName(clsState.name));
 
 		if (clsState.mappedName != null) {
 			writer.write(' ');
-			int pos = clsState.mappedName.lastIndexOf('$');
-			writer.write(pos < 0 ? clsState.mappedName : clsState.mappedName.substring(pos + 1));
+			writer.write(ClassInstance.getInnerName(clsState.mappedName));
 		}
 
 		writer.write('\n');

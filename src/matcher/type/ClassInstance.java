@@ -127,10 +127,10 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			ret = matchedClass.mappedName;
 		} else if (mapped && !nameObfuscated) {
 			// MAPPED_*, local deobf
-			ret = getInnerName(getName());
+			ret = getInnerName0(getName());
 		} else if (mapped && matchedClass != null && !matchedClass.nameObfuscated) {
 			// MAPPED_*, remote deobf
-			ret = getInnerName(matchedClass.getName());
+			ret = getInnerName0(matchedClass.getName());
 		} else if (tmp && matchedClass != null && matchedClass.tmpName != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
 			ret = matchedClass.tmpName;
@@ -138,17 +138,17 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
 		} else {
-			ret = getInnerName(getName());
+			ret = getInnerName0(getName());
 		}
 
-		return outerClass != null ? outerClass.getName(type) + '$' + ret : ret;
+		return outerClass != null ? getNestedName(outerClass.getName(type), ret) : ret;
 	}
 
-	private String getInnerName(String name) {
+	private String getInnerName0(String name) {
 		if (outerClass == null) {
 			return name;
 		} else {
-			return name.substring(name.lastIndexOf('$') + 1);
+			return getInnerName(name);
 		}
 	}
 
@@ -818,7 +818,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public void setMappedName(String mappedName) {
-		assert mappedName == null || mappedName.indexOf('$') == -1;
+		assert mappedName == null || !hasOuterName(mappedName);
 
 		this.mappedName = mappedName;
 	}
@@ -1002,6 +1002,18 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 	public static String getName(String id) {
 		return id.startsWith("L") ? id.substring(1, id.length() - 1) : id;
+	}
+
+	public static boolean hasOuterName(String name) {
+		return name.indexOf('$') > 0; // ignore names starting with $
+	}
+
+	public static String getInnerName(String name) {
+		return name.substring(name.lastIndexOf('$') + 1);
+	}
+
+	public static String getNestedName(String outerName, String innerName) {
+		return outerName + '$' + innerName;
 	}
 
 	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getId);

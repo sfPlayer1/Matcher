@@ -35,14 +35,12 @@ public class Mappings {
 					} else {
 						if (isNames) {
 							if (!cls.hasMappedName() || replace) {
-								int innerNameStart = dstName.lastIndexOf('$') + 1;
-
-								if (innerNameStart > 0) {
+								if (ClassInstance.hasOuterName(dstName)) {
 									if (!includesOuterNames) {
 										System.out.println("Ignoring extra outer name parts for "+dstName);
 									}
 
-									dstName = dstName.substring(innerNameStart);
+									dstName = ClassInstance.getInnerName(dstName);
 								}
 
 								cls.setMappedName(dstName);
