@@ -12,6 +12,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
 import java.util.Queue;
 import java.util.stream.Stream;
@@ -39,6 +40,8 @@ class EnigmaImpl {
 			String line;
 			Queue<String> contextStack = Collections.asLifoQueue(new ArrayDeque<>());
 			int indent = 0;
+			Deque<String> classPrefixStack = new ArrayDeque<>();
+			classPrefixStack.push("");
 
 			while ((line = reader.readLine()) != null) {
 				if (line.isEmpty()) continue;
@@ -50,7 +53,11 @@ class EnigmaImpl {
 				if (indentChange != 0) {
 					if (indentChange < 0) {
 						for (int i = 0; i < -indentChange; i++) {
-							contextStack.remove();
+							String removedContext = contextStack.remove();
+
+							if (removedContext.charAt(0) == 'C') {
+								classPrefixStack.pop();
+							}
 						}
 
 						indent = newIndent;
@@ -65,9 +72,13 @@ class EnigmaImpl {
 				switch (parts[0]) {
 				case "CLASS":
 					if (parts.length < 2 || parts.length > 3) throw new IOException("invalid enigma line (missing/extra columns): "+line);
-					contextStack.add("C"+parts[1]);
+
+					String className = classPrefixStack.peek() + getUnqualifiedInnerClassName(parts[1]);
+					classPrefixStack.push(className + '$');
+					contextStack.add("C" + className);
+
 					indent++;
-					if (parts.length == 3) mappingAcceptor.acceptClass(parts[1], parts[2], false);
+					if (parts.length == 3) mappingAcceptor.acceptClass(className, parts[2], false);
 					break;
 				case "METHOD": {
 					if (parts.length < 3 || parts.length > 4) throw new IOException("invalid enigma line (missing/extra columns): "+line);
@@ -119,6 +130,11 @@ class EnigmaImpl {
 		}
 	}
 
+	private static String getUnqualifiedInnerClassName(String name) {
+		int lastDollarSignIndex = name.lastIndexOf('$');
+		return lastDollarSignIndex < 0 ? name : name.substring(lastDollarSignIndex + 1);
+	}
+
 	public static void write(Path file, MappingState state) throws IOException {
 		file = file.toAbsolutePath();
 
@@ -140,12 +156,11 @@ class EnigmaImpl {
 	private static void writeClass(ClassMappingState clsState, String prefix, Writer writer) throws IOException {
 		writer.write(prefix);
 		writer.write("CLASS ");
-		writer.write(clsState.name);
+		writer.write(getUnqualifiedInnerClassName(clsState.name));
 
 		if (clsState.mappedName != null) {
 			writer.write(' ');
-			int pos = clsState.mappedName.lastIndexOf('$');
-			writer.write(pos < 0 ? clsState.mappedName : clsState.mappedName.substring(pos + 1));
+			writer.write(getUnqualifiedInnerClassName(clsState.mappedName));
 		}
 
 		writer.write('\n');
