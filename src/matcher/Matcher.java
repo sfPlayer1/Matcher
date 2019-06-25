@@ -469,7 +469,7 @@ public class Matcher {
 		return !matches.isEmpty();
 	}
 
-	private static <T, C> void runInParallel(List<T> workSet, Consumer<T> worker, DoubleConsumer progressReceiver) {
+	public static <T, C> void runInParallel(List<T> workSet, Consumer<T> worker, DoubleConsumer progressReceiver) {
 		if (workSet.isEmpty()) return;
 
 		AtomicInteger itemsDone = new AtomicInteger();
@@ -676,7 +676,7 @@ public class Matcher {
 		return Math.sqrt(score) * maxScore;
 	}
 
-	private static <T> void sanitizeMatches(Map<T, T> matches) {
+	public static <T> void sanitizeMatches(Map<T, T> matches) {
 		Set<T> matched = Collections.newSetFromMap(new IdentityHashMap<>(matches.size()));
 		Set<T> conflictingMatches = Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -854,7 +854,7 @@ public class Matcher {
 		public final int matchedFieldCount;
 	}
 
-	private static final ExecutorService threadPool = Executors.newWorkStealingPool();
+	public static final ExecutorService threadPool = Executors.newWorkStealingPool();
 
 	private final ClassEnvironment env;
 	private final ClassifierLevel autoMatchLevel = ClassifierLevel.Extra;
