@@ -308,7 +308,7 @@ public class UidMenu extends Menu {
 			if (!fields.isEmpty()) {
 				fields.sort(MemberInstance.nameComparator);
 
-				for (FieldInstance field : cls.getFields()) {
+				for (FieldInstance field : fields) {
 					field.setUid(nextFieldUid++);
 					assert field.getAllHierarchyMembers().size() == 1;
 				}
