@@ -194,7 +194,7 @@ public class ClassEnvironment implements ClassEnv {
 					}
 
 					private Iterator<ClassInstance> parent = extractorA.getClasses().iterator();
-					private boolean isA;
+					private boolean isA = true;
 				};
 			}
 
