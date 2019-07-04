@@ -275,20 +275,106 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	/**
-	 * 3rd processing pass, determine parent/child methods
+	 * 3rd processing pass, determine same hierarchy methods
 	 */
 	private static void processClassC(ClassInstance cls) {
-		Queue<ClassInstance> toCheck = new ArrayDeque<>();
-		Set<ClassInstance> checked = Util.newIdentityHashSet();
+		/* Determine which methods share the same hierarchy by grouping all methods within a
+		 * bottom-up class hierarchy by id.
+		 *
+		 * Methods are part of the same hierarchy if:
+		 * - their id matches
+		 * - neither is private or static
+		 * - every methods's owner is part of a set of 2+ classes/interfaces where a class or
+		 *   interface exists that is assignable to them
+		 * - all of these owner sets are linked by sharing a class/interface (potentially indirectly) */
+		if (!cls.childClasses.isEmpty() || !cls.implementers.isEmpty()) return; // visiting only classes that aren't being extended is sufficient to visit every method
 
-		for (MethodInstance method : cls.methods) {
-			processMethod(method, toCheck, checked);
-			toCheck.clear();
-			checked.clear();
+		Map<String, MethodInstance> methods = new HashMap<>();
+		Queue<ClassInstance> toCheck = new ArrayDeque<>();
+		toCheck.add(cls);
+
+		while ((cls = toCheck.poll()) != null) {
+			for (MethodInstance method : cls.methods) {
+				MethodInstance prev;
+
+				if (isHierarchyBarrier(method)) {
+					if (method.hierarchyMembers == null) {
+						method.hierarchyMembers = Collections.singleton(method);
+					}
+				} else if ((prev = methods.get(method.id)) != null) {
+					if (method.hierarchyMembers == null) {
+						method.hierarchyMembers = prev.hierarchyMembers;
+						method.hierarchyMembers.add(method);
+					} else if (method.hierarchyMembers != prev.hierarchyMembers) {
+						method.hierarchyMembers.addAll(prev.hierarchyMembers);
+
+						for (MethodInstance m : prev.hierarchyMembers) {
+							m.hierarchyMembers = method.hierarchyMembers;
+						}
+					}
+				} else {
+					methods.put(method.id, method);
+
+					if (method.hierarchyMembers == null) {
+						method.hierarchyMembers = Util.newIdentityHashSet();
+						method.hierarchyMembers.add(method);
+					}
+				}
+			}
+
+			if (cls.superClass != null) toCheck.add(cls.superClass);
+			toCheck.addAll(cls.interfaces);
 		}
 	}
 
-	private static void processMethod(MethodInstance method, Queue<ClassInstance> toCheck, Set<ClassInstance> checked) {
+	private static boolean isHierarchyBarrier(MethodInstance method) {
+		return (method.getAccess() & (Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC)) != 0;
+	}
+
+	/**
+	 * 4th processing pass, child<->parent relation and in depth analysis.
+	 */
+	private void processClassD(ClassInstance cls, CommonClasses common) {
+		Queue<ClassInstance> toCheck = new ArrayDeque<>();
+		Set<ClassInstance> checked = Util.newIdentityHashSet();
+		Set<Set<MethodInstance>> nameObfChecked = Util.newIdentityHashSet();
+
+		for (MethodInstance method : cls.getMethods()) {
+			if (method.hierarchyMembers.size() > 1) { // may have parent/child methods
+				determineMethodRelations(method, toCheck, checked);
+
+				// update name obfuscated state if not done yet, the name is only obfuscated if it is for all hierarchy members
+				if (nameObfChecked.add(method.hierarchyMembers)) {
+					boolean nameObf = true;
+
+					for (MethodInstance m : method.hierarchyMembers) {
+						if (!m.nameObfuscated) {
+							nameObf = false;
+							break;
+						}
+					}
+
+					if (!nameObf) {
+						for (MethodInstance m : method.hierarchyMembers) {
+							m.nameObfuscated = false;
+						}
+					}
+				}
+			}
+
+			//Analysis.analyzeMethod(method, common);
+		}
+
+		for (FieldInstance field : cls.getFields()) {
+			field.hierarchyMembers = Collections.singleton(field);
+
+			if (field.writeRefs.size() == 1) {
+				Analysis.checkInitializer(field, this);
+			}
+		}
+	}
+
+	private static void determineMethodRelations(MethodInstance method, Queue<ClassInstance> toCheck, Set<ClassInstance> checked) {
 		if (method.origName.equals("<init>") || method.origName.equals("<clinit>")) return;
 		if (isHierarchyBarrier(method)) return;
 
@@ -308,72 +394,6 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				if (cls.superClass != null) toCheck.add(cls.superClass);
 				toCheck.addAll(cls.interfaces);
 			}
-		}
-	}
-
-	private static boolean isHierarchyBarrier(MethodInstance method) {
-		return (method.getAccess() & (Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC)) != 0;
-	}
-
-	/**
-	 * 4th processing pass, hierarchy and in depth analysis.
-	 */
-	private void processClassD(ClassInstance cls, CommonClasses common) {
-		Queue<MethodInstance> toCheck = new ArrayDeque<>();
-		Set<MethodInstance> checked = Util.newIdentityHashSet();
-
-		for (MethodInstance method : cls.getMethods()) {
-			if (isHierarchyBarrier(method)) {
-				method.hierarchyMembers = Collections.singleton(method);
-			} else {
-				processVirtuakMethodHierarchy(method, toCheck, checked);
-				toCheck.clear();
-				checked.clear();
-			}
-
-			//Analysis.analyzeMethod(method, common);
-		}
-
-		for (FieldInstance field : cls.getFields()) {
-			field.hierarchyMembers = Collections.singleton(field);
-
-			if (field.writeRefs.size() == 1) {
-				Analysis.checkInitializer(field, this);
-			}
-		}
-	}
-
-	private void processVirtuakMethodHierarchy(MethodInstance method, Queue<MethodInstance> toCheck, Set<MethodInstance> checked) {
-		assert method.getCls().getEnv() == this;
-
-		if (method.hierarchyMembers != null) return; // already processed
-
-		toCheck.add(method);
-		checked.add(method);
-
-		boolean nameObf = true;
-
-		while ((method = toCheck.poll()) != null) {
-			if (method.hierarchyMembers != null) {
-				checked.addAll(method.hierarchyMembers);
-			} else {
-				for (MethodInstance m : method.getParents()) {
-					if (checked.add(m)) toCheck.add(m);
-				}
-
-				for (MethodInstance m : method.getChildren()) {
-					if (checked.add(m)) toCheck.add(m);
-				}
-			}
-
-			nameObf &= method.nameObfuscated;
-		}
-
-		Set<MethodInstance> hierarchyMembers = Util.newIdentityHashSet(checked);
-
-		for (MethodInstance m : checked) {
-			m.hierarchyMembers = hierarchyMembers;
-			m.nameObfuscated &= nameObf;
 		}
 	}
 
