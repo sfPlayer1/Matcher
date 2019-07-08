@@ -395,6 +395,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				toCheck.addAll(cls.interfaces);
 			}
 		}
+
+		checked.clear();
 	}
 
 	/**
