@@ -171,7 +171,7 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 		char[] buffer = new char[4000];
 		int offset = 0;
 
-		try (InputStream is = SourcecodeTab.class.getClassLoader().getResourceAsStream(name)) {
+		try (InputStream is = SourcecodeTab.class.getResourceAsStream("/"+name)) {
 			if (is == null) throw new FileNotFoundException(name);
 
 			Reader reader = new InputStreamReader(is, StandardCharsets.UTF_8);
