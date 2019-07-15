@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -37,6 +38,7 @@ import matcher.gui.menu.LoadMappingsPane.MappingsLoadSettings;
 import matcher.gui.menu.LoadProjectPane.ProjectLoadSettings;
 import matcher.gui.menu.SaveMappingsPane.MappingsSaveSettings;
 import matcher.mapping.MappingFormat;
+import matcher.mapping.MappingReader;
 import matcher.mapping.Mappings;
 import matcher.serdes.MatchesIo;
 import matcher.type.ClassEnvironment;
@@ -189,29 +191,34 @@ public class FileMenu extends Menu {
 
 		if (file == null) return;
 
-		Dialog<MappingsLoadSettings> dialog = new Dialog<>();
-		//dialog.initModality(Modality.APPLICATION_MODAL);
-		dialog.setResizable(true);
-		dialog.setTitle("Import Settings");
-		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+		try {
+			String[] namespaces = MappingReader.getNamespaces(file, format);
 
-		LoadMappingsPane content = new LoadMappingsPane();
-		dialog.getDialogPane().setContent(content);
-		dialog.setResultConverter(button -> button == ButtonType.OK ? content.getSettings() : null);
-		final MappingFormat loadFormat = format;
+			Dialog<MappingsLoadSettings> dialog = new Dialog<>();
+			//dialog.initModality(Modality.APPLICATION_MODAL);
+			dialog.setResizable(true);
+			dialog.setTitle("Import Settings");
+			dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-		dialog.showAndWait().ifPresent(settings -> {
-			try {
-				ClassEnvironment env = gui.getMatcher().getEnv();
-				Mappings.load(file, loadFormat, settings.a ? env.getEnvA() : env.getEnvB(), settings.names, settings.replace);
-			} catch (IOException e) {
-				e.printStackTrace();
-				gui.showAlert(AlertType.ERROR, "Load error", "Error while loading mappings", e.getMessage());
-				return;
-			}
+			LoadMappingsPane content = new LoadMappingsPane(namespaces);
+			dialog.getDialogPane().setContent(content);
+			dialog.setResultConverter(button -> button == ButtonType.OK ? content.getSettings() : null);
+			final MappingFormat loadFormat = format;
 
-			gui.onMappingChange();
-		});
+			Optional<MappingsLoadSettings> result = dialog.showAndWait();
+			if (!result.isPresent()) return;
+
+			MappingsLoadSettings settings = result.get();
+			ClassEnvironment env = gui.getMatcher().getEnv();
+
+			Mappings.load(file, loadFormat, settings.nsSource, settings.nsTarget, settings.a ? env.getEnvA() : env.getEnvB(), settings.names, settings.replace);
+		} catch (IOException e) {
+			e.printStackTrace();
+			gui.showAlert(AlertType.ERROR, "Load error", "Error while loading mappings", e.getMessage());
+			return;
+		}
+
+		gui.onMappingChange();
 	}
 
 	private static List<ExtensionFilter> getMappingLoadExtensionFilters() {

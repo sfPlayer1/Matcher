@@ -20,12 +20,12 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class Mappings {
-	public static void load(Path path, MappingFormat format, LocalClassEnv env, final boolean isNames, final boolean replace) throws IOException {
+	public static void load(Path path, MappingFormat format, String nsSource, String nsTarget, LocalClassEnv env, final boolean isNames, final boolean replace) throws IOException {
 		int[] counts = new int[7];
 		Set<String> warnedClasses = new HashSet<>();
 
 		try {
-			MappingReader.read(path, format, new IMappingAcceptor() {
+			MappingReader.read(path, format, nsSource, nsTarget, new IMappingAcceptor() {
 				@Override
 				public void acceptClass(String srcName, String dstName, boolean includesOuterNames) {
 					ClassInstance cls = env.getLocalClsByName(srcName);

@@ -93,11 +93,11 @@ public class NewProjectPane extends GridPane {
 			classPathA.clear();
 			classPathA.addAll(classPathB);
 			classPathB.setAll(paths);
-
+			
 			String tmp = nonObfuscatedClassPatternA.getText();
 			nonObfuscatedClassPatternA.setText(nonObfuscatedClassPatternB.getText());
 			nonObfuscatedClassPatternB.setText(tmp);
-
+			
 			tmp = nonObfuscatedMemberPatternA.getText();
 			nonObfuscatedMemberPatternA.setText(nonObfuscatedMemberPatternB.getText());
 			nonObfuscatedMemberPatternB.setText(tmp);

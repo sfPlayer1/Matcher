@@ -104,24 +104,14 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 
 	@Override
 	public void acceptClassComment(String srcName, String comment) {
-		try {
-			switch (format) {
-			case TINY:
-			case TINY_GZIP:
-				writer.write("CLS-CMT\t");
-				writer.write(srcName);
-				writer.write('\t');
-				writer.write(escape(comment));
-				writer.write('\n');
-				break;
-			case SRG:
-				// not supported
-				break;
-			default:
-				state.getClass(srcName).comment = comment;
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+		switch (format) {
+		case TINY:
+		case TINY_GZIP:
+		case SRG:
+			// not supported
+			break;
+		default:
+			state.getClass(srcName).comment = comment;
 		}
 	}
 
@@ -170,62 +160,32 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 
 	@Override
 	public void acceptMethodComment(String srcClsName, String srcName, String srcDesc, String comment) {
-		try {
-			switch (format) {
-			case TINY:
-			case TINY_GZIP:
-				writer.write("MTH-CMT\t");
-				writer.write(srcClsName);
-				writer.write('\t');
-				writer.write(srcDesc);
-				writer.write('\t');
-				writer.write(srcName);
-				writer.write('\t');
-				writer.write(escape(comment));
-				writer.write('\n');
-				break;
-			case SRG:
-				// not supported
-				break;
-			default:
-				state.getClass(srcClsName).getMethod(srcName, srcDesc).comment = comment;
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+		switch (format) {
+		case TINY:
+		case TINY_GZIP:
+		case SRG:
+			// not supported
+			break;
+		default:
+			state.getClass(srcClsName).getMethod(srcName, srcDesc).comment = comment;
 		}
 	}
 
 	@Override
 	public void acceptMethodArg(String srcClsName, String srcMethodName, String srcMethodDesc,
 			int argIndex, int lvIndex, String srcArgName, String dstArgName) {
-		try {
-			switch (format) {
-			case TINY:
-			case TINY_GZIP:
-				writer.write("MTH-ARG\t");
-				writer.write(srcClsName);
-				writer.write('\t');
-				writer.write(srcMethodDesc);
-				writer.write('\t');
-				writer.write(srcMethodName);
-				writer.write('\t');
-				writer.write(Integer.toString(argIndex));
-				writer.write('\t');
-				writer.write(dstArgName);
-				writer.write('\n');
-				break;
-			case SRG:
-				// not supported
-				break;
-			default:
-				if (srcArgName != null || dstArgName != null) {
-					ArgMappingState argState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getArg(argIndex, lvIndex);
-					argState.name = srcArgName;
-					argState.mappedName = dstArgName;
-				}
+		switch (format) {
+		case TINY:
+		case TINY_GZIP:
+		case SRG:
+			// not supported
+			break;
+		default:
+			if (srcArgName != null || dstArgName != null) {
+				ArgMappingState argState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getArg(argIndex, lvIndex);
+				argState.name = srcArgName;
+				argState.mappedName = dstArgName;
 			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -246,34 +206,18 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 	@Override
 	public void acceptMethodVar(String srcClsName, String srcMethodName, String srcMethodDesc,
 			int varIndex, int lvIndex, int startOpIdx, int asmIndex, String srcVarName, String dstVarName) {
-		try {
-			switch (format) {
-			case TINY:
-			case TINY_GZIP:
-				writer.write("MTH-VAR\t");
-				writer.write(srcClsName);
-				writer.write('\t');
-				writer.write(srcMethodDesc);
-				writer.write('\t');
-				writer.write(srcMethodName);
-				writer.write('\t');
-				writer.write(Integer.toString(varIndex));
-				writer.write('\t');
-				writer.write(dstVarName);
-				writer.write('\n');
-				break;
-			case SRG:
-				// not supported
-				break;
-			default:
-				if (srcVarName != null || dstVarName != null) {
-					VarMappingState varState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getVar(varIndex, lvIndex, startOpIdx, asmIndex);
-					varState.name = srcVarName;
-					varState.mappedName = dstVarName;
-				}
+		switch (format) {
+		case TINY:
+		case TINY_GZIP:
+		case SRG:
+			// not supported
+			break;
+		default:
+			if (srcVarName != null || dstVarName != null) {
+				VarMappingState varState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getVar(varIndex, lvIndex, startOpIdx, asmIndex);
+				varState.name = srcVarName;
+				varState.mappedName = dstVarName;
 			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -332,28 +276,14 @@ public class MappingWriter implements IMappingAcceptor, Closeable {
 
 	@Override
 	public void acceptFieldComment(String srcClsName, String srcName, String srcDesc, String comment) {
-		try {
-			switch (format) {
-			case TINY:
-			case TINY_GZIP:
-				writer.write("FLD-CMT\t");
-				writer.write(srcClsName);
-				writer.write('\t');
-				writer.write(srcDesc);
-				writer.write('\t');
-				writer.write(srcName);
-				writer.write('\t');
-				writer.write(escape(comment));
-				writer.write('\n');
-				break;
-			case SRG:
-				// not supported
-				break;
-			default:
-				state.getClass(srcClsName).getField(srcName, srcDesc).comment = comment;
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+		switch (format) {
+		case TINY:
+		case TINY_GZIP:
+		case SRG:
+			// not supported
+			break;
+		default:
+			state.getClass(srcClsName).getField(srcName, srcDesc).comment = comment;
 		}
 	}
 

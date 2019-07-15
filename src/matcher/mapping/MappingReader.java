@@ -1,8 +1,10 @@
 package matcher.mapping;
 
 import java.io.BufferedReader;
+import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -10,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -17,91 +20,162 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 public class MappingReader {
-	public static void read(Path file, MappingFormat format, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static String[] getNamespaces(Path file, MappingFormat format) throws IOException {
 		if (format == null) {
-			if (Files.isDirectory(file)) {
-				format = MappingFormat.ENIGMA;
-			} else {
-				try (SeekableByteChannel channel = Files.newByteChannel(file)) {
-					byte[] header = new byte[3];
-					ByteBuffer buffer = ByteBuffer.wrap(header);
+			format = detectFormat(file);
+			if (format == null) throw new IOException("invalid/unsupported mapping format");
+		}
 
-					while (buffer.hasRemaining()) {
-						if (channel.read(buffer) == -1) throw new IOException("invalid/truncated mapping file");
-					}
+		if (format.hasNamespaces) {
+			try (BufferedReader reader = createReader(file, format.isGzipped)) {
+				switch (format) {
+				case TINY:
+				case TINY_GZIP: {
+					String firstLine = reader.readLine();
+					if (firstLine == null) throw new EOFException();
 
-					if (header[0] == (byte) 0x1f && header[1] == (byte) 0x8b && header[2] == (byte) 0x08) { // gzip with deflate header
-						format = MappingFormat.TINY_GZIP;
-					} else if ((header[0] & 0xff) < 0x80 && (header[1] & 0xff) < 0x80 && (header[2] & 0xff) < 0x80) {
-						String headerStr = new String(header, StandardCharsets.US_ASCII);
+					String[] parts = firstLine.split("\t");
+					if (parts.length < 3) throw new IOException("invalid tiny v1 namespace definition");
 
-						switch (headerStr) {
-						case "v1\t":
-							format = MappingFormat.TINY;
-							break;
-						case "tin":
-							format = MappingFormat.TINY_2;
-							break;
-						case "PK:":
-						case "CL:":
-						case "MD:":
-						case "FD:":
-							format = MappingFormat.SRG;
-							break;
-						default:
-							throw new IOException("invalid/unsupported mapping format");
-						}
-					} else {
-						throw new IOException("invalid/unsupported mapping format");
-					}
+					return Arrays.copyOfRange(parts, 1, parts.length);
+				}
+				case TINY_2:
+					return Tiny2Impl.getNamespaces(reader);
+				default:
+					throw new IllegalStateException();
 				}
 			}
+		} else {
+			return new String[] { NS_SOURCE_FALLBACK, NS_TARGET_FALLBACK };
+		}
+	}
+
+	public static void read(Path file, MappingFormat format, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+		if (format == null) {
+			format = detectFormat(file);
+			if (format == null) throw new IOException("invalid/unsupported mapping format");
 		}
 
 		switch (format) {
 		case TINY:
-			readTiny(file, mappingAcceptor);
+			readTiny(file, nsSource, nsTarget, mappingAcceptor);
 			break;
 		case TINY_GZIP:
-			readGzTiny(file, mappingAcceptor);
+			readGzTiny(file, nsSource, nsTarget, mappingAcceptor);
 			break;
 		case TINY_2:
-			readTiny2(file, mappingAcceptor);
+			readTiny2(file, nsSource, nsTarget, mappingAcceptor);
 			break;
 		case ENIGMA:
 			EnigmaImpl.read(file, mappingAcceptor);
 			break;
 		case MCP:
-			readMcp(file, mappingAcceptor);
+			readMcp(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
 			break;
 		case SRG:
-			readSrg(file, mappingAcceptor);
+			readSrg(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
 			break;
 		default:
 			throw new IllegalStateException();
 		}
 	}
 
-	public static void readTiny(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
+	private static boolean isReverseMapping(String nsSource, String nsTarget) {
+		if (nsSource.equals(NS_SOURCE_FALLBACK) && nsTarget.equals(NS_TARGET_FALLBACK)) {
+			return false;
+		} else if (nsSource.equals(NS_TARGET_FALLBACK) && nsTarget.equals(NS_SOURCE_FALLBACK)) {
+			return true;
+		} else {
+			throw new IllegalArgumentException("invalid ns: "+nsSource+" -> "+nsTarget);
+		}
+	}
+
+	private static MappingFormat detectFormat(Path file) throws IOException {
+		if (Files.isDirectory(file)) {
+			return MappingFormat.ENIGMA;
+		} else {
+			try (SeekableByteChannel channel = Files.newByteChannel(file)) {
+				byte[] header = new byte[3];
+				ByteBuffer buffer = ByteBuffer.wrap(header);
+
+				while (buffer.hasRemaining()) {
+					if (channel.read(buffer) == -1) throw new IOException("invalid/truncated mapping file");
+				}
+
+				if (header[0] == (byte) 0x1f && header[1] == (byte) 0x8b && header[2] == (byte) 0x08) { // gzip with deflate header
+					return MappingFormat.TINY_GZIP;
+				} else if ((header[0] & 0xff) < 0x80 && (header[1] & 0xff) < 0x80 && (header[2] & 0xff) < 0x80) {
+					String headerStr = new String(header, StandardCharsets.US_ASCII);
+
+					switch (headerStr) {
+					case "v1\t":
+						return MappingFormat.TINY;
+					case "tin":
+						return MappingFormat.TINY_2;
+					case "PK:":
+					case "CL:":
+					case "MD:":
+					case "FD:":
+						return MappingFormat.SRG;
+					}
+				}
+			}
+		}
+
+		return null; // unknown format or corrupted
+	}
+
+	public static void readTiny(Path file, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
-			readTiny(reader, mappingAcceptor);
+			readTiny(reader, nsSource, nsTarget, mappingAcceptor);
 		}
 	}
 
-	public static void readGzTiny(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8))) {
-			readTiny(reader, mappingAcceptor);
+	public static void readGzTiny(Path file, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+		try (BufferedReader reader = createReader(file, true)) {
+			readTiny(reader, nsSource, nsTarget, mappingAcceptor);
 		}
 	}
 
-	private static void readTiny(BufferedReader reader, IMappingAcceptor mappingAcceptor) throws IOException {
+	private static BufferedReader createReader(Path file, boolean gzip) throws IOException {
+		InputStream is = Files.newInputStream(file);
+		if (gzip) is = new GZIPInputStream(is);
+
+		return new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+	}
+
+	private static void readTiny(BufferedReader reader, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
 		boolean firstLine = true;
+		int nsA = 0;
+		int nsB = 0;
+		int nsCount = 0;
+
+		// state for remapping owner/desc from ns0 to nsA after reading all class mappings
+		Map<String, String> classMap = null;
+		List<String[]> pendingMethods = null;
+		List<String[]> pendingFields = null;
+
 		String line;
 
 		while ((line = reader.readLine()) != null) {
 			if (firstLine) {
 				firstLine = false;
 				if (!line.startsWith("v1\t")) throw new IOException("invalid/unsupported tiny file (incorrect header)");
+				List<String> parts = Arrays.asList(line.split("\t"));
+				parts = parts.subList(1, parts.size());
+				nsCount = parts.size();
+
+				nsA = parts.indexOf(nsSource);
+				if (nsA < 0) throw new IOException("missing source namespace: "+nsSource);
+				nsB = parts.indexOf(nsTarget);
+				if (nsB < 0) throw new IOException("missing target namespace: "+nsTarget);
+
+				if (nsA != 0) {
+					classMap = new HashMap<>();
+					pendingMethods = new ArrayList<>();
+					pendingFields = new ArrayList<>();
+				}
+
 				continue;
 			}
 
@@ -135,78 +209,49 @@ public class MappingReader {
 
 			switch (parts[0]) {
 			case "CLASS":
-				if (parts.length != 3) throw new IOException("invalid tiny line (extra columns): "+line);
-				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
-				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty dst class): "+line);
+				if (parts.length != 1 + nsCount) throw new IOException("invalid tiny line (missing/extra columns): "+line);
+				if (parts[1 + nsA].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
+				if (parts[1 + nsB].isEmpty()) throw new IOException("invalid tiny line (empty dst class): "+line);
 
-				mappingAcceptor.acceptClass(parts[1], parts[2], false);
-				break;
-			case "CLS-CMT":
-				if (parts.length != 3) throw new IOException("invalid tiny line (extra columns): "+line);
-				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
-				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty class comment): "+line);
-
-				mappingAcceptor.acceptClassComment(parts[1], unescape(parts[2]));
+				mappingAcceptor.acceptClass(parts[1 + nsA], parts[1 + nsB], false);
+				if (classMap != null) classMap.put(parts[1], parts[1 + nsA]);
 				break;
 			case "METHOD":
-				if (parts.length != 5) throw new IOException("invalid tiny line (missing/extra columns): "+line);
+				if (parts.length != 3 + nsCount) throw new IOException("invalid tiny line (missing/extra columns): "+line);
 				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
 				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty src method desc): "+line);
-				if (parts[3].isEmpty()) throw new IOException("invalid tiny line (empty src method name): "+line);
-				if (parts[4].isEmpty()) throw new IOException("invalid tiny line (empty dst method name): "+line);
+				if (parts[3 + nsA].isEmpty()) throw new IOException("invalid tiny line (empty src method name): "+line);
+				if (parts[3 + nsB].isEmpty()) throw new IOException("invalid tiny line (empty dst method name): "+line);
 
-				mappingAcceptor.acceptMethod(
-						parts[1], parts[3], parts[2],
-						null, parts[4], null);
-				break;
-			case "MTH-CMT":
-				if (parts.length != 5) throw new IOException("invalid tiny line (missing/extra columns): "+line);
-				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
-				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty src method desc): "+line);
-				if (parts[3].isEmpty()) throw new IOException("invalid tiny line (empty src method name): "+line);
-				if (parts[4].isEmpty()) throw new IOException("invalid tiny line (empty method comment): "+line);
-
-				mappingAcceptor.acceptMethodComment(
-						parts[1], parts[3], parts[2],
-						unescape(parts[4]));
-				break;
-			case "MTH-ARG":
-			case "MTH-VAR":
-				if (parts.length != 6) throw new IOException("invalid tiny line (missing/extra columns): "+line);
-				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
-				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty src method desc): "+line);
-				if (parts[3].isEmpty()) throw new IOException("invalid tiny line (empty src method name): "+line);
-				if (parts[4].isEmpty()) throw new IOException("invalid tiny line (empty method arg/var index): "+line);
-				if (parts[5].isEmpty()) throw new IOException("invalid tiny line (empty dst method arg/var name): "+line);
-
-				if (parts[0].equals("MTH-ARG")) {
-					mappingAcceptor.acceptMethodArg(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, null, parts[5]);
+				if (pendingMethods == null) {
+					mappingAcceptor.acceptMethod(
+							parts[1], parts[3 + nsA], parts[2],
+							null, parts[3 + nsB], null);
 				} else {
-					mappingAcceptor.acceptMethodVar(parts[1], parts[3], parts[2], Integer.parseInt(parts[4]), -1, -1, -1, null, parts[5]);
+					pendingMethods.add(parts);
 				}
-
 				break;
 			case "FIELD":
 				if (parts.length != 5) throw new IOException("invalid tiny line (missing/extra columns): "+line);
 				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
 				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty src field desc): "+line);
-				if (parts[3].isEmpty()) throw new IOException("invalid tiny line (empty src field name): "+line);
-				if (parts[4].isEmpty()) throw new IOException("invalid tiny line (empty dst field name): "+line);
+				if (parts[3 + nsA].isEmpty()) throw new IOException("invalid tiny line (empty src field name): "+line);
+				if (parts[3 + nsB].isEmpty()) throw new IOException("invalid tiny line (empty dst field name): "+line);
 
-				mappingAcceptor.acceptField(
-						parts[1], parts[3], parts[2],
-						null, parts[4], null);
+				if (pendingFields == null) {
+					mappingAcceptor.acceptField(
+							parts[1], parts[3 + nsA], parts[2],
+							null, parts[3 + nsB], null);
+				} else {
+					pendingFields.add(parts);
+				}
 				break;
+			case "CLS-CMT":
+			case "MTH-CMT":
+			case "MTH-ARG":
+			case "MTH-VAR":
 			case "FLD-CMT":
-				if (parts.length != 5) throw new IOException("invalid tiny line (missing/extra columns): "+line);
-				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
-				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty src field desc): "+line);
-				if (parts[3].isEmpty()) throw new IOException("invalid tiny line (empty src field name): "+line);
-				if (parts[4].isEmpty()) throw new IOException("invalid tiny line (empty field comment): "+line);
-
-				mappingAcceptor.acceptFieldComment(
-						parts[1], parts[3], parts[2],
-						unescape(parts[4]));
+				// silently ignore
 				break;
 			default:
 				throw new IOException("invalid tiny line (unknown type): "+line);
@@ -214,15 +259,31 @@ public class MappingReader {
 		}
 
 		if (firstLine) throw new IOException("invalid tiny mapping file");
-	}
 
-	public static void readTiny2(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
-		try (BufferedReader reader = Files.newBufferedReader(file)) {
-			Tiny2Impl.read(reader, mappingAcceptor);
+		if (classMap != null) { // nsA != 0, remap owner+desc to nsA
+			for (String[] parts : pendingMethods) {
+				mappingAcceptor.acceptMethod(
+						classMap.getOrDefault(parts[1], parts[1]), parts[3 + nsA], mapDesc(parts[2], classMap),
+						null, parts[3 + nsB], null);
+			}
+
+			for (String[] parts : pendingFields) {
+				mappingAcceptor.acceptField(
+						classMap.getOrDefault(parts[1], parts[1]), parts[3 + nsA], mapDesc(parts[2], classMap),
+						null, parts[3 + nsB], null);
+			}
 		}
 	}
 
-	public static void readMcp(Path dir, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readTiny2(Path file, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+		try (BufferedReader reader = Files.newBufferedReader(file)) {
+			Tiny2Impl.read(reader, nsSource, nsTarget, mappingAcceptor);
+		}
+	}
+
+	public static void readMcp(Path dir, boolean reverse, IMappingAcceptor mappingAcceptor) throws IOException {
+		if (reverse) throw new UnsupportedOperationException(); // TODO: implement
+
 		Path fieldsCsv = dir.resolve("fields.csv");
 		if (!Files.isRegularFile(fieldsCsv)) throw new FileNotFoundException("no fields.csv");
 		Path methodsCsv = dir.resolve("methods.csv");
@@ -351,7 +412,9 @@ public class MappingReader {
 		}
 	}
 
-	public static void readSrg(Path file, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readSrg(Path file, boolean reverse, IMappingAcceptor mappingAcceptor) throws IOException {
+		if (reverse) throw new UnsupportedOperationException(); // TODO: implement
+
 		readSrg(file, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, mappingAcceptor);
 	}
 
@@ -471,7 +534,6 @@ public class MappingReader {
 
 	private static void readMcpExc(Path file, Map<String, String> clsReverseMap, Map<String, String> paramNameMap, IMappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
-			StringBuilder sb = new StringBuilder(128);
 			String line;
 
 			while ((line = reader.readLine()) != null) {
@@ -479,35 +541,18 @@ public class MappingReader {
 				if (line.charAt(0) == '#') continue; // commented out
 				if (line.charAt(line.length() - 1) == '|') continue; // no parameters
 
-				int pos = line.indexOf(".<init>(");
+				final String token = ".<init>(";
+				int pos = line.indexOf(token);
 				if (pos == -1) continue; // no constructor method
 
 				String cls = clsReverseMap.get(line.substring(0, pos));
 				assert cls != null;
 
 				// determine and map desc
-				int pos2 = line.indexOf('=', pos + 9);
+				int pos2 = line.indexOf('=', pos + token.length() + 1); // at least .<init>()
 				assert pos2 != -1;
 
-				for (int i = pos + 8 - 1; i < pos2; i++) {
-					char c = line.charAt(i);
-
-					if (c == 'L') {
-						int end = line.indexOf(';', i + 1);
-						String srgName = line.substring(i + 1, end);
-						String name = clsReverseMap.get(srgName);
-
-						sb.append('L');
-						sb.append(name != null ? name : srgName);
-						sb.append(';');
-						i = end;
-					} else {
-						sb.append(c);
-					}
-				}
-
-				String desc = sb.toString();
-				sb.setLength(0);
+				String desc = mapDesc(line, pos + token.length() - 1, pos2, clsReverseMap); // start after ".<init>", end at =
 
 				// extract parameters
 				pos = line.lastIndexOf('|');
@@ -573,4 +618,41 @@ public class MappingReader {
 			return ret.toString();
 		}
 	}
+
+	private static String mapDesc(String desc, Map<String, String> clsMap) {
+		return mapDesc(desc, 0, desc.length(), clsMap);
+	}
+
+	private static String mapDesc(String desc, int start, int end, Map<String, String> clsMap) {
+		StringBuilder ret = null;
+		int searchStart = start;
+		int clsStart;
+
+		while ((clsStart = desc.indexOf('L', searchStart)) >= 0) {
+			int clsEnd = desc.indexOf(';', clsStart + 1);
+			if (clsEnd < 0) throw new IllegalArgumentException();
+
+			String cls = desc.substring(clsStart + 1, clsEnd);
+			String mappedCls = clsMap.get(cls);
+
+			if (mappedCls != null) {
+				if (ret == null) ret = new StringBuilder(end - start);
+
+				ret.append(desc, start, clsStart + 1);
+				ret.append(mappedCls);
+				start = clsEnd;
+			}
+
+			searchStart = clsEnd + 1;
+		}
+
+		if (ret == null) return desc.substring(start, end);
+
+		ret.append(desc, start, end);
+
+		return ret.toString();
+	}
+
+	private static final String NS_SOURCE_FALLBACK = "source";
+	private static final String NS_TARGET_FALLBACK = "target";
 }

@@ -2,12 +2,14 @@ package matcher.mapping;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import matcher.NameType;
@@ -18,7 +20,24 @@ import matcher.mapping.MappingState.MethodMappingState;
 import matcher.mapping.MappingState.VarMappingState;
 
 class Tiny2Impl {
-	public static void read(BufferedReader reader, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static String[] getNamespaces(BufferedReader reader) throws IOException {
+		String firstLine = reader.readLine();
+		if (firstLine == null) throw new EOFException();
+
+		String[] parts;
+
+		if (firstLine == null
+				|| !firstLine.startsWith("tiny\t2\t")
+				|| (parts = splitAtTab(firstLine, 0, 5)).length < 5) { //min. tiny + major version + minor version + 2 name spaces
+			throw new IOException("invalid/unsupported tiny file (incorrect header)");
+		}
+
+		if (parts.length < 3) throw new IOException("invalid tiny v1 namespace definition");
+
+		return Arrays.copyOfRange(parts, 3, parts.length);
+	}
+
+	public static void read(BufferedReader reader, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
 		String firstLine = reader.readLine();
 		String[] parts;
 
@@ -28,10 +47,16 @@ class Tiny2Impl {
 			throw new IOException("invalid/unsupported tiny file (incorrect header)");
 		}
 
-		String[] namespaces = Arrays.copyOfRange(parts, 3, parts.length);
-		int nsA = 0; // non-0 would have to handle desc in foreign namespace
-		int nsB = 1;
-		int partCountHint = 2 + namespaces.length; // suitable for members, which should be the majority
+		List<String> namespaces = Arrays.asList(Arrays.copyOfRange(parts, 3, parts.length));
+		int nsCount = namespaces.size();
+
+		int nsA = namespaces.indexOf(nsSource); // non-0 would have to handle desc in foreign namespace
+		if (nsA < 0) throw new IOException("missing source namespace: "+nsSource);
+		if (nsA != 0) throw new UnsupportedOperationException(); // TODO: implement remapping of owner+desc
+		int nsB = namespaces.indexOf(nsTarget);
+		if (nsB < 0) throw new IOException("missing target namespace: "+nsTarget);
+
+		int partCountHint = 2 + nsCount; // suitable for members, which should be the majority
 		int lineNumber = 1;
 
 		boolean inHeader = true;
@@ -68,7 +93,7 @@ class Tiny2Impl {
 				inHeader = inClass = inMethod = inField = inMethodParam = inMethodVar = false;
 
 				if (section.equals("c")) { // class: c <names>...
-					if (parts.length != namespaces.length + 1) throw new IOException("invalid class decl in line "+lineNumber);
+					if (parts.length != nsCount + 1) throw new IOException("invalid class decl in line "+lineNumber);
 
 					className = unescapeOpt(parts[1 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[1 + nsB], escapedNames);
@@ -84,7 +109,7 @@ class Tiny2Impl {
 					}
 				} else if (inClass && (section.equals("m") || section.equals("f"))) { // method/field: m/f <descA> <names>...
 					boolean isMethod = section.equals("m");
-					if (parts.length != namespaces.length + 2) throw new IOException("invalid "+(isMethod ? "method" : "field")+" decl in line "+lineNumber);
+					if (parts.length != nsCount + 2) throw new IOException("invalid "+(isMethod ? "method" : "field")+" decl in line "+lineNumber);
 
 					memberDesc = unescapeOpt(parts[1], escapedNames);
 					memberName = unescapeOpt(parts[2 + nsA], escapedNames);
@@ -105,14 +130,14 @@ class Tiny2Impl {
 				inMethodParam = inMethodVar = false;
 
 				if (inMethod && section.equals("p")) { // method parameter: p <lv-index> <names>...
-					if (parts.length != namespaces.length + 2) throw new IOException("invalid method parameter decl in line "+lineNumber);
+					if (parts.length != nsCount + 2) throw new IOException("invalid method parameter decl in line "+lineNumber);
 
 					varLvIndex = Integer.parseInt(parts[1]);
 					String mappedName = unescapeOpt(parts[2 + nsB], escapedNames);
 					if (!mappedName.isEmpty()) mappingAcceptor.acceptMethodArg(className, memberName, memberDesc, -1, varLvIndex, null, mappedName);
 					inMethodParam = true;
 				} else if (inMethod && section.equals("v")) { // method variable: v <lv-index> <lv-start-offset> <optional-lvt-index> <names>...
-					if (parts.length != namespaces.length + 4) throw new IOException("invalid method variable decl in line "+lineNumber);
+					if (parts.length != nsCount + 4) throw new IOException("invalid method variable decl in line "+lineNumber);
 
 					varLvIndex = Integer.parseInt(parts[1]);
 					varStartOpIdx = Integer.parseInt(parts[2]);
