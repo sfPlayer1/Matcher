@@ -4,17 +4,22 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
-
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import matcher.classifier.ClassClassifier;
 import matcher.classifier.ClassifierLevel;
 import matcher.classifier.FieldClassifier;
 import matcher.classifier.MethodClassifier;
 import matcher.classifier.MethodVarClassifier;
 import matcher.classifier.RankResult;
+import matcher.type.ClassEnv;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
@@ -39,6 +44,11 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		components.add(content);
 		getItems().add(content);
 
+		// vbox
+
+		VBox vbox = new VBox();
+		getItems().add(vbox);
+
 		// match list
 
 		matchList.setCellFactory(ignore -> new DstListCell());
@@ -51,11 +61,20 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			announceSelectionChange(oldSel, newSel);
 		});
 
-		getItems().add(matchList);
+		vbox.getChildren().add(matchList);
+		VBox.setVgrow(matchList, Priority.ALWAYS);
+
+		// match filter text field
+
+		vbox.getChildren().add(filterField);
+		filterField.textProperty().addListener((observable, oldValue, newValue) -> {
+			RankResult<? extends Matchable<?>> oldSelection = matchList.getSelectionModel().getSelectedItem();
+			updateResults(oldSelection != null ? oldSelection.getSubject() : null);
+		});
 
 		// positioning
 
-		SplitPane.setResizableWithParent(matchList, false);
+		SplitPane.setResizableWithParent(vbox, false);
 		setDividerPosition(0, 1 - 0.25);
 
 		srcPane.addListener(srcListener);
@@ -280,6 +299,248 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		return Comparator.<RankResult<? extends Matchable<?>>>comparingDouble(r -> r.getScore()).reversed();
 	}
 
+	private void updateResults(Matchable<?> oldSelection) {
+		List<RankResult<? extends Matchable<?>>> newItems = new ArrayList<>(rankResults.size());
+		String filterStr = filterField.getText();
+
+		if (filterStr.isBlank()) {
+			newItems.addAll(rankResults);
+		} else {
+			List<Object> stack = new ArrayList<>();
+
+			for (RankResult<? extends Matchable<?>> item : rankResults) {
+				stack.add(item);
+
+				Boolean res = evalFilter(stack);
+
+				if (res == null) { // eval failed
+					newItems.clear();
+					newItems.addAll(rankResults);
+					break;
+				} else if (res) {
+					newItems.add(item);
+				}
+
+				stack.clear();
+			}
+		}
+
+		RankResult<? extends Matchable<?>> best;
+
+		if (!newItems.isEmpty()) {
+			best = newItems.get(0);
+
+			if (gui.isSortMatchesAlphabetically()) {
+				newItems.sort(getNameComparator());
+			}
+		} else {
+			best = null;
+		}
+
+		suppressChangeEvents = true;
+
+		matchList.getItems().setAll(newItems);
+
+		if (matchList.getSelectionModel().isEmpty()) {
+			matchList.getSelectionModel().select(best);
+
+			announceSelectionChange(oldSelection, best != null ? best.getSubject() : null);
+		} else {
+			announceSelectionChange(oldSelection, matchList.getSelectionModel().getSelectedItem().getSubject());
+		}
+
+		suppressChangeEvents = false;
+	}
+
+	@SuppressWarnings("unchecked")
+	private Boolean evalFilter(List<Object> stack) {
+		final byte OP_TYPE_NONE = 0;
+		final byte OP_TYPE_ANY = 1;
+		final byte OP_TYPE_MATCHABLE = 2;
+		final byte OP_TYPE_CLASS = 3;
+		final byte OP_TYPE_STRING = 4;
+		final byte OP_TYPE_BOOL = 5;
+		final byte OP_TYPE_INT = 6;
+		final byte OP_TYPE_COMPARABLE = 7;
+
+		String filterStr = filterField.getText();
+		if (filterStr.isBlank()) return Boolean.TRUE;
+
+		ClassEnv env = gui.getEnv().getEnvB();
+		String[] parts = filterStr.split("\\s+");
+
+		for (String part : parts) {
+			String op = part.toLowerCase(Locale.ENGLISH);
+			//System.out.printf("stack: %s, op: %s%n", stack, op);
+			byte opTypeA = OP_TYPE_NONE;
+			byte opTypeB = OP_TYPE_NONE;
+
+			switch (op) {
+			case "dup":
+				opTypeA = OP_TYPE_ANY;
+				break;
+			case "name":
+				opTypeA = OP_TYPE_MATCHABLE;
+				break;
+			case "supercls":
+				opTypeA = OP_TYPE_CLASS;
+				break;
+			case "instanceof":
+				opTypeA = OP_TYPE_CLASS;
+				opTypeB = OP_TYPE_CLASS;
+				break;
+			case "swap":
+			case "eq":
+			case "equals":
+				opTypeA = opTypeB = OP_TYPE_ANY;
+				break;
+			case "and":
+			case "or":
+				opTypeA = opTypeB = OP_TYPE_BOOL;
+				break;
+			case "not":
+				opTypeA = OP_TYPE_BOOL;
+				break;
+			default:
+				if (part.length() >= 2 && part.charAt(0) == '"' && part.charAt(part.length() - 1) == '"') {
+					part = part.substring(0, part.length() - 1);
+				}
+
+				stack.add(part);
+				break;
+			}
+
+			Object opA = null;
+			Object opB = null;
+
+			for (int i = 0; i < 2; i++) {
+				byte type = i == 0 ? opTypeB : opTypeA;
+				if (type == OP_TYPE_NONE) continue;
+
+				if (stack.isEmpty()) {
+					System.err.println("stack underflow");
+					return null;
+				}
+
+				Object operand = stack.remove(stack.size() - 1);
+
+				boolean valid = type == OP_TYPE_ANY
+						|| type == OP_TYPE_MATCHABLE && (operand instanceof RankResult<?> || operand instanceof Matchable<?>)
+						|| type == OP_TYPE_CLASS && (operand instanceof RankResult<?> || operand instanceof ClassInstance || operand instanceof String)
+						|| type == OP_TYPE_STRING && operand instanceof String
+						|| type == OP_TYPE_BOOL && operand instanceof Boolean
+						|| type == OP_TYPE_INT && operand instanceof Integer
+						|| type == OP_TYPE_COMPARABLE && operand instanceof Comparable<?>;
+
+				if (!valid) {
+					System.err.println("invalid operand type");
+					return null;
+				}
+
+				if (type == OP_TYPE_MATCHABLE && operand instanceof RankResult<?>) {
+					operand = ((RankResult<? extends Matchable<?>>) operand).getSubject();
+				} else if (type == OP_TYPE_CLASS && operand instanceof RankResult<?>) {
+					operand = getClass(((RankResult<? extends Matchable<?>>) operand).getSubject());
+				} else if (type == OP_TYPE_CLASS && operand instanceof String) {
+					ClassInstance cls = env.getClsByName((String) operand);
+
+					if (cls == null) {
+						System.err.println("unknown class "+operand);
+						return null;
+					} else {
+						operand = cls;
+					}
+				}
+
+				if (i == 0) {
+					opB = operand;
+				} else {
+					opA = operand;
+				}
+			}
+
+			//System.out.printf("opA: %s, opB: %s%n", opA, opB);
+
+			switch (op) {
+			case "dup":
+				stack.add(opA);
+				stack.add(opA);
+				break;
+			case "swap":
+				stack.add(opB);
+				stack.add(opA);
+				break;
+			case "name":
+				stack.add(((Matchable<?>) opA).getName());
+				break;
+			case "supercls":
+				stack.add(((ClassInstance) opA).getSuperClass());
+				break;
+			case "instanceof":
+				stack.add(((ClassInstance) opB).isAssignableFrom((ClassInstance) opA));
+				break;
+			case "eq":
+			case "equals":
+				stack.add(checkEquality(opA, opB, env));
+				break;
+			case "and":
+				stack.add(Boolean.logicalAnd((Boolean) opA, (Boolean) opB));
+				break;
+			case "or":
+				stack.add(Boolean.logicalOr((Boolean) opA, (Boolean) opB));
+				break;
+			case "not":
+				stack.add(!((Boolean) opA));
+			}
+		}
+
+		//System.out.printf("res stack: %s%n", stack);
+
+		if (stack.isEmpty() || stack.size() > 2) {
+			System.err.println("no result");
+			return null;
+		} else if (stack.size() == 1) {
+			if (stack.get(0) instanceof Boolean) {
+				return (Boolean) stack.get(0);
+			} else {
+				System.err.println("invalid result");
+				return null;
+			}
+		} else { // 2 elements on the stack, use equals
+			return checkEquality(stack.get(0), stack.get(1), env);
+		}
+	}
+
+	private static boolean checkEquality(Object a, Object b, ClassEnv env) {
+		if (a == b) return true;
+		if (a == null || b == null) return false;
+
+		if (a.getClass() != b.getClass()) {
+			if (a instanceof RankResult<?>) a = ((RankResult<?>) a).getSubject();
+			if (b instanceof RankResult<?>) b = ((RankResult<?>) b).getSubject();
+		}
+
+		if (a.getClass() != b.getClass()) {
+			if (a instanceof ClassInstance) {
+				if (b instanceof Matchable<?>) {
+					b = getClass((Matchable<?>) b);
+				} else if (b instanceof String) {
+					b = env.getClsByName((String) b);
+				}
+			}
+
+			if (b instanceof ClassInstance) {
+				if (a instanceof Matchable<?>) {
+					a = getClass((Matchable<?>) a);
+				} else if (a instanceof String) {
+					a = env.getClsByName((String) a);
+				}
+			}
+		}
+
+		return Objects.equals(a, b);
+	}
+
 	private class SrcListener implements IGuiComponent {
 		@Override
 		public void onClassSelect(ClassInstance cls) {
@@ -319,6 +580,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 			oldSrcSelection = newSrcSelection;
 
+			rankResults.clear();
 			suppressChangeEvents = true;
 			matchList.getItems().clear();
 			suppressChangeEvents = false;
@@ -357,32 +619,10 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				if (exc != null) {
 					exc.printStackTrace();
 				} else if (taskId == cTaskId) {
-					RankResult<? extends Matchable<?>> best;
+					assert rankResults.isEmpty();
+					rankResults.addAll(res);
 
-					if (!res.isEmpty()) {
-						best = res.get(0);
-
-						if (gui.isSortMatchesAlphabetically()) {
-							res.sort(getNameComparator());
-						}
-					} else {
-						best = null;
-					}
-
-					suppressChangeEvents = true;
-
-					matchList.getItems().setAll(res);
-
-					if (matchList.getSelectionModel().isEmpty()) {
-						matchList.getSelectionModel().select(best);
-
-						announceSelectionChange(oldDstSelection, best != null ? best.getSubject() : null);
-					} else {
-						announceSelectionChange(oldDstSelection, matchList.getSelectionModel().getSelectedItem().getSubject());
-					}
-
-					suppressChangeEvents = false;
-
+					updateResults(oldDstSelection);
 					oldDstSelection = null;
 
 					if (matchChangeTypes != null) {
@@ -421,6 +661,8 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	private final MatchPaneSrc srcPane;
 	private final Collection<IGuiComponent> components = new ArrayList<>();
 	private final ListView<RankResult<? extends Matchable<?>>> matchList = new ListView<>();
+	private final TextField filterField = new TextField();
+	private final List<RankResult<? extends Matchable<?>>> rankResults = new ArrayList<>();
 	private final SrcListener srcListener = new SrcListener();
 	private List<ClassInstance> cmpClasses;
 
