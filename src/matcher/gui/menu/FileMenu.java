@@ -145,12 +145,6 @@ public class FileMenu extends Menu {
 		Path file = res.path;
 
 		requestProjectLoadSettings(newConfig -> {
-			if (newConfig.paths.isEmpty()) return;
-
-			Config.setInputDirs(newConfig.paths);
-			Config.setVerifyInputFiles(newConfig.verifyFiles);
-			Config.saveAsLast();
-
 			gui.getMatcher().reset();
 			gui.onProjectChange();
 
@@ -174,7 +168,16 @@ public class FileMenu extends Menu {
 		dialog.getDialogPane().setContent(content);
 		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
-		dialog.showAndWait().ifPresent(consumer);
+		ProjectLoadSettings settings = dialog.showAndWait().orElse(null);
+		if (settings == null) return;
+
+		if (!settings.paths.isEmpty()) {
+			Config.setInputDirs(settings.paths);
+			Config.setVerifyInputFiles(settings.verifyFiles);
+			Config.saveAsLast();
+		}
+
+		consumer.accept(settings);
 	}
 
 	private void loadMappings(MappingFormat format) {

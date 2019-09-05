@@ -57,9 +57,14 @@ public class Matcher {
 	}
 
 	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
-		env.init(config, progressReceiver);
+		try {
+			env.init(config, progressReceiver);
 
-		matchUnobfuscated();
+			matchUnobfuscated();
+		} catch (Throwable t) {
+			reset();
+			throw t;
+		}
 	}
 
 	private void matchUnobfuscated() {
@@ -252,6 +257,10 @@ public class Matcher {
 	}
 
 	public void match(MethodInstance a, MethodInstance b) {
+		match(a, b, true);
+	}
+
+	private void match(MethodInstance a, MethodInstance b, boolean matchHierarchyMembers) {
 		if (a == null) throw new NullPointerException("null method A");
 		if (b == null) throw new NullPointerException("null method B");
 		if (a.getCls().getMatch() != b.getCls()) throw new IllegalArgumentException("the methods don't belong to the same class");
@@ -272,23 +281,25 @@ public class Matcher {
 		a.setMatch(b);
 		b.setMatch(a);
 
-		// match parent/child methods
+		if (matchHierarchyMembers) {
+			// match parent/child methods
 
-		Set<MethodInstance> srcHierarchyMembers = a.getAllHierarchyMembers();
-		if (srcHierarchyMembers.size() <= 1) return;
+			Set<MethodInstance> srcHierarchyMembers = a.getAllHierarchyMembers();
+			if (srcHierarchyMembers.size() <= 1) return;
 
-		ClassEnv reqEnv = a.getCls().getEnv();
-		Set<MethodInstance> dstHierarchyMembers = null;
+			ClassEnv reqEnv = a.getCls().getEnv();
+			Set<MethodInstance> dstHierarchyMembers = null;
 
-		for (MethodInstance src : srcHierarchyMembers) {
-			if (src.hasMatch() || !src.getCls().hasMatch() || src.getCls().getEnv() != reqEnv) continue;
+			for (MethodInstance src : srcHierarchyMembers) {
+				if (src.hasMatch() || !src.getCls().hasMatch() || src.getCls().getEnv() != reqEnv) continue;
 
-			if (dstHierarchyMembers == null) dstHierarchyMembers = b.getAllHierarchyMembers();
+				if (dstHierarchyMembers == null) dstHierarchyMembers = b.getAllHierarchyMembers();
 
-			for (MethodInstance dst : src.getCls().getMatch().getMethods()) {
-				if (dstHierarchyMembers.contains(dst)) {
-					match(src, dst);
-					break;
+				for (MethodInstance dst : src.getCls().getMatch().getMethods()) {
+					if (dstHierarchyMembers.contains(dst)) {
+						match(src, dst, false);
+						break;
+					}
 				}
 			}
 		}

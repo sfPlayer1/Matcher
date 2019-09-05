@@ -394,8 +394,14 @@ public class ClassEnvironment implements ClassEnv {
 
 		try {
 			uri = url.toURI();
+			Path ret = Paths.get(uri);
 
-			return Paths.get(uri);
+			if (uri.getScheme().equals("jrt") && !Files.exists(ret)) {
+				// workaround for https://bugs.openjdk.java.net/browse/JDK-8224946
+				ret = Paths.get(new URI(uri.getScheme(), uri.getUserInfo(), uri.getHost(), uri.getPort(), "/modules".concat(uri.getPath()), uri.getQuery(), uri.getFragment()));
+			}
+
+			return ret;
 		} catch (URISyntaxException e) {
 			throw new RuntimeException(e);
 		} catch (FileSystemNotFoundException e) {
