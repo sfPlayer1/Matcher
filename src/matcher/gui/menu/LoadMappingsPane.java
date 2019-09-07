@@ -1,5 +1,7 @@
 package matcher.gui.menu;
 
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -28,6 +30,33 @@ class LoadMappingsPane extends GridPane {
 		cbDst = new ComboBox<>(FXCollections.observableArrayList(namespaces));
 		cbDst.getSelectionModel().select(1);
 		add(cbDst, 1, 1);
+
+		// logic to avoid selecting the same ns for source+target, swaps selections if this condition would emerge
+		ChangeListener<String> nsChangeListener = new ChangeListener<String>() {
+			@Override
+			public void changed(ObservableValue<? extends String> observable, String oldValue, String newValue) {
+				if (suppress) return;
+
+				ComboBox<String> cbOther; // combo box that wasn't changed
+
+				if (observable == cbSrc.getSelectionModel().selectedItemProperty()) {
+					cbOther = cbDst;
+				} else {
+					cbOther = cbSrc;
+				}
+
+				if (newValue.equals(cbOther.getSelectionModel().getSelectedItem())) {
+					suppress = true; // avoid recursive event
+					cbOther.getSelectionModel().select(oldValue);
+					suppress = false;
+				}
+			}
+
+			private boolean suppress;
+		};
+
+		cbSrc.getSelectionModel().selectedItemProperty().addListener(nsChangeListener);
+		cbDst.getSelectionModel().selectedItemProperty().addListener(nsChangeListener);
 
 		add(new Label("Type:"), 0, 2);
 
