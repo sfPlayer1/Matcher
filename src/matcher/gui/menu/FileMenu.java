@@ -86,7 +86,10 @@ public class FileMenu extends Menu {
 
 		menuItem = new MenuItem("Clear mappings");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> Mappings.clear(gui.getMatcher().getEnv()));
+		menuItem.setOnAction(event -> {
+			Mappings.clear(gui.getMatcher().getEnv());
+			gui.onMappingChange();
+		});
 
 		getItems().add(new SeparatorMenuItem());
 
@@ -226,7 +229,7 @@ public class FileMenu extends Menu {
 
 	private static List<ExtensionFilter> getMappingLoadExtensionFilters() {
 		MappingFormat[] formats = MappingFormat.values();
-		List<ExtensionFilter> ret = new ArrayList<>(formats.length + 1);
+		List<ExtensionFilter> ret = new ArrayList<>(formats.length + 2);
 		List<String> supportedExtensions = new ArrayList<>(formats.length);
 
 		for (MappingFormat format : formats) {
@@ -234,6 +237,7 @@ public class FileMenu extends Menu {
 		}
 
 		ret.add(new FileChooser.ExtensionFilter("All supported", supportedExtensions));
+		ret.add(new FileChooser.ExtensionFilter("Any", "*.*"));
 
 		for (MappingFormat format : formats) {
 			if (format.hasSingleFile()) ret.add(new FileChooser.ExtensionFilter(format.name, format.getGlobPattern()));

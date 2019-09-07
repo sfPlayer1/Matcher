@@ -6,7 +6,8 @@ public enum MappingFormat {
 	TINY_2("Tiny v2", "tiny", false, true, true, true, true),
 	ENIGMA("Enigma", null, false, false, false, true, false),
 	MCP("MCP", null, false, false, true, true, false),
-	SRG("SRG", "srg", false, false, false, false, false);
+	SRG("SRG", "srg", false, false, false, false, false),
+	PROGUARD("ProGuard", "map", false, false, false, false, false);
 
 	private MappingFormat(String name, String fileExt, boolean isGzipped, boolean hasNamespaces, boolean supportsComments, boolean supportsArgs, boolean supportsLocals) {
 		this.name = name;

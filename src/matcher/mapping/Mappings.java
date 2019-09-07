@@ -107,7 +107,9 @@ public class Mappings {
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
-						System.out.println("can't find mapped method "+srcClsName+"/"+srcName+" ("+(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN)+"/" : "")+dstName+")");
+						System.out.printf("can't find mapped method %s/%s%s (%s%s)%n",
+								srcClsName, srcName, srcDesc,
+								(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN)+"/" : ""), dstName);
 					} else {
 						if (isNames) {
 							if (!method.hasMappedName() || replace) {

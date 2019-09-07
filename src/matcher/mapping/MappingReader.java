@@ -75,6 +75,9 @@ public class MappingReader {
 		case SRG:
 			readSrg(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
 			break;
+		case PROGUARD:
+			readProguard(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
+			break;
 		default:
 			throw new IllegalStateException();
 		}
@@ -95,19 +98,23 @@ public class MappingReader {
 			return MappingFormat.ENIGMA;
 		} else {
 			try (SeekableByteChannel channel = Files.newByteChannel(file)) {
-				byte[] header = new byte[3];
-				ByteBuffer buffer = ByteBuffer.wrap(header);
+				ByteBuffer buffer = ByteBuffer.allocate(4096);
 
 				while (buffer.hasRemaining()) {
-					if (channel.read(buffer) == -1) throw new IOException("invalid/truncated mapping file");
+					if (channel.read(buffer) == -1) break;
 				}
 
-				if (header[0] == (byte) 0x1f && header[1] == (byte) 0x8b && header[2] == (byte) 0x08) { // gzip with deflate header
-					return MappingFormat.TINY_GZIP;
-				} else if ((header[0] & 0xff) < 0x80 && (header[1] & 0xff) < 0x80 && (header[2] & 0xff) < 0x80) {
-					String headerStr = new String(header, StandardCharsets.US_ASCII);
+				buffer.flip();
+				if (buffer.remaining() < 3) throw new IOException("invalid/truncated mapping file");
 
-					switch (headerStr) {
+				if (buffer.get(0) == (byte) 0x1f && buffer.get(1) == (byte) 0x8b && buffer.get(2) == (byte) 0x08) { // gzip with deflate header
+					return MappingFormat.TINY_GZIP;
+				}
+
+				String headerStr = StandardCharsets.UTF_8.decode(buffer).toString();
+
+				if (headerStr.length() >= 3) {
+					switch (headerStr.substring(0, 3)) {
 					case "v1\t":
 						return MappingFormat.TINY;
 					case "tin":
@@ -118,6 +125,10 @@ public class MappingReader {
 					case "FD:":
 						return MappingFormat.SRG;
 					}
+				}
+
+				if (headerStr.contains(" -> ")) {
+					return MappingFormat.PROGUARD;
 				}
 			}
 		}
@@ -412,6 +423,57 @@ public class MappingReader {
 		}
 	}
 
+	private static void readMcpExc(Path file, Map<String, String> clsReverseMap, Map<String, String> paramNameMap, IMappingAcceptor mappingAcceptor) throws IOException {
+		try (BufferedReader reader = Files.newBufferedReader(file)) {
+			String line;
+
+			while ((line = reader.readLine()) != null) {
+				if (line.isEmpty()) continue;
+				if (line.charAt(0) == '#') continue; // commented out
+				if (line.charAt(line.length() - 1) == '|') continue; // no parameters
+
+				final String token = ".<init>(";
+				int pos = line.indexOf(token);
+				if (pos == -1) continue; // no constructor method
+
+				String cls = clsReverseMap.get(line.substring(0, pos));
+				assert cls != null;
+
+				// determine and map desc
+				int pos2 = line.indexOf('=', pos + token.length() + 1); // at least .<init>()
+				assert pos2 != -1;
+
+				String desc = mapDesc(line, pos + token.length() - 1, pos2, clsReverseMap); // start after ".<init>", end at =
+
+				// extract parameters
+				pos = line.lastIndexOf('|');
+				assert pos != -1;
+
+				for (int i = pos + 1; i < line.length(); i++) {
+					int end = line.indexOf(',', i + 1);
+					if (end == -1) end = line.length();
+
+					if (line.charAt(i) != 'p'
+							|| line.charAt(i + 1) != '_'
+							|| line.charAt(i + 2) != 'i'
+							|| line.charAt(end - 1) != '_'
+							|| (pos2 = line.indexOf('_', i + 4)) == -1
+							|| pos2 >= end - 1) {
+						throw new IOException("invalid param name: "+line.substring(i, end));
+					}
+
+					String name = paramNameMap.get(line.substring(i, end));
+
+					if (name != null) {
+						mappingAcceptor.acceptMethodArg(cls, "<init>", desc, -1, Integer.parseInt(line.substring(pos2 + 1, end - 1)), null, name);
+					}
+
+					i = end;
+				}
+			}
+		}
+	}
+
 	public static void readSrg(Path file, boolean reverse, IMappingAcceptor mappingAcceptor) throws IOException {
 		if (reverse) throw new UnsupportedOperationException(); // TODO: implement
 
@@ -532,54 +594,196 @@ public class MappingReader {
 		}
 	}
 
-	private static void readMcpExc(Path file, Map<String, String> clsReverseMap, Map<String, String> paramNameMap, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readProguard(Path file, boolean reverse, IMappingAcceptor mappingAcceptor) throws IOException {
+		Map<String, String> classMap;
+		List<PendingMemberMapping> pendingMethods, pendingFields;
+
+		if (!reverse) {
+			classMap = null;
+			pendingMethods = pendingFields = null;
+		} else {
+			classMap = new HashMap<>();
+			pendingMethods = new ArrayList<>();
+			pendingFields = new ArrayList<>();
+		}
+
+		String className = null;
+
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			String line;
 
 			while ((line = reader.readLine()) != null) {
-				if (line.isEmpty()) continue;
-				if (line.charAt(0) == '#') continue; // commented out
-				if (line.charAt(line.length() - 1) == '|') continue; // no parameters
+				line = line.trim();
+				if (line.isEmpty() || line.startsWith("#")) continue;
 
-				final String token = ".<init>(";
-				int pos = line.indexOf(token);
-				if (pos == -1) continue; // no constructor method
+				String[] parts = line.split(" ");
 
-				String cls = clsReverseMap.get(line.substring(0, pos));
-				assert cls != null;
+				if (line.endsWith(":")) { // class: <deobf> -> <obf>:
+					if (parts.length != 3) throw new IOException("invalid proguard line (extra columns): "+line);
+					if (parts[0].isEmpty()) throw new IOException("invalid proguard line (empty src class): "+line);
+					if (!parts[1].equals("->")) throw new IOException("invalid proguard line (invalid separator): "+line);
+					if (parts[2].isEmpty()) throw new IOException("invalid proguard line (empty dst class): "+line);
 
-				// determine and map desc
-				int pos2 = line.indexOf('=', pos + token.length() + 1); // at least .<init>()
-				assert pos2 != -1;
+					className = parts[0].replace('.', '/');
+					String mappedName = parts[2].substring(0, parts[2].length() - 1).replace('.', '/');
 
-				String desc = mapDesc(line, pos + token.length() - 1, pos2, clsReverseMap); // start after ".<init>", end at =
-
-				// extract parameters
-				pos = line.lastIndexOf('|');
-				assert pos != -1;
-
-				for (int i = pos + 1; i < line.length(); i++) {
-					int end = line.indexOf(',', i + 1);
-					if (end == -1) end = line.length();
-
-					if (line.charAt(i) != 'p'
-							|| line.charAt(i + 1) != '_'
-							|| line.charAt(i + 2) != 'i'
-							|| line.charAt(end - 1) != '_'
-							|| (pos2 = line.indexOf('_', i + 4)) == -1
-							|| pos2 >= end - 1) {
-						throw new IOException("invalid param name: "+line.substring(i, end));
+					if (!reverse) {
+						mappingAcceptor.acceptClass(className, mappedName, true);
+					} else {
+						mappingAcceptor.acceptClass(mappedName, className, true);
+						classMap.put(className, mappedName);
 					}
+				} else { // method or field: <type> <deobf> -> <obf>
+					if (className == null) throw new IOException("invalid proguard line (missing class name): "+line);
+					if (parts.length != 4) throw new IOException("invalid proguard line (extra columns): "+line);
+					if (parts[0].isEmpty()) throw new IOException("invalid proguard line (empty type): "+line);
+					if (parts[1].isEmpty()) throw new IOException("invalid proguard line (empty src member): "+line);
+					if (!parts[2].equals("->")) throw new IOException("invalid proguard line (invalid separator): "+line);
+					if (parts[3].isEmpty()) throw new IOException("invalid proguard line (empty dst member): "+line);
 
-					String name = paramNameMap.get(line.substring(i, end));
+					if (parts[1].indexOf('(') < 0) { // field: <type> <deobf> -> <obf>
+						String name = parts[1];
+						String desc = pgTypeToAsm(parts[0]);
+						String mappedName = parts[3];
 
-					if (name != null) {
-						mappingAcceptor.acceptMethodArg(cls, "<init>", desc, -1, Integer.parseInt(line.substring(pos2 + 1, end - 1)), null, name);
+						if (!reverse) {
+							mappingAcceptor.acceptField(className, name, desc, null, mappedName, null);
+						} else {
+							pendingFields.add(new PendingMemberMapping(className, name, desc, mappedName));
+						}
+					} else { // method: [<lineStart>:<lineEndIncl>:]<rtype> [<clazz>.]<deobf><arg-desc>[:<deobf-lineStart>[:<deobf-lineEnd>]] -> <obf>
+						// lineStart, lineEndIncl, rtype
+						String part0 = parts[0];
+						int pos = part0.indexOf(':');
+
+						String retType;
+
+						if (pos == -1) { // no obf line numbers
+							retType = part0;
+						} else {
+							int pos2 = part0.indexOf(':', pos + 1);
+							assert pos2 != -1;
+
+							retType = part0.substring(pos2 + 1);
+						}
+
+						// clazz, deobf, arg-desc, obf
+						String part1 = parts[1];
+						pos = part1.indexOf('(');
+						int pos3 = part1.indexOf(')', pos + 1); // arg-desc, obf
+						assert pos3 != -1;
+
+						if (part1.lastIndexOf('.', pos - 1) < 0 && part1.length() == pos3 + 1) { // no inlined method
+							String name = part1.substring(0, pos);
+							String argDesc = part1.substring(pos, pos3 + 1);
+							String desc = pgDescToAsm(argDesc, retType);
+							String mappedName = parts[3];
+
+							if (!reverse) {
+								mappingAcceptor.acceptField(className, name, desc, null, mappedName, null);
+							} else {
+								pendingMethods.add(new PendingMemberMapping(className, name, desc, mappedName));
+							}
+						}
 					}
-
-					i = end;
 				}
 			}
+		}
+
+		if (reverse) { // remap owner+desc
+			for (PendingMemberMapping m : pendingMethods) {
+				mappingAcceptor.acceptMethod(
+						classMap.getOrDefault(m.owner, m.owner), m.mappedName, mapDesc(m.desc, classMap),
+						null, m.name, null);
+			}
+
+			for (PendingMemberMapping m : pendingFields) {
+				mappingAcceptor.acceptField(
+						classMap.getOrDefault(m.owner, m.owner), m.mappedName, mapDesc(m.desc, classMap),
+						null, m.name, null);
+			}
+		}
+	}
+
+	private static class PendingMemberMapping {
+		PendingMemberMapping(String owner, String name, String desc, String mappedName) {
+			this.owner = owner;
+			this.name = name;
+			this.desc = desc;
+			this.mappedName = mappedName;
+		}
+
+		final String owner;
+		final String name;
+		final String desc;
+		final String mappedName;
+	}
+
+	private static String pgDescToAsm(String pgArgDesc, String pgRetType) {
+		StringBuilder ret = new StringBuilder();
+		ret.append('(');
+
+		if (pgArgDesc.length() > 2) { // not just ()
+			int startPos = 1;
+			boolean abort = false;
+
+			do {
+				int endPos = pgArgDesc.indexOf(',', startPos);
+
+				if (endPos < 0) {
+					endPos = pgArgDesc.length() - 1;
+					abort = true;
+				}
+
+				pgTypeToAsm(pgArgDesc.substring(startPos, endPos), ret);
+				startPos = endPos + 1;
+			} while (!abort);
+		}
+
+		ret.append(')');
+		if (pgRetType != null) pgTypeToAsm(pgRetType, ret);
+
+		return ret.toString();
+	}
+
+	private static String pgTypeToAsm(String type) {
+		StringBuilder sb = new StringBuilder();
+		pgTypeToAsm(type, sb);
+
+		return sb.toString();
+	}
+
+	private static void pgTypeToAsm(String type, StringBuilder sb) {
+		assert !type.isEmpty();
+
+		int arrayStart = type.indexOf('[');
+
+		if (arrayStart != -1) {
+			assert type.substring(arrayStart).matches("(\\[\\])+");
+
+			int arrayDimensions = (type.length() - arrayStart) / 2; // 2 chars each: []
+
+			for (int i = 0; i < arrayDimensions; i++) {
+				sb.append('[');
+			}
+
+			type = type.substring(0, arrayStart);
+		}
+
+		switch (type) {
+		case "void": sb.append('V'); break;
+		case "boolean": sb.append('Z'); break;
+		case "char": sb.append('C'); break;
+		case "byte": sb.append('B'); break;
+		case "short": sb.append('S'); break;
+		case "int": sb.append('I'); break;
+		case "float": sb.append('F'); break;
+		case "long": sb.append('J'); break;
+		case "double": sb.append('D'); break;
+		default:
+			sb.append('L');
+			sb.append(type.replace('.', '/'));
+			sb.append(';');
 		}
 	}
 
