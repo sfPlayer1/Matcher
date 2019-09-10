@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.Attribute;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
@@ -46,6 +48,60 @@ public class AsmClassRemapper extends ClassRemapper {
 			super(mv, remapper);
 
 			this.remapper = remapper;
+		}
+
+		@Override
+		public void visitParameter(String name, int access) {
+			checkState();
+			name = remapper.mapArgName(className, methodName, methodDesc, name, argsVisited);
+			argsVisited++;
+			super.visitParameter(name, access);
+		}
+
+		private void checkParameters() {
+			if (argsVisited > 0 || methodDesc.startsWith("()")) return;
+
+			int argCount = Type.getArgumentTypes(methodDesc).length;
+
+			for (int i = 0; i < argCount; i++) {
+				visitParameter(null, 0);
+			}
+		}
+
+		@Override
+		public AnnotationVisitor visitAnnotationDefault() {
+			checkParameters();
+			return super.visitAnnotationDefault();
+		}
+
+		@Override
+		public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+			checkParameters();
+			return super.visitAnnotation(descriptor, visible);
+		}
+
+		@Override
+		public void visitAnnotableParameterCount(int parameterCount, boolean visible) {
+			checkParameters();
+			super.visitAnnotableParameterCount(parameterCount, visible);
+		}
+
+		@Override
+		public AnnotationVisitor visitParameterAnnotation(int parameter, String descriptor, boolean visible) {
+			checkParameters();
+			return super.visitParameterAnnotation(parameter, descriptor, visible);
+		}
+
+		@Override
+		public void visitAttribute(Attribute attribute) {
+			checkParameters();
+			super.visitAttribute(attribute);
+		}
+
+		@Override
+		public void visitCode() {
+			checkParameters();
+			super.visitCode();
 		}
 
 		@Override
@@ -225,9 +281,11 @@ public class AsmClassRemapper extends ClassRemapper {
 		@Override
 		public void visitEnd() {
 			checkState();
+			checkParameters();
 
 			insnIndex = 0;
 			labels.clear();
+			argsVisited = 0;
 			methodName = methodDesc = null;
 
 			super.visitEnd();
@@ -241,6 +299,7 @@ public class AsmClassRemapper extends ClassRemapper {
 
 		protected int insnIndex;
 		protected Map<Label, Integer> labels = new IdentityHashMap<>();
+		private int argsVisited;
 	}
 
 	protected final AsmRemapper remapper;

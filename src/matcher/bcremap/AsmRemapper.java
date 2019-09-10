@@ -69,6 +69,16 @@ public class AsmRemapper extends Remapper {
 		return method.getName(nameType);
 	}
 
+	public String mapArgName(String className, String methodName, String methodDesc, String name, int asmIndex) {
+		ClassInstance cls = env.getClsByName(className);
+		if (cls == null) return name;
+
+		MethodInstance method = cls.getMethod(methodName, methodDesc);
+		if (method == null) return name;
+
+		return method.getArg(asmIndex).getName(nameType);
+	}
+
 	public String mapLocalVariableName(String className, String methodName, String methodDesc, String name, String desc, int lvIndex, int startInsn, int endInsn) {
 		ClassInstance cls = env.getClsByName(className);
 		if (cls == null) return name;
