@@ -24,7 +24,7 @@ import matcher.mapping.MappingState.VarMappingState;
 import matcher.type.ClassInstance;
 
 class EnigmaImpl {
-	public static void read(Path dir, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void read(Path dir, MappingAcceptor mappingAcceptor) throws IOException {
 		try (Stream<Path> stream = Files.find(dir,
 				Integer.MAX_VALUE,
 				(path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".mapping"),
@@ -35,7 +35,7 @@ class EnigmaImpl {
 		}
 	}
 
-	private static void readFile(Path file, IMappingAcceptor mappingAcceptor) {
+	private static void readFile(Path file, MappingAcceptor mappingAcceptor) {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			String line;
 			Queue<String> contextStack = Collections.asLifoQueue(new ArrayDeque<>());

@@ -16,7 +16,7 @@ import matcher.NameType;
 import matcher.mapping.MappingState.ArgMappingState;
 import matcher.mapping.MappingState.VarMappingState;
 
-public class MappingWriter implements IMappingAcceptor, Closeable {
+public class MappingWriter implements MappingAcceptor, Closeable {
 	public MappingWriter(Path file, MappingFormat format, NameType srcType, NameType dstType) throws IOException {
 		this.file = file;
 		this.format = format;

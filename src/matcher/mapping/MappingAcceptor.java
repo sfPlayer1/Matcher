@@ -1,6 +1,6 @@
 package matcher.mapping;
 
-public interface IMappingAcceptor {
+public interface MappingAcceptor {
 	void acceptClass(String srcName, String dstName, boolean includesOuterNames);
 	void acceptClassComment(String srcName, String comment);
 	void acceptMethod(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc);

@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
-public class MappingReader {
+public final class MappingReader {
 	public static String[] getNamespaces(Path file, MappingFormat format) throws IOException {
 		if (format == null) {
 			format = detectFormat(file);
@@ -50,7 +50,7 @@ public class MappingReader {
 		}
 	}
 
-	public static void read(Path file, MappingFormat format, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void read(Path file, MappingFormat format, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
 		if (format == null) {
 			format = detectFormat(file);
 			if (format == null) throw new IOException("invalid/unsupported mapping format");
@@ -136,13 +136,13 @@ public class MappingReader {
 		return null; // unknown format or corrupted
 	}
 
-	public static void readTiny(Path file, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readTiny(Path file, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			readTiny(reader, nsSource, nsTarget, mappingAcceptor);
 		}
 	}
 
-	public static void readGzTiny(Path file, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readGzTiny(Path file, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = createReader(file, true)) {
 			readTiny(reader, nsSource, nsTarget, mappingAcceptor);
 		}
@@ -155,7 +155,7 @@ public class MappingReader {
 		return new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
 	}
 
-	private static void readTiny(BufferedReader reader, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+	private static void readTiny(BufferedReader reader, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
 		boolean firstLine = true;
 		int nsA = 0;
 		int nsB = 0;
@@ -243,7 +243,7 @@ public class MappingReader {
 				}
 				break;
 			case "FIELD":
-				if (parts.length != 5) throw new IOException("invalid tiny line (missing/extra columns): "+line);
+				if (parts.length != 3 + nsCount) throw new IOException("invalid tiny line (missing/extra columns): "+line);
 				if (parts[1].isEmpty()) throw new IOException("invalid tiny line (empty src class): "+line);
 				if (parts[2].isEmpty()) throw new IOException("invalid tiny line (empty src field desc): "+line);
 				if (parts[3 + nsA].isEmpty()) throw new IOException("invalid tiny line (empty src field name): "+line);
@@ -286,13 +286,13 @@ public class MappingReader {
 		}
 	}
 
-	public static void readTiny2(Path file, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readTiny2(Path file, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			Tiny2Impl.read(reader, nsSource, nsTarget, mappingAcceptor);
 		}
 	}
 
-	public static void readMcp(Path dir, boolean reverse, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readMcp(Path dir, boolean reverse, MappingAcceptor mappingAcceptor) throws IOException {
 		if (reverse) throw new UnsupportedOperationException(); // TODO: implement
 
 		Path fieldsCsv = dir.resolve("fields.csv");
@@ -423,7 +423,7 @@ public class MappingReader {
 		}
 	}
 
-	private static void readMcpExc(Path file, Map<String, String> clsReverseMap, Map<String, String> paramNameMap, IMappingAcceptor mappingAcceptor) throws IOException {
+	private static void readMcpExc(Path file, Map<String, String> clsReverseMap, Map<String, String> paramNameMap, MappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			String line;
 
@@ -474,7 +474,7 @@ public class MappingReader {
 		}
 	}
 
-	public static void readSrg(Path file, boolean reverse, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readSrg(Path file, boolean reverse, MappingAcceptor mappingAcceptor) throws IOException {
 		if (reverse) throw new UnsupportedOperationException(); // TODO: implement
 
 		readSrg(file, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, mappingAcceptor);
@@ -485,7 +485,7 @@ public class MappingReader {
 			Map<String, String> fieldNameMap, Map<String, String> fieldCommentMap,
 			Map<String, String> paramNameMap,
 			Map<String, Integer> maxMethodParamMap,
-			Map<String, String> clsReverseMap, IMappingAcceptor mappingAcceptor) throws IOException {
+			Map<String, String> clsReverseMap, MappingAcceptor mappingAcceptor) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			String line;
 
@@ -594,7 +594,7 @@ public class MappingReader {
 		}
 	}
 
-	public static void readProguard(Path file, boolean reverse, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void readProguard(Path file, boolean reverse, MappingAcceptor mappingAcceptor) throws IOException {
 		Map<String, String> classMap;
 		List<PendingMemberMapping> pendingMethods, pendingFields;
 

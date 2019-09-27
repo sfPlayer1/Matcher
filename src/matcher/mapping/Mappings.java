@@ -25,7 +25,7 @@ public class Mappings {
 		Set<String> warnedClasses = new HashSet<>();
 
 		try {
-			MappingReader.read(path, format, nsSource, nsTarget, new IMappingAcceptor() {
+			MappingReader.read(path, format, nsSource, nsTarget, new MappingAcceptor() {
 				@Override
 				public void acceptClass(String srcName, String dstName, boolean includesOuterNames) {
 					ClassInstance cls = env.getLocalClsByName(srcName);

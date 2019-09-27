@@ -13,6 +13,7 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import matcher.NameType;
 import matcher.classifier.ClassClassifier;
 import matcher.classifier.ClassifierLevel;
 import matcher.classifier.FieldClassifier;
@@ -311,7 +312,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			for (RankResult<? extends Matchable<?>> item : rankResults) {
 				stack.add(item);
 
-				Boolean res = evalFilter(stack);
+				Boolean res = evalFilter(stack, item);
 
 				if (res == null) { // eval failed
 					newItems.clear();
@@ -353,7 +354,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	@SuppressWarnings("unchecked")
-	private Boolean evalFilter(List<Object> stack) {
+	private Boolean evalFilter(List<Object> stack, RankResult<? extends Matchable<?>> resB) {
 		final byte OP_TYPE_NONE = 0;
 		final byte OP_TYPE_ANY = 1;
 		final byte OP_TYPE_MATCHABLE = 2;
@@ -366,6 +367,23 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		String filterStr = filterField.getText();
 		if (filterStr.isBlank()) return Boolean.TRUE;
 
+		Matchable<?> itemB = resB.getSubject();
+		Matchable<?> itemA;
+
+		if (itemB instanceof ClassInstance) {
+			itemA = srcPane.getSelectedClass();
+		} else if (itemB instanceof MethodInstance) {
+			itemA = srcPane.getSelectedMethod();
+		} else if (itemB instanceof FieldInstance) {
+			itemA = srcPane.getSelectedField();
+		} else if (itemB instanceof MethodVarInstance) {
+			itemA = srcPane.getSelectedMethodVar();
+		} else {
+			throw new IllegalStateException();
+		}
+
+		assert itemA != null;
+
 		ClassEnv env = gui.getEnv().getEnvB();
 		String[] parts = filterStr.split("\\s+");
 
@@ -376,10 +394,15 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			byte opTypeB = OP_TYPE_NONE;
 
 			switch (op) {
+			case "a":
+			case "b":
+				break;
 			case "dup":
 				opTypeA = OP_TYPE_ANY;
 				break;
 			case "name":
+			case "mapped":
+			case "mappedname":
 				opTypeA = OP_TYPE_MATCHABLE;
 				break;
 			case "supercls":
@@ -462,6 +485,12 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			//System.out.printf("opA: %s, opB: %s%n", opA, opB);
 
 			switch (op) {
+			case "a":
+				stack.add(itemA);
+				break;
+			case "b":
+				stack.add(resB);
+				break;
 			case "dup":
 				stack.add(opA);
 				stack.add(opA);
@@ -472,6 +501,10 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				break;
 			case "name":
 				stack.add(((Matchable<?>) opA).getName());
+				break;
+			case "mapped":
+			case "mappedname":
+				stack.add(((Matchable<?>) opA).getName(NameType.MAPPED_PLAIN));
 				break;
 			case "supercls":
 				stack.add(((ClassInstance) opA).getSuperClass());

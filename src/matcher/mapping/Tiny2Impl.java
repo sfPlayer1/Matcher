@@ -37,7 +37,7 @@ class Tiny2Impl {
 		return Arrays.copyOfRange(parts, 3, parts.length);
 	}
 
-	public static void read(BufferedReader reader, String nsSource, String nsTarget, IMappingAcceptor mappingAcceptor) throws IOException {
+	public static void read(BufferedReader reader, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
 		String firstLine = reader.readLine();
 		String[] parts;
 
