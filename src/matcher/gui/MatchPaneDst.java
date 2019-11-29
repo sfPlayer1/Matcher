@@ -606,7 +606,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			// refresh list selection only early if it wasn't empty and the src class selection changed to suppress class selection changes
 			// from (temporarily) clearing matchList and reentering onSelect while async ranking is ongoing
 
-			if (oldDstSelection != null && (newSrcSelection == null || MatchPaneDst.getClass(newSrcSelection) != MatchPaneDst.getClass(oldSrcSelection))) {
+			if (oldDstSelection != null && (newSrcSelection == null || oldSrcSelection == null || MatchPaneDst.getClass(newSrcSelection) != MatchPaneDst.getClass(oldSrcSelection))) {
 				announceSelectionChange(oldDstSelection, null);
 				oldDstSelection = null;
 			}
