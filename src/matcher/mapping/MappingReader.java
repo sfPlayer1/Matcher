@@ -20,6 +20,51 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 public final class MappingReader {
+	public static MappingFormat detectFormat(Path file) throws IOException {
+		if (Files.isDirectory(file)) {
+			return MappingFormat.ENIGMA;
+		} else {
+			try (SeekableByteChannel channel = Files.newByteChannel(file)) {
+				ByteBuffer buffer = ByteBuffer.allocate(4096);
+
+				while (buffer.hasRemaining()) {
+					if (channel.read(buffer) == -1) break;
+				}
+
+				buffer.flip();
+				if (buffer.remaining() < 3) throw new IOException("invalid/truncated mapping file");
+
+				if (buffer.get(0) == (byte) 0x1f && buffer.get(1) == (byte) 0x8b && buffer.get(2) == (byte) 0x08) { // gzip with deflate header
+					return MappingFormat.TINY_GZIP;
+				}
+
+				String headerStr = StandardCharsets.UTF_8.decode(buffer).toString();
+
+				if (headerStr.length() >= 3) {
+					switch (headerStr.substring(0, 3)) {
+					case "v1\t":
+						return MappingFormat.TINY;
+					case "tin":
+						return MappingFormat.TINY_2;
+					case "PK:":
+					case "CL:":
+					case "MD:":
+					case "FD:":
+						return MappingFormat.SRG;
+					}
+				}
+
+				if (headerStr.contains(" -> ")) {
+					return MappingFormat.PROGUARD;
+				} else if (headerStr.contains("\n\t")) {
+					return MappingFormat.TSRG;
+				}
+			}
+		}
+
+		return null; // unknown format or corrupted
+	}
+
 	public static String[] getNamespaces(Path file, MappingFormat format) throws IOException {
 		if (format == null) {
 			format = detectFormat(file);
@@ -75,6 +120,9 @@ public final class MappingReader {
 		case SRG:
 			readSrg(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
 			break;
+		case TSRG:
+			readTSrg(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
+			break;
 		case PROGUARD:
 			readProguard(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
 			break;
@@ -91,49 +139,6 @@ public final class MappingReader {
 		} else {
 			throw new IllegalArgumentException("invalid ns: "+nsSource+" -> "+nsTarget);
 		}
-	}
-
-	private static MappingFormat detectFormat(Path file) throws IOException {
-		if (Files.isDirectory(file)) {
-			return MappingFormat.ENIGMA;
-		} else {
-			try (SeekableByteChannel channel = Files.newByteChannel(file)) {
-				ByteBuffer buffer = ByteBuffer.allocate(4096);
-
-				while (buffer.hasRemaining()) {
-					if (channel.read(buffer) == -1) break;
-				}
-
-				buffer.flip();
-				if (buffer.remaining() < 3) throw new IOException("invalid/truncated mapping file");
-
-				if (buffer.get(0) == (byte) 0x1f && buffer.get(1) == (byte) 0x8b && buffer.get(2) == (byte) 0x08) { // gzip with deflate header
-					return MappingFormat.TINY_GZIP;
-				}
-
-				String headerStr = StandardCharsets.UTF_8.decode(buffer).toString();
-
-				if (headerStr.length() >= 3) {
-					switch (headerStr.substring(0, 3)) {
-					case "v1\t":
-						return MappingFormat.TINY;
-					case "tin":
-						return MappingFormat.TINY_2;
-					case "PK:":
-					case "CL:":
-					case "MD:":
-					case "FD:":
-						return MappingFormat.SRG;
-					}
-				}
-
-				if (headerStr.contains(" -> ")) {
-					return MappingFormat.PROGUARD;
-				}
-			}
-		}
-
-		return null; // unknown format or corrupted
 	}
 
 	public static void readTiny(Path file, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
@@ -353,7 +358,7 @@ public final class MappingReader {
 		}
 
 		Map<String, String> clsReverseMap = excFile != null ? new HashMap<>() : null;
-		readSrg(notchSrgSrg, methodNames, methodComments, fieldNames, fieldComments, paramNames, maxMethodParamMap, clsReverseMap, mappingAcceptor);
+		readSrg(notchSrgSrg, reverse, methodNames, methodComments, fieldNames, fieldComments, paramNames, maxMethodParamMap, clsReverseMap, mappingAcceptor);
 
 		if (excFile != null) {
 			// read constructor parameter mappings
@@ -475,12 +480,12 @@ public final class MappingReader {
 	}
 
 	public static void readSrg(Path file, boolean reverse, MappingAcceptor mappingAcceptor) throws IOException {
-		if (reverse) throw new UnsupportedOperationException(); // TODO: implement
-
-		readSrg(file, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, mappingAcceptor);
+		readSrg(file, reverse,
+				Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(),
+				null, mappingAcceptor);
 	}
 
-	private static void readSrg(Path file,
+	private static void readSrg(Path file, boolean reverse,
 			Map<String, String> methodNameMap, Map<String, String> methodCommentMap,
 			Map<String, String> fieldNameMap, Map<String, String> fieldCommentMap,
 			Map<String, String> paramNameMap,
@@ -500,14 +505,23 @@ public final class MappingReader {
 					if (parts.length != 3) throw new IOException("invalid srg line (extra columns): "+line);
 					// ignore
 					break;
-				case "CL:":
+				case "CL:": {
 					if (parts.length != 3) throw new IOException("invalid srg line (extra columns): "+line);
 					if (parts[1].isEmpty()) throw new IOException("invalid srg line (empty src class): "+line);
 					if (parts[2].isEmpty()) throw new IOException("invalid srg line (empty dst class): "+line);
 
-					mappingAcceptor.acceptClass(parts[1], parts[2], true);
-					if (clsReverseMap != null) clsReverseMap.put(parts[2], parts[1]);
+					String name = parts[1];
+					String mappedName = parts[2];
+
+					if (!reverse) {
+						mappingAcceptor.acceptClass(name, mappedName, true);
+						if (clsReverseMap != null) clsReverseMap.put(mappedName, name);
+					} else {
+						mappingAcceptor.acceptClass(mappedName, name, true);
+					}
+
 					break;
+				}
 				case "MD:": {
 					if (parts.length != 5) throw new IOException("invalid srg line (missing/extra columns): "+line);
 					if (parts[1].isEmpty()) throw new IOException("invalid srg line (empty src class+method name): "+line);
@@ -557,8 +571,14 @@ public final class MappingReader {
 						dstName = mappedName;
 					}
 
-					mappingAcceptor.acceptMethod(srcCls, srcName, srcDesc, dstCls, dstName, dstDesc);
-					if (comment != null) mappingAcceptor.acceptMethodComment(srcCls, srcName, srcDesc, comment);
+					if (!reverse) {
+						mappingAcceptor.acceptMethod(srcCls, srcName, srcDesc, dstCls, dstName, dstDesc);
+						if (comment != null) mappingAcceptor.acceptMethodComment(srcCls, srcName, srcDesc, comment);
+					} else {
+						mappingAcceptor.acceptMethod(dstCls, dstName, dstDesc, srcCls, srcName, srcDesc);
+						if (comment != null) mappingAcceptor.acceptMethodComment(dstCls, dstName, dstDesc, comment);
+					}
+
 					break;
 				}
 				case "FD:":
@@ -584,12 +604,100 @@ public final class MappingReader {
 						dstName = mappedName;
 					}
 
-					mappingAcceptor.acceptField(srcCls, srcName, null, dstCls, dstName, null);
-					if (comment != null) mappingAcceptor.acceptFieldComment(srcCls, srcName, null, comment);
+					if (!reverse) {
+						mappingAcceptor.acceptField(srcCls, srcName, null, dstCls, dstName, null);
+						if (comment != null) mappingAcceptor.acceptFieldComment(srcCls, srcName, null, comment);
+					} else {
+						mappingAcceptor.acceptField(dstCls, dstName, null, srcCls, srcName, null);
+						if (comment != null) mappingAcceptor.acceptFieldComment(dstCls, dstName, null, comment);
+					}
+
 					break;
 				default:
 					throw new IOException("invalid srg line (unknown type): "+line);
 				}
+			}
+		}
+	}
+
+	public static void readTSrg(Path file, boolean reverse, MappingAcceptor mappingAcceptor) throws IOException {
+		Map<String, String> classMap;
+		List<PendingMemberMapping> pendingMethods;
+
+		if (!reverse) {
+			classMap = null;
+			pendingMethods = null;
+		} else {
+			classMap = new HashMap<>();
+			pendingMethods = new ArrayList<>();
+		}
+
+		String className = null;
+
+		try (BufferedReader reader = Files.newBufferedReader(file)) {
+			String line;
+
+			while ((line = reader.readLine()) != null) {
+				if (line.isEmpty() || line.endsWith("/")) continue; // ignore empty lines or package mappings
+
+				String[] parts = line.split(" ");
+
+				if (line.charAt(0) != '\t') { // class: <src> <dst>
+					if (parts.length != 2) throw new IOException("invalid tsrg line (extra columns): "+line);
+					if (parts[0].isEmpty()) throw new IOException("invalid tsrg line (empty src class): "+line);
+					if (parts[1].isEmpty()) throw new IOException("invalid tsrg line (empty dst class): "+line);
+
+					String name = parts[0];
+					String mappedName = parts[1];
+
+					if (!reverse) {
+						mappingAcceptor.acceptClass(name, mappedName, true);
+						className = name;
+					} else {
+						mappingAcceptor.acceptClass(mappedName, name, true);
+						classMap.put(name, mappedName);
+						className = mappedName;
+					}
+				} else if (parts.length == 2) { // field: \t<src> <dst>
+					if (className == null) throw new IOException("invalid tsrg line (missing class name): "+line);
+					if (parts[0].length() < 2) throw new IOException("invalid tsrg line (empty src field): "+line);
+					if (parts[1].isEmpty()) throw new IOException("invalid tsrg line (empty dst field): "+line);
+
+					String name = parts[0].substring(1);
+					String mappedName = parts[1];
+
+					if (!reverse) {
+						mappingAcceptor.acceptField(className, name, null, null, mappedName, null);
+					} else {
+						mappingAcceptor.acceptField(className, mappedName, null, null, name, null);
+					}
+				} else if (parts.length == 3) { // method: \t<src> <src-desc> <dst>
+					if (className == null) throw new IOException("invalid tsrg line (missing class name): "+line);
+					if (parts[0].length() < 2) throw new IOException("invalid tsrg line (empty src method): "+line);
+					if (parts[1].isEmpty()) throw new IOException("invalid tsrg line (empty src desc): "+line);
+					if (parts[1].charAt(0) != '(') throw new IOException("invalid tsrg line (invalid src desc): "+line);
+					if (parts[2].isEmpty()) throw new IOException("invalid tsrg line (empty dst method): "+line);
+
+					String name = parts[0].substring(1);
+					String desc = parts[1];
+					String mappedName = parts[2];
+
+					if (!reverse) {
+						mappingAcceptor.acceptMethod(className, name, desc, null, mappedName, null);
+					} else {
+						pendingMethods.add(new PendingMemberMapping(className, name, desc, mappedName));
+					}
+				} else {
+					throw new IOException("invalid tsrg line (extra columns): "+line);
+				}
+			}
+		}
+
+		if (reverse) { // remap desc
+			for (PendingMemberMapping m : pendingMethods) {
+				mappingAcceptor.acceptMethod(
+						m.owner, m.mappedName, mapDesc(m.desc, classMap),
+						null, m.name, null);
 			}
 		}
 	}
@@ -624,14 +732,16 @@ public final class MappingReader {
 					if (!parts[1].equals("->")) throw new IOException("invalid proguard line (invalid separator): "+line);
 					if (parts[2].isEmpty()) throw new IOException("invalid proguard line (empty dst class): "+line);
 
-					className = parts[0].replace('.', '/');
+					String name = parts[0].replace('.', '/');
 					String mappedName = parts[2].substring(0, parts[2].length() - 1).replace('.', '/');
 
 					if (!reverse) {
-						mappingAcceptor.acceptClass(className, mappedName, true);
+						mappingAcceptor.acceptClass(name, mappedName, true);
+						className = name;
 					} else {
-						mappingAcceptor.acceptClass(mappedName, className, true);
-						classMap.put(className, mappedName);
+						mappingAcceptor.acceptClass(mappedName, name, true);
+						classMap.put(name, mappedName);
+						className = mappedName;
 					}
 				} else { // method or field: <type> <deobf> -> <obf>
 					if (className == null) throw new IOException("invalid proguard line (missing class name): "+line);
@@ -680,7 +790,7 @@ public final class MappingReader {
 							String mappedName = parts[3];
 
 							if (!reverse) {
-								mappingAcceptor.acceptField(className, name, desc, null, mappedName, null);
+								mappingAcceptor.acceptMethod(className, name, desc, null, mappedName, null);
 							} else {
 								pendingMethods.add(new PendingMemberMapping(className, name, desc, mappedName));
 							}
@@ -690,16 +800,16 @@ public final class MappingReader {
 			}
 		}
 
-		if (reverse) { // remap owner+desc
+		if (reverse) { // remap desc
 			for (PendingMemberMapping m : pendingMethods) {
 				mappingAcceptor.acceptMethod(
-						classMap.getOrDefault(m.owner, m.owner), m.mappedName, mapDesc(m.desc, classMap),
+						m.owner, m.mappedName, mapDesc(m.desc, classMap),
 						null, m.name, null);
 			}
 
 			for (PendingMemberMapping m : pendingFields) {
 				mappingAcceptor.acceptField(
-						classMap.getOrDefault(m.owner, m.owner), m.mappedName, mapDesc(m.desc, classMap),
+						m.owner, m.mappedName, mapDesc(m.desc, classMap),
 						null, m.name, null);
 			}
 		}
@@ -857,6 +967,6 @@ public final class MappingReader {
 		return ret.toString();
 	}
 
-	private static final String NS_SOURCE_FALLBACK = "source";
-	private static final String NS_TARGET_FALLBACK = "target";
+	public static final String NS_SOURCE_FALLBACK = "source";
+	public static final String NS_TARGET_FALLBACK = "target";
 }
