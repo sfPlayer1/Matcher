@@ -1318,9 +1318,11 @@ class Analysis {
 
 	private static class StateRecorder {
 		StateRecorder(MethodInstance method, CommonClasses common) {
-			locals = new ClassInstance[method.asmNode.maxLocals];
+			MethodNode asmNode = method.getAsmNode();
+
+			locals = new ClassInstance[asmNode.maxLocals];
 			localVarIds = new int[locals.length];
-			stack = new ClassInstance[method.asmNode.maxStack];
+			stack = new ClassInstance[asmNode.maxStack];
 			stackVarIds = new int[stack.length];
 
 			if (!method.isStatic()) {
@@ -1334,7 +1336,7 @@ class Analysis {
 				if (arg.getType().getSlotSize() == 2) locals[localsSize++] = common.TOP;
 			}
 
-			this.states = new ExecState[method.asmNode.instructions.size()];
+			this.states = new ExecState[asmNode.instructions.size()];
 			this.common = common;
 
 			updateState();
@@ -1957,7 +1959,8 @@ class Analysis {
 		if (field.getType().isPrimitive()) return;
 
 		MethodInstance method = field.writeRefs.iterator().next();
-		InsnList il = method.asmNode.instructions;
+		MethodNode asmNode = method.getAsmNode();
+		InsnList il = asmNode.instructions;
 		AbstractInsnNode fieldWrite = null;
 
 		//dump(method.asmNode);
@@ -1980,7 +1983,7 @@ class Analysis {
 		}
 
 		if (fieldWrite == null) {
-			dump(method.asmNode);
+			dump(asmNode);
 			throw new IllegalStateException("can't find field write insn for "+field+" in "+method);
 		}
 
@@ -1989,8 +1992,8 @@ class Analysis {
 		Frame<SourceValue>[] frames;
 
 		try {
-			frames = analyzer.analyze(method.cls.getName(), method.asmNode);
-			if (frames.length != method.asmNode.instructions.size()) throw new RuntimeException("invalid frame count");
+			frames = analyzer.analyze(method.cls.getName(), asmNode);
+			if (frames.length != asmNode.instructions.size()) throw new RuntimeException("invalid frame count");
 		} catch (AnalyzerException e) {
 			throw new RuntimeException(e);
 		}

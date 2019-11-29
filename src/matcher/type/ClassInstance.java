@@ -577,7 +577,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 				assert superClass.id.equals("Ljava/lang/Object;");
 
 				ret = superClass.getMethod(name, desc);
-				if (ret != null && (ret.asmNode == null || (ret.asmNode.access & (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)) == Opcodes.ACC_PUBLIC)) return ret;
+				if (ret != null && (!ret.isReal() || (ret.access & (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)) == Opcodes.ACC_PUBLIC)) return ret;
 			}
 
 			return resolveInterfaceMethod(name, desc);
@@ -589,7 +589,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			MethodInstance ret = getMethod(name, "([Ljava/lang/Object;)Ljava/lang/Object;");
 			final int reqFlags = Opcodes.ACC_VARARGS | Opcodes.ACC_NATIVE;
 
-			if (ret != null && (ret.asmNode == null || (ret.asmNode.access & reqFlags) == reqFlags)) {
+			if (ret != null && (!ret.isReal() || (ret.access & reqFlags) == reqFlags)) {
 				return ret;
 			}
 		}
@@ -617,10 +617,10 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			MethodInstance ret = cls.getMethod(name, desc);
 
 			if (ret != null
-					&& (ret.asmNode == null || (ret.asmNode.access & (Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC)) == 0)) {
+					&& (!ret.isReal() || (ret.access & (Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC)) == 0)) {
 				matches.add(ret);
 
-				if (ret.asmNode != null && (ret.asmNode.access & Opcodes.ACC_ABSTRACT) == 0) { // jvms prefers the closest non-abstract method
+				if (ret.isReal() && (ret.access & Opcodes.ACC_ABSTRACT) == 0) { // jvms prefers the closest non-abstract method
 					foundNonAbstract = true;
 				}
 			}
@@ -639,7 +639,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			for (Iterator<MethodInstance> it = matches.iterator(); it.hasNext(); ) {
 				MethodInstance m = it.next();
 
-				if (m.asmNode == null || (m.asmNode.access & Opcodes.ACC_ABSTRACT) != 0) {
+				if (!m.isReal() || (m.access & Opcodes.ACC_ABSTRACT) != 0) {
 					it.remove();
 				}
 			}

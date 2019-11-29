@@ -367,7 +367,7 @@ public class ClassEnvironment implements ClassEnv {
 			}
 
 			if (file != null) {
-				ClassNode cn = readClass(file);
+				ClassNode cn = readClass(file, true);
 				ClassInstance cls = new ClassInstance(ClassInstance.getId(cn.name), file.toUri(), this, cn);
 				if (!cls.getId().equals(id)) throw new RuntimeException("mismatched cls id "+id+" for "+file+", expected "+name);
 
@@ -417,11 +417,11 @@ public class ClassEnvironment implements ClassEnv {
 		}
 	}
 
-	static ClassNode readClass(Path path) {
+	static ClassNode readClass(Path path, boolean skipCode) {
 		try {
 			ClassReader reader = new ClassReader(Files.readAllBytes(path));
 			ClassNode cn = new ClassNode();
-			reader.accept(cn, ClassReader.EXPAND_FRAMES);
+			reader.accept(cn, ClassReader.EXPAND_FRAMES | (skipCode ? ClassReader.SKIP_CODE : 0));
 
 			return cn;
 		} catch (IOException e) {

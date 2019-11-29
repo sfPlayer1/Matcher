@@ -86,7 +86,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	private ClassInstance readClass(Path path, Predicate<ClassNode> nameObfuscated) {
-		ClassNode cn = ClassEnvironment.readClass(path);
+		ClassNode cn = ClassEnvironment.readClass(path, false);
 
 		return new ClassInstance(ClassInstance.getId(cn.name), path.toUri(), this, cn, nameObfuscated.test(cn));
 	}
@@ -184,12 +184,12 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	private void processMethodInsns(MethodInstance method) {
-		if (method.asmNode == null) { // artificial method to capture calls to types with incomplete/unknown hierarchy/super type method info
+		if (!method.isReal()) { // artificial method to capture calls to types with incomplete/unknown hierarchy/super type method info
 			System.out.println("skipping empty method "+method);
 			return;
 		}
 
-		for (Iterator<AbstractInsnNode> it = method.asmNode.instructions.iterator(); it.hasNext(); ) {
+		for (Iterator<AbstractInsnNode> it = method.getAsmNode().instructions.iterator(); it.hasNext(); ) {
 			AbstractInsnNode ain = it.next();
 
 			switch (ain.getType()) {
@@ -553,7 +553,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		Path file = classPathIndex.get(name);
 		if (file == null) return null;
 
-		ClassNode cn = ClassEnvironment.readClass(file);
+		ClassNode cn = ClassEnvironment.readClass(file, false);
 		ClassInstance cls = new ClassInstance(ClassInstance.getId(cn.name), file.toUri(), this, cn);
 		if (!cls.getId().equals(id)) throw new RuntimeException("mismatched cls id "+id+" for "+file+", expected "+name);
 

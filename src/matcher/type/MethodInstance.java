@@ -36,23 +36,44 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 	private MethodInstance(ClassInstance cls, String origName, String desc, MethodNode asmNode, boolean nameObfuscated, int position, boolean isStatic) {
 		super(cls, getId(origName, desc), origName, nameObfuscated, position, isStatic);
 
-		this.asmNode = asmNode;
-		this.args = gatherArgs(this, desc);
-		this.vars = gatherVars(this);
+		this.real = asmNode != null;
+		this.access = asmNode != null ? asmNode.access : approximateAccess(isStatic);
+		this.args = gatherArgs(this, desc, asmNode);
+		this.vars = cls.isInput() ? gatherVars(this, asmNode) : emptyVars;
 		this.retType = cls.getEnv().getCreateClassInstance(Type.getReturnType(desc).getDescriptor());
+		this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : MethodSignature.parse(asmNode.signature, cls.getEnv());
+		this.asmNode = !cls.getEnv().isShared() ? asmNode : null;
+
 		classRefs.add(retType);
 		retType.methodTypeRefs.add(this);
-		this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : MethodSignature.parse(asmNode.signature, cls.getEnv());
 	}
 
-	private static MethodVarInstance[] gatherArgs(MethodInstance method, String desc) {
+	private static int approximateAccess(boolean isStatic) {
+		int ret = Opcodes.ACC_PUBLIC;
+		if (isStatic) ret |= Opcodes.ACC_STATIC;
+
+		return ret;
+	}
+
+	private static MethodVarInstance[] gatherArgs(MethodInstance method, String desc, MethodNode asmNode) {
 		Type[] argTypes = Type.getArgumentTypes(desc);
 		if (argTypes.length == 0) return emptyVars;
 
 		MethodVarInstance[] args = new MethodVarInstance[argTypes.length];
-		List<LocalVariableNode> locals = method.asmNode != null ? method.asmNode.localVariables : null;
-		InsnList il = method.asmNode != null ? method.asmNode.instructions : null;
-		AbstractInsnNode firstInsn = method.asmNode != null ? il.getFirst() : null;
+		List<LocalVariableNode> locals;
+		InsnList il;
+		AbstractInsnNode firstInsn;
+
+		if (asmNode != null) {
+			locals = asmNode.localVariables;
+			il = asmNode.instructions;
+			firstInsn = il.getFirst();
+		} else {
+			locals =  null;
+			il = null;
+			firstInsn = null;
+		}
+
 		int lvIdx = method.isStatic ? 0 : 1;
 
 		for (int i = 0; i < argTypes.length; i++) {
@@ -92,8 +113,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		return args;
 	}
 
-	private static MethodVarInstance[] gatherVars(MethodInstance method) {
-		MethodNode asmNode = method.asmNode;
+	private static MethodVarInstance[] gatherVars(MethodInstance method, MethodNode asmNode) {
 		if (asmNode == null) return emptyVars;
 		if (asmNode.localVariables == null) return emptyVars; // TODO: generate?
 		if (asmNode.localVariables.isEmpty()) return emptyVars;
@@ -188,7 +208,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 
 	@Override
 	public boolean isReal() {
-		return asmNode != null;
+		return real;
 	}
 
 	public MethodNode getAsmNode() {
@@ -285,14 +305,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 
 	@Override
 	public int getAccess() {
-		if (asmNode == null) {
-			int ret = Opcodes.ACC_PUBLIC;
-			if (isStatic) ret |= Opcodes.ACC_STATIC;
-
-			return ret;
-		} else {
-			return asmNode.access;
-		}
+		return access;
 	}
 
 	public MethodSignature getSignature() {
@@ -383,11 +396,13 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 
 	private static final MethodVarInstance[] emptyVars = new MethodVarInstance[0];
 
-	final MethodNode asmNode;
+	final boolean real;
+	final int access;
 	final MethodVarInstance[] args;
 	final ClassInstance retType;
 	MethodVarInstance[] vars;
 	final MethodSignature signature;
+	private final MethodNode asmNode;
 
 	final Set<MethodInstance> refsIn = Util.newIdentityHashSet();
 	final Set<MethodInstance> refsOut = Util.newIdentityHashSet();
