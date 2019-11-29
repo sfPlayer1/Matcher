@@ -53,12 +53,16 @@ public class MappingWriter implements MappingAcceptor, Closeable {
 
 	static String getTinyTypeName(NameType type) {
 		switch (type) {
-		case MAPPED_PLAIN: return "named";
-		case PLAIN: return "official";
+		case MAPPED:
+		case MAPPED_PLAIN:
+			return "named";
+		case PLAIN:
+			return "official";
 		case LOCTMP_PLAIN:
 		case TMP_PLAIN:
 			return "tmp";
-		case UID_PLAIN: return "intermediary";
+		case UID_PLAIN:
+			return "intermediary";
 		case MAPPED_LOCTMP_PLAIN:
 		case MAPPED_TMP_PLAIN:
 			return "named-tmp";

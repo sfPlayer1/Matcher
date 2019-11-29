@@ -114,7 +114,8 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			if (uid >= 0) return env.getGlobal().classUidPrefix+uid;
 		}
 
-		boolean mapped = type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
+		boolean plain = type != NameType.MAPPED;
+		boolean mapped = type == NameType.MAPPED || type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
 		boolean tmp = type == NameType.MAPPED_TMP_PLAIN || type == NameType.TMP_PLAIN;
 		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
 		String ret;
@@ -137,8 +138,10 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		} else if ((tmp || locTmp) && tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
-		} else {
+		} else if (plain) {
 			ret = getInnerName0(getName());
+		} else {
+			ret = null;
 		}
 
 		return outerClass != null ? getNestedName(outerClass.getName(type), ret) : ret;
@@ -1013,7 +1016,11 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public static String getNestedName(String outerName, String innerName) {
-		return outerName + '$' + innerName;
+		if (outerName == null || innerName == null) {
+			return null;
+		} else {
+			return outerName + '$' + innerName;
+		}
 	}
 
 	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getId);

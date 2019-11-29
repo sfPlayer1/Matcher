@@ -107,7 +107,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 
 			nameLabel.setText(cls.getName());
 			tmpNameLabel.setText(cls.hasLocalTmpName() ? cls.getName(NameType.LOCTMP_PLAIN) : "-");
-			mappedNameLabel.setText(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN) : "-");
+			mappedNameLabel.setText(cls.hasMappedName() ? cls.getName(NameType.MAPPED) : "-");
 			uidLabel.setText(cls.getUid() >= 0 ? Integer.toString(cls.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(cls.isNameObfuscated()));
 			accessLabel.setText(Util.formatAccessFlags(cls.getAccess(), AFElementType.Class));

@@ -109,7 +109,7 @@ public class Mappings {
 					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
 						System.out.printf("can't find mapped method %s/%s%s (%s%s)%n",
 								srcClsName, srcName, srcDesc,
-								(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN)+"/" : ""), dstName);
+								(cls.hasMappedName() ? cls.getName(NameType.MAPPED)+"/" : ""), dstName);
 					} else {
 						if (isNames) {
 							if (!method.hasMappedName() || replace) {
@@ -283,7 +283,7 @@ public class Mappings {
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
 					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
-						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(cls.hasMappedName() ? cls.getName(NameType.MAPPED_PLAIN)+"/" : "")+dstName+")");
+						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(cls.hasMappedName() ? cls.getName(NameType.MAPPED)+"/" : "")+dstName+")");
 					} else {
 						if (isNames) {
 							if (!field.hasMappedName() || replace) {
@@ -553,12 +553,13 @@ public class Mappings {
 
 	private static boolean shouldExport(MethodInstance method, MappingFormat format, NameType srcType, NameType dstType, MappingsExportVerbosity verbosity, Set<Set<MethodInstance>> exportedHierarchies) {
 		String srcName = method.getName(srcType);
+		if (srcName == null) return false;
+
 		String dstName;
 
-		return srcName != null
-				&& (format.supportsComments && method.getMappedComment() != null
+		return format.supportsComments && method.getMappedComment() != null
 				|| format.supportsArgs && (shouldExportAny(method.getArgs(), format, srcType, dstType) || shouldExportAny(method.getVars(), format, srcType, dstType))
-				|| (dstName = method.getName(dstType)) != null && !srcName.equals(dstName) && shouldExportName(method, verbosity, exportedHierarchies));
+				|| (dstName = method.getName(dstType)) != null && !srcName.equals(dstName) && shouldExportName(method, verbosity, exportedHierarchies);
 	}
 
 	private static boolean shouldExport(MethodVarInstance var, MappingFormat format, NameType srcType, NameType dstType) {
@@ -571,11 +572,12 @@ public class Mappings {
 
 	private static boolean shouldExport(FieldInstance field, MappingFormat format, NameType srcType, NameType dstType) {
 		String srcName = field.getName(srcType);
-		String dstName;
+		if (srcName == null) return false;
 
-		return srcName != null
-				&& ((dstName = field.getName(dstType)) != null && !srcName.equals(dstName)
-				|| format.supportsComments && field.getMappedComment() != null);
+		String dstName = field.getName(dstType);
+
+		return dstName != null && !srcName.equals(dstName)
+				|| format.supportsComments && field.getMappedComment() != null;
 	}
 
 	private static boolean shouldExportAny(MethodInstance[] methods, MappingFormat format, NameType srcType, NameType dstType, MappingsExportVerbosity verbosity, Set<Set<MethodInstance>> exportedHierarchies) {

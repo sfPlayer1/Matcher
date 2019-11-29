@@ -112,7 +112,7 @@ public final class MappingReader {
 			readTiny2(file, nsSource, nsTarget, mappingAcceptor);
 			break;
 		case ENIGMA:
-			EnigmaImpl.read(file, mappingAcceptor);
+			EnigmaImpl.read(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);
 			break;
 		case MCP:
 			readMcp(file, isReverseMapping(nsSource, nsTarget), mappingAcceptor);

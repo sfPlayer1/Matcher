@@ -101,7 +101,10 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 				}
 			}
 
-			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvIdx, asmIndex, type, startInsn, endInsn, 0, name, name == null || method.nameObfuscated || method.cls.nameObfuscated);
+			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvIdx, asmIndex,
+					type, startInsn, endInsn, 0,
+					name,
+					name == null || method.nameObfuscated || method.cls.nameObfuscated || !Util.isValidJavaIdentifier(name));
 			args[i] = arg;
 
 			method.classRefs.add(type);
@@ -164,7 +167,8 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 
 			ret[i] = new MethodVarInstance(method, false, i, var.index, asmNode.localVariables.indexOf(var),
 					method.getEnv().getCreateClassInstance(var.desc), startInsn, endInsn, startOpIdx,
-					var.name, method.nameObfuscated || method.cls.nameObfuscated);
+					var.name,
+					var.name == null || method.nameObfuscated || method.cls.nameObfuscated || !Util.isValidJavaIdentifier(var.name));
 		}
 
 		return ret;

@@ -291,21 +291,23 @@ public class Gui extends Application {
 	}
 
 	public void showAlert(AlertType type, String title, String headerText, String text) {
-		Alert alert = new Alert(type);
+		Alert alert = new Alert(type, text);
 
 		alert.setTitle(title);
 		alert.setHeaderText(headerText);
-		alert.setContentText(text);
+
+		Platform.runLater(() -> alert.getDialogPane().getScene().getWindow().sizeToScene()); // work around linux display bug  (JDK-8193502)
 
 		alert.showAndWait();
 	}
 
 	public boolean requestConfirmation(String title, String headerText, String text) {
-		Alert alert = new Alert(AlertType.CONFIRMATION);
+		Alert alert = new Alert(AlertType.CONFIRMATION, text);
 
 		alert.setTitle(title);
 		alert.setHeaderText(headerText);
-		alert.setContentText(text);
+
+		Platform.runLater(() -> alert.getDialogPane().getScene().getWindow().sizeToScene()); // work around linux display bug (JDK-8193502)
 
 		return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
 	}

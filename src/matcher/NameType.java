@@ -1,7 +1,7 @@
 package matcher;
 
 public enum NameType {
-	MAPPED_PLAIN, PLAIN, UID_PLAIN, TMP_PLAIN, LOCTMP_PLAIN, MAPPED_TMP_PLAIN, MAPPED_LOCTMP_PLAIN;
+	MAPPED, MAPPED_PLAIN, PLAIN, UID_PLAIN, TMP_PLAIN, LOCTMP_PLAIN, MAPPED_TMP_PLAIN, MAPPED_LOCTMP_PLAIN;
 
 	public NameType withMapped(boolean mapped) {
 		if (mapped) {

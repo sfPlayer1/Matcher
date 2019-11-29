@@ -107,7 +107,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 			ownerLabel.setText(getName(field.getCls(), nameType));
 			nameLabel.setText(field.getName());
 			tmpNameLabel.setText(field.hasLocalTmpName() ? field.getName(NameType.LOCTMP_PLAIN) : "-");
-			mappedNameLabel.setText(field.hasMappedName() ? field.getName(NameType.MAPPED_PLAIN) : "-");
+			mappedNameLabel.setText(field.hasMappedName() ? field.getName(NameType.MAPPED) : "-");
 			uidLabel.setText(field.getUid() >= 0 ? Integer.toString(field.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(field.isNameObfuscated()));
 			typeLabel.setText(getName(field.getType(), nameType));

@@ -99,7 +99,7 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 			methodLabel.setText(getName(var.getMethod(), nameType));
 			nameLabel.setText(var.getName());
 			tmpNameLabel.setText(var.hasLocalTmpName() ? var.getName(NameType.LOCTMP_PLAIN) : "-");
-			mappedNameLabel.setText(var.hasMappedName() ? var.getName(NameType.MAPPED_PLAIN) : "-");
+			mappedNameLabel.setText(var.hasMappedName() ? var.getName(NameType.MAPPED) : "-");
 			uidLabel.setText(var.getUid() >= 0 ? Integer.toString(var.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(var.isNameObfuscated()));
 			typeLabel.setText(getName(var.getType(), nameType));

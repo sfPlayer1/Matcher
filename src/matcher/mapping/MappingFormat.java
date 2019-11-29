@@ -4,7 +4,7 @@ public enum MappingFormat {
 	TINY("Tiny", "tiny", false, true, true, false, false, false),
 	TINY_GZIP("Tiny (gzipped)", "tiny.gz", true, true, true, false, false, false),
 	TINY_2("Tiny v2", "tiny", false, true, true, true, true, true),
-	ENIGMA("Enigma", null, false, true, false, false, true, false),
+	ENIGMA("Enigma", null, false, false, true, true, true, false),
 	MCP("MCP", null, false, false, false, true, true, false),
 	SRG("SRG", "srg", false, false, false, false, false, false),
 	TSRG("TSRG", "tsrg", false, false, false, false, false, false),

@@ -119,7 +119,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			ownerLabel.setText(getName(method.getCls(), nameType));
 			nameLabel.setText(method.getName());
 			tmpNameLabel.setText(method.hasLocalTmpName() ? method.getName(NameType.LOCTMP_PLAIN) : "-");
-			mappedNameLabel.setText(method.hasMappedName() ? method.getName(NameType.MAPPED_PLAIN) : "-");
+			mappedNameLabel.setText(method.hasMappedName() ? method.getName(NameType.MAPPED) : "-");
 			uidLabel.setText(method.getUid() >= 0 ? Integer.toString(method.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(method.isNameObfuscated()));
 			argLabel.setText(Arrays.stream(method.getArgs()).map(a -> getVarName(a, nameType)).collect(Collectors.joining("\n")));

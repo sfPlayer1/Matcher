@@ -47,7 +47,8 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 			if (uid >= 0) return getUidString();
 		}
 
-		boolean mapped = type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
+		boolean plain = type != NameType.MAPPED;
+		boolean mapped = type == NameType.MAPPED || type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
 		boolean tmp = type == NameType.MAPPED_TMP_PLAIN || type == NameType.TMP_PLAIN;
 		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
 		String ret;
@@ -68,8 +69,10 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		} else if ((tmp || locTmp) && tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
-		} else {
+		} else if (plain) {
 			ret = origName;
+		} else {
+			ret = null;
 		}
 
 		return ret;

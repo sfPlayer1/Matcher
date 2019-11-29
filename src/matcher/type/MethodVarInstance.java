@@ -80,7 +80,8 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 			if (uid >= 0) return (isArg ? env.argUidPrefix : env.varUidPrefix)+uid;
 		}
 
-		boolean mapped = type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
+		boolean plain = type != NameType.MAPPED;
+		boolean mapped = type == NameType.MAPPED || type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
 		boolean tmp = type == NameType.MAPPED_TMP_PLAIN || type == NameType.TMP_PLAIN;
 		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
 		String ret;
@@ -91,7 +92,7 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		} else if (mapped && matchedInstance != null && matchedInstance.mappedName != null) {
 			// MAPPED_*, remote name available
 			ret = matchedInstance.mappedName;
-		} else if (mapped && !nameObfuscated) {
+		} else if (mapped && !nameObfuscated && hasValidOrigName()) {
 			// MAPPED_*, local deobf
 			ret = origName;
 		} else if (mapped && matchedInstance != null && !matchedInstance.nameObfuscated) {
@@ -103,8 +104,10 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		} else if ((tmp || locTmp) && tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
-		} else {
+		} else if (plain) {
 			ret = hasValidOrigName() ? origName : getTypedId();
+		} else {
+			ret = null;
 		}
 
 		return ret;
