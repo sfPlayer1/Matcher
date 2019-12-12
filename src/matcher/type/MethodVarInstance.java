@@ -1,6 +1,7 @@
 package matcher.type;
 
 import matcher.NameType;
+import matcher.SimilarityChecker;
 import matcher.Util;
 
 public class MethodVarInstance implements Matchable<MethodVarInstance> {
@@ -206,6 +207,13 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	@Override
 	public boolean isFullyMatched(boolean recursive) {
 		return matchedInstance != null;
+	}
+
+	@Override
+	public float getSimilarity() {
+		if (matchedInstance == null) return 0;
+
+		return SimilarityChecker.compare(this, matchedInstance);
 	}
 
 	@Override

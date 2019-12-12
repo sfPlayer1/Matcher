@@ -181,6 +181,20 @@ public class Gui extends Application {
 		}
 	}
 
+	public boolean isUseDiffColors() {
+		return useDiffColors;
+	}
+
+	public void setUseDiffColors(boolean useDiffColors) {
+		if (this.useDiffColors == useDiffColors) return;
+
+		this.useDiffColors = useDiffColors;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange();
+		}
+	}
+
 	public NameType getNameType() {
 		return nameType;
 	}
@@ -380,7 +394,7 @@ public class Gui extends Application {
 	}
 
 	public enum SortKey {
-		Name, MappedName, MatchStatus;
+		Name, MappedName, MatchStatus, Similarity;
 	}
 
 	public static final List<Consumer<Gui>> loadListeners = new ArrayList<>();
@@ -402,6 +416,7 @@ public class Gui extends Application {
 	private boolean sortMatchesAlphabetically;
 	private boolean useClassTreeView;
 	private boolean showNonInputs;
+	private boolean useDiffColors;
 
 	private NameType nameType = NameType.MAPPED_PLAIN;
 	private BuiltinDecompiler decompiler = BuiltinDecompiler.CFR;

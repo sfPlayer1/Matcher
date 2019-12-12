@@ -25,5 +25,6 @@ public interface Matchable<T> {
 
 	T getMatch();
 	boolean isFullyMatched(boolean recursive);
+	float getSimilarity();
 	boolean isNameObfuscated();
 }

@@ -20,6 +20,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 
 import matcher.NameType;
+import matcher.SimilarityChecker;
 import matcher.Util;
 import matcher.bcremap.AsmClassRemapper;
 import matcher.bcremap.AsmRemapper;
@@ -295,6 +296,13 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		}
 
 		return true;
+	}
+
+	@Override
+	public float getSimilarity() {
+		if (matchedClass == null) return 0;
+
+		return SimilarityChecker.compare(this, matchedClass);
 	}
 
 	@Override

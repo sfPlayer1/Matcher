@@ -174,13 +174,50 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private String getCellStyle(Matchable<?> item) {
-		if (item.getMatch() == null) {
-			return "-fx-text-fill: darkred;";
-		} else if (!item.isFullyMatched(false)) { // TODO: change recursive to true once arg+var matching is further implemented
-			return "-fx-text-fill: chocolate;";
+		if (gui.isUseDiffColors()) {
+			final float epsilon = 1e-5f;
+			float similarity = item.getSimilarity();
+
+			if (similarity < epsilon) {
+				return "-fx-text-fill: darkred;";
+			} else if (similarity > 1 - epsilon) {
+				return "-fx-text-fill: darkgreen;";
+			} else {
+				final float hue0 = 30; // red, darkred=0
+				final float hue1 = 90; // green, darkgreen=120
+				final float saturation = 0.8f; // darkred=darkgreen=1
+				final float value0 = 0.645f; // darkred=0.545
+				final float value1 = 0.492f; // darkgreen=0.392
+
+				float f0 = 1 - similarity;
+				float f1 = similarity;
+				float h = hue0 * f0 + hue1 * f1;
+				float v = value0 * f0 + value1 * f1;
+
+				float vs = v * saturation;
+				float h6 = h * (1f / 60);
+
+				float red = hsvToRgb(v, vs, h6, 5);
+				float green = hsvToRgb(v, vs, h6, 3);
+				float blue = hsvToRgb(v, vs, h6, 1);
+
+				return String.format("-fx-text-fill: #%02x%02x%02x", (int) (red * 255), (int) (green * 255), (int) (blue * 255));
+			}
 		} else {
-			return "-fx-text-fill: darkgreen;";
+			if (item.getMatch() == null) {
+				return "-fx-text-fill: darkred;";
+			} else if (!item.isFullyMatched(false)) { // TODO: change recursive to true once arg+var matching is further implemented
+				return "-fx-text-fill: chocolate;";
+			} else {
+				return "-fx-text-fill: darkgreen;";
+			}
 		}
+	}
+
+	private static float hsvToRgb(float v, float vs, float h6, int n) {
+		float k = (n + h6) % 6;
+
+		return v - vs * Math.max(Math.min(Math.min(k, 4-k), 1), 0);
 	}
 
 	@Override
@@ -419,6 +456,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			return Comparator.comparing(this::getMappedName, clsNameComparator);
 		case MatchStatus:
 			return ((Comparator<ClassInstance>) matchStatusComparator).thenComparing(this::getName, clsNameComparator);
+		case Similarity:
+			return ((Comparator<ClassInstance>) similarityComparator).thenComparing(this::getName, clsNameComparator);
 		}
 
 		throw new IllegalStateException("unhandled sort key: "+gui.getSortKey());
@@ -433,6 +472,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			return memberTypeComparator.thenComparing(this::getMappedName, clsNameComparator);
 		case MatchStatus:
 			return ((Comparator<MemberInstance<?>>) matchStatusComparator).thenComparing(memberTypeComparator).thenComparing(this::getName, clsNameComparator);
+		case Similarity:
+			return ((Comparator<MemberInstance<?>>) similarityComparator).thenComparing(memberTypeComparator).thenComparing(this::getName, clsNameComparator);
 		}
 
 		throw new IllegalStateException("unhandled sort key: "+gui.getSortKey());
@@ -447,6 +488,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			return varTypeComparator.thenComparing(this::getMappedName, clsNameComparator);
 		case MatchStatus:
 			return ((Comparator<MethodVarInstance>) matchStatusComparator).thenComparing(varTypeComparator).thenComparing(this::getName, clsNameComparator);
+		case Similarity:
+			return ((Comparator<MethodVarInstance>) similarityComparator).thenComparing(varTypeComparator).thenComparing(this::getName, clsNameComparator);
 		}
 
 		throw new IllegalStateException("unhandled sort key: "+gui.getSortKey());
@@ -480,7 +523,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 	@Override
 	public void onMatchChange(Set<MatchType> types) {
-		if (gui.getSortKey() == SortKey.MatchStatus) {
+		if (gui.getSortKey() == SortKey.MatchStatus || gui.getSortKey() == SortKey.Similarity) {
 			updateLists(false, true);
 		} else if (types.contains(MatchType.Class)) {
 			updateLists(false, false);
@@ -543,6 +586,10 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		}
 
 		return 0;
+	};
+
+	private static final Comparator<? extends Matchable<?>> similarityComparator = (a, b) -> {
+		return Float.compare(a.getSimilarity(), b.getSimilarity());
 	};
 
 	private static final Comparator<String> clsNameComparator = Util::compareNatural;

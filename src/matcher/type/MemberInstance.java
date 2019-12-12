@@ -7,6 +7,7 @@ import java.util.Set;
 import org.objectweb.asm.Opcodes;
 
 import matcher.NameType;
+import matcher.SimilarityChecker;
 import matcher.Util;
 
 public abstract class MemberInstance<T extends MemberInstance<T>> implements Matchable<T> {
@@ -274,6 +275,13 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		assert match == null || cls == match.cls.getMatch();
 
 		this.matchedInstance = match;
+	}
+
+	@Override
+	public float getSimilarity() {
+		if (matchedInstance == null) return 0;
+
+		return SimilarityChecker.compare(this, matchedInstance);
 	}
 
 	@Override

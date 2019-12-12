@@ -37,6 +37,11 @@ public class ViewMenu extends Menu {
 		radioMenuItem.setUserData(SortKey.MatchStatus);
 		getItems().add(radioMenuItem);
 
+		radioMenuItem = new RadioMenuItem("Sort by similarity");
+		radioMenuItem.setToggleGroup(toggleGroup);
+		radioMenuItem.setUserData(SortKey.Similarity);
+		getItems().add(radioMenuItem);
+
 		for (Toggle toggle : toggleGroup.getToggles()) {
 			if (toggle.getUserData() == gui.getSortKey()) {
 				toggleGroup.selectToggle(toggle);
@@ -75,6 +80,13 @@ public class ViewMenu extends Menu {
 		checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withTmp(false));
 		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
 			if (newValue != null) gui.setNameType(gui.getNameType().withTmp(newValue));
+		});
+		getItems().add(checkMenuItem);
+
+		checkMenuItem = new CheckMenuItem("Use diff colors");
+		checkMenuItem.setSelected(gui.isUseDiffColors());
+		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setUseDiffColors(newValue);
 		});
 		getItems().add(checkMenuItem);
 
