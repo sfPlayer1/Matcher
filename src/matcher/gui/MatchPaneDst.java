@@ -424,6 +424,11 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			case "not":
 				opTypeA = OP_TYPE_BOOL;
 				break;
+			case "startswith":
+			case "endswith":
+			case "contains":
+				opTypeA =  opTypeB = OP_TYPE_STRING;
+				break;
 			default:
 				if (part.length() >= 2 && part.charAt(0) == '"' && part.charAt(part.length() - 1) == '"') {
 					part = part.substring(0, part.length() - 1);
@@ -524,6 +529,16 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				break;
 			case "not":
 				stack.add(!((Boolean) opA));
+				break;
+			case "startswith":
+				stack.add(((String) opA).startsWith((String) opB));
+				break;
+			case "endswith":
+				stack.add(((String) opA).endsWith((String) opB));
+				break;
+			case "contains":
+				stack.add(((String) opA).contains((String) opB));
+				break;
 			}
 		}
 
