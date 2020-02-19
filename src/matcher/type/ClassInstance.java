@@ -835,7 +835,13 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public String getMappedComment() {
-		return mappedComment;
+		if (mappedComment != null) {
+			return mappedComment;
+		} else if (matchedClass != null) {
+			return matchedClass.mappedComment;
+		} else {
+			return null;
+		}
 	}
 
 	public void setMappedComment(String comment) {
