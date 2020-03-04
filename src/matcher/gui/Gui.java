@@ -79,7 +79,7 @@ public class Gui extends Application {
 		components.add(bottomPane);
 		border.add(bottomPane, 0, 2, 2, 1);
 
-		scene = new Scene(border);
+		scene = new Scene(border, 1400, 800);
 		Shortcuts.init(this);
 
 		for (Consumer<Gui> l : loadListeners) {
