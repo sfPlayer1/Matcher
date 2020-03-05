@@ -594,7 +594,6 @@ public class ClassifierUtil {
 				i--;
 			} else if (j > 0 && v[i + (j - 1) * size] + 1 == c) {
 				//System.out.println(i+"/"+j+" ins "+elementRetriever.apply(listB, j - 1));
-				ret[i - 1] = -1;
 				j--;
 			} else if (i > 0 && j > 0) {
 				int dist = c - v[i - 1 + (j - 1) * size];
