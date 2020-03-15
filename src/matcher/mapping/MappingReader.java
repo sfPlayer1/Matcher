@@ -933,7 +933,7 @@ public final class MappingReader {
 		}
 	}
 
-	private static String mapDesc(String desc, Map<String, String> clsMap) {
+	static String mapDesc(String desc, Map<String, String> clsMap) {
 		return mapDesc(desc, 0, desc.length(), clsMap);
 	}
 

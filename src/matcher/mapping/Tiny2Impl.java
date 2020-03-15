@@ -4,11 +4,14 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,11 +55,56 @@ class Tiny2Impl {
 
 		int nsA = namespaces.indexOf(nsSource); // non-0 would have to handle desc in foreign namespace
 		if (nsA < 0) throw new IOException("missing source namespace: "+nsSource);
-		if (nsA != 0) throw new UnsupportedOperationException(); // TODO: implement remapping of owner+desc
 		int nsB = namespaces.indexOf(nsTarget);
 		if (nsB < 0) throw new IOException("missing target namespace: "+nsTarget);
 
-		int partCountHint = 2 + nsCount; // suitable for members, which should be the majority
+		Map<String, String> classMap;
+
+		if (nsA == 0) {
+			classMap = null;
+		} else { // need to remap descs from ns 0 to ns A -> do initial extra pass to read the class map
+			classMap = new HashMap<String, String>();
+
+			int classPartCount = 1 + nsCount;
+			StringWriter inputCopy = new StringWriter(8192);
+			boolean inHeader = true;
+			boolean escapedNames = false;
+			String line;
+
+			while ((line = reader.readLine()) != null) {
+				inputCopy.append(line);
+				inputCopy.append('\n');
+
+				if (line.isEmpty()) continue;
+
+				if (inHeader) {
+					if (line.startsWith("\t")) {
+						if (line.equals("\tescaped-names")) {
+							escapedNames = true;
+						}
+
+						continue; // still in header
+					} else {
+						inHeader = false;
+					}
+				}
+
+				if (line.startsWith("c\t")) {
+					parts = splitAtTab(line, 0, classPartCount);
+
+					String className = unescapeOpt(parts[1 + nsA], escapedNames);
+
+					if (!className.isEmpty()) {
+						classMap.put(unescapeOpt(parts[1], escapedNames), className);
+					}
+				}
+			}
+
+			reader = new BufferedReader(new StringReader(inputCopy.toString()));
+		}
+
+		final int partCountHint = 2 + nsCount; // suitable for members, which should be the majority
+
 		int lineNumber = 1;
 
 		boolean inHeader = true;
@@ -97,7 +145,11 @@ class Tiny2Impl {
 
 					className = unescapeOpt(parts[1 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[1 + nsB], escapedNames);
-					if (!mappedName.isEmpty()) mappingAcceptor.acceptClass(className, mappedName, true);
+
+					if (!className.isEmpty() && !mappedName.isEmpty()) {
+						mappingAcceptor.acceptClass(className, mappedName, true);
+					}
+
 					inClass = true;
 				}
 			} else if (indent == 1) {
@@ -112,14 +164,21 @@ class Tiny2Impl {
 					if (parts.length != nsCount + 2) throw new IOException("invalid "+(isMethod ? "method" : "field")+" decl in line "+lineNumber);
 
 					memberDesc = unescapeOpt(parts[1], escapedNames);
+					if (classMap != null) memberDesc = MappingReader.mapDesc(memberDesc, classMap);
 					memberName = unescapeOpt(parts[2 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[2 + nsB], escapedNames);
 
+					if (!className.isEmpty() && !memberName.isEmpty() && !mappedName.isEmpty()) {
+						if (isMethod) {
+							mappingAcceptor.acceptMethod(className, memberName, memberDesc, null, mappedName, null);
+						} else {
+							mappingAcceptor.acceptField(className, memberName, memberDesc, null, mappedName, null);
+						}
+					}
+
 					if (isMethod) {
-						if (!mappedName.isEmpty()) mappingAcceptor.acceptMethod(className, memberName, memberDesc, null, mappedName, null);
 						inMethod = true;
 					} else {
-						if (!mappedName.isEmpty()) mappingAcceptor.acceptField(className, memberName, memberDesc, null, mappedName, null);
 						inField = true;
 					}
 				} else if (inClass && section.equals("c")) { // class comment: c <comment>
@@ -134,7 +193,11 @@ class Tiny2Impl {
 
 					varLvIndex = Integer.parseInt(parts[1]);
 					String mappedName = unescapeOpt(parts[2 + nsB], escapedNames);
-					if (!mappedName.isEmpty()) mappingAcceptor.acceptMethodArg(className, memberName, memberDesc, -1, varLvIndex, null, mappedName);
+
+					if (!className.isEmpty() && !memberName.isEmpty() && !mappedName.isEmpty()) {
+						mappingAcceptor.acceptMethodArg(className, memberName, memberDesc, -1, varLvIndex, null, mappedName);
+					}
+
 					inMethodParam = true;
 				} else if (inMethod && section.equals("v")) { // method variable: v <lv-index> <lv-start-offset> <optional-lvt-index> <names>...
 					if (parts.length != nsCount + 4) throw new IOException("invalid method variable decl in line "+lineNumber);
@@ -143,16 +206,22 @@ class Tiny2Impl {
 					varStartOpIdx = Integer.parseInt(parts[2]);
 					varLvtIndex = Integer.parseInt(parts[3]);
 					String mappedName = unescapeOpt(parts[4 + nsB], escapedNames);
-					if (!mappedName.isEmpty()) mappingAcceptor.acceptMethodVar(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, null, mappedName);
+
+					if (!className.isEmpty() && !memberName.isEmpty() && !mappedName.isEmpty()) {
+						mappingAcceptor.acceptMethodVar(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, null, mappedName);
+					}
+
 					inMethodVar = true;
 				} else if ((inMethod || inField) && section.equals("c")) { // method/field comment: c <comment>
 					if (parts.length != 2) throw new IOException("invalid member comment in line "+lineNumber);
 					String comment = unescape(parts[1]);
 
-					if (inMethod) {
-						mappingAcceptor.acceptMethodComment(className, memberName, memberDesc, comment);
-					} else {
-						mappingAcceptor.acceptFieldComment(className, memberName, memberDesc, comment);
+					if (!className.isEmpty() && !memberName.isEmpty()) {
+						if (inMethod) {
+							mappingAcceptor.acceptMethodComment(className, memberName, memberDesc, comment);
+						} else {
+							mappingAcceptor.acceptFieldComment(className, memberName, memberDesc, comment);
+						}
 					}
 				}
 			} else if (indent == 3) {
@@ -160,10 +229,12 @@ class Tiny2Impl {
 					if (parts.length != 2) throw new IOException("invalid method var comment in line "+lineNumber);
 					String comment = unescape(parts[1]);
 
-					if (inMethodParam) {
-						mappingAcceptor.acceptMethodArgComment(className, memberName, memberDesc, -1, varLvIndex, comment);
-					} else {
-						mappingAcceptor.acceptMethodVarComment(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, comment);
+					if (!className.isEmpty() && !memberName.isEmpty()) {
+						if (inMethodParam) {
+							mappingAcceptor.acceptMethodArgComment(className, memberName, memberDesc, -1, varLvIndex, comment);
+						} else {
+							mappingAcceptor.acceptMethodVarComment(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, comment);
+						}
 					}
 				}
 			}
