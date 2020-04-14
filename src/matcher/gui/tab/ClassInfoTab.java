@@ -42,6 +42,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Name", nameLabel, grid, row);
 		row = addRow("Tmp name", tmpNameLabel, grid, row);
 		row = addRow("Mapped name", mappedNameLabel, grid, row);
+		row = addRow("AUX name", auxNameLabel, grid, row);
 		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Access", accessLabel, grid, row);
@@ -90,6 +91,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText("-");
 			tmpNameLabel.setText("-");
 			mappedNameLabel.setText("-");
+			auxNameLabel.setText("-");
 			uidLabel.setText("-");
 			nameObfLabel.setText("-");
 			accessLabel.setText("-");
@@ -108,6 +110,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText(cls.getName());
 			tmpNameLabel.setText(cls.hasLocalTmpName() ? cls.getName(NameType.LOCTMP_PLAIN) : "-");
 			mappedNameLabel.setText(cls.hasMappedName() ? cls.getName(NameType.MAPPED) : "-");
+			auxNameLabel.setText(cls.hasAuxName() ? cls.getName(NameType.AUX) : "-");
 			uidLabel.setText(cls.getUid() >= 0 ? Integer.toString(cls.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(cls.isNameObfuscated()));
 			accessLabel.setText(Util.formatAccessFlags(cls.getAccess(), AFElementType.Class));
@@ -157,6 +160,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 	private final Label nameLabel = new Label();
 	private final Label tmpNameLabel = new Label();
 	private final Label mappedNameLabel = new Label();
+	private final Label auxNameLabel = new Label();
 	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
 	private final Label accessLabel = new Label();

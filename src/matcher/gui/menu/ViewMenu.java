@@ -76,6 +76,13 @@ public class ViewMenu extends Menu {
 		});
 		getItems().add(checkMenuItem);
 
+		checkMenuItem = new CheckMenuItem("Use aux names");
+		checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withAux(false));
+		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setNameType(gui.getNameType().withAux(newValue));
+		});
+		getItems().add(checkMenuItem);
+
 		checkMenuItem = new CheckMenuItem("Use tmp names");
 		checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withTmp(false));
 		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {

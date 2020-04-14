@@ -66,6 +66,11 @@ public class MappingWriter implements MappingAcceptor, Closeable {
 		case MAPPED_LOCTMP_PLAIN:
 		case MAPPED_TMP_PLAIN:
 			return "named-tmp";
+		case AUX:
+		case AUX_PLAIN:
+			return "aux";
+		case MAPPED_AUX_PLAIN:
+			return "named-aux";
 		default: throw new IllegalArgumentException();
 		}
 	}

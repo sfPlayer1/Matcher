@@ -20,7 +20,11 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class Mappings {
-	public static void load(Path path, MappingFormat format, String nsSource, String nsTarget, LocalClassEnv env, final boolean isNames, final boolean replace) throws IOException {
+	public static void load(Path path, MappingFormat format,
+			String nsSource, String nsTarget,
+			MappingField fieldSource, MappingField fieldTarget,
+			LocalClassEnv env, final boolean replace) throws IOException {
+		assert fieldTarget != MappingField.PLAIN;
 		int[] counts = new int[7];
 		Set<String> warnedClasses = new HashSet<>();
 
@@ -28,12 +32,13 @@ public class Mappings {
 			MappingReader.read(path, format, nsSource, nsTarget, new MappingAcceptor() {
 				@Override
 				public void acceptClass(String srcName, String dstName, boolean includesOuterNames) {
-					ClassInstance cls = env.getLocalClsByName(srcName);
+					ClassInstance cls = findClass(srcName, fieldSource, env);
 
 					if (cls == null) {
 						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName+" ("+dstName+")");
 					} else {
-						if (isNames) {
+						switch (fieldTarget) {
+						case MAPPED:
 							if (!cls.hasMappedName() || replace) {
 								if (ClassInstance.hasOuterName(dstName)) {
 									if (!includesOuterNames) {
@@ -45,7 +50,23 @@ public class Mappings {
 
 								cls.setMappedName(dstName);
 							}
-						} else {
+
+							break;
+						case AUX:
+							if (!cls.hasAuxName() || replace) {
+								if (ClassInstance.hasOuterName(dstName)) {
+									if (!includesOuterNames) {
+										System.out.println("Ignoring extra outer name parts for "+dstName);
+									}
+
+									dstName = ClassInstance.getInnerName(dstName);
+								}
+
+								cls.setAuxName(dstName);
+							}
+
+							break;
+						case UID:
 							String prefix = env.getGlobal().classUidPrefix;
 
 							if (!dstName.startsWith(prefix)) {
@@ -81,6 +102,10 @@ public class Mappings {
 									cls.setUid(uid);
 								}
 							}
+
+							break;
+						default:
+							throw new IllegalArgumentException();
 						}
 
 						counts[0]++;
@@ -89,7 +114,7 @@ public class Mappings {
 
 				@Override
 				public void acceptClassComment(String srcName, String comment) {
-					ClassInstance cls = env.getLocalClsByName(srcName);
+					ClassInstance cls = findClass(srcName, fieldSource, env);
 
 					if (cls == null) {
 						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName);
@@ -101,23 +126,34 @@ public class Mappings {
 
 				@Override
 				public void acceptMethod(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
-					ClassInstance cls = env.getLocalClsByName(srcClsName);
+					ClassInstance cls = findClass(srcClsName, fieldSource, env);
 					MethodInstance method;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
+					} else if ((method = cls.getMethod(srcName, srcDesc, fieldSource.type)) == null || !method.isReal()) {
 						System.out.printf("can't find mapped method %s/%s%s (%s%s)%n",
 								srcClsName, srcName, srcDesc,
 								(cls.hasMappedName() ? cls.getName(NameType.MAPPED)+"/" : ""), dstName);
 					} else {
-						if (isNames) {
+						switch (fieldTarget) {
+						case MAPPED:
 							if (!method.hasMappedName() || replace) {
 								for (MethodInstance m : method.getAllHierarchyMembers()) {
 									m.setMappedName(dstName);
 								}
 							}
-						} else {
+
+							break;
+						case AUX:
+							if (!method.hasAuxName() || replace) {
+								for (MethodInstance m : method.getAllHierarchyMembers()) {
+									m.setAuxName(dstName);
+								}
+							}
+
+							break;
+						case UID:
 							String prefix = env.getGlobal().methodUidPrefix;
 
 							if (!dstName.startsWith(prefix)) {
@@ -135,6 +171,10 @@ public class Mappings {
 									}
 								}
 							}
+
+							break;
+						default:
+							throw new IllegalArgumentException();
 						}
 
 						counts[2]++;
@@ -143,12 +183,12 @@ public class Mappings {
 
 				@Override
 				public void acceptMethodComment(String srcClsName, String srcName, String srcDesc, String comment) {
-					ClassInstance cls = env.getLocalClsByName(srcClsName);
+					ClassInstance cls = findClass(srcClsName, fieldSource, env);
 					MethodInstance method;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
+					} else if ((method = cls.getMethod(srcName, srcDesc, fieldSource.type)) == null || !method.isReal()) {
 						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
 					} else {
 						if (method.getMappedComment() == null || replace) method.setMappedComment(comment);
@@ -162,10 +202,18 @@ public class Mappings {
 					MethodVarInstance arg = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, argIndex, lvIndex, -1, -1, true);
 
 					if (arg != null) {
-						if (isNames) {
+						switch (fieldTarget) {
+						case MAPPED:
 							if (!arg.hasMappedName() || replace) arg.setMappedName(dstArgName);
-						} else {
+							break;
+						case AUX:
+							if (!arg.hasAuxName() || replace) arg.setAuxName(dstArgName);
+							break;
+						case UID:
 							// not applicable
+							break;
+						default:
+							throw new IllegalArgumentException();
 						}
 
 						counts[4]++;
@@ -178,11 +226,7 @@ public class Mappings {
 					MethodVarInstance arg = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, argIndex, lvIndex, -1, -1, true);
 
 					if (arg != null) {
-						if (isNames) {
-							if (arg.getMappedComment() == null || replace) arg.setMappedComment(comment);
-						} else {
-							// not applicable
-						}
+						if (arg.getMappedComment() == null || replace) arg.setMappedComment(comment);
 
 						//counts[4]++;
 					}
@@ -194,10 +238,18 @@ public class Mappings {
 					MethodVarInstance var = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, varIndex, lvIndex, startOpIdx, asmIndex, false);
 
 					if (var != null) {
-						if (isNames) {
+						switch (fieldTarget) {
+						case MAPPED:
 							if (!var.hasMappedName() || replace) var.setMappedName(dstVarName);
-						} else {
+							break;
+						case AUX:
+							if (!var.hasAuxName() || replace) var.setAuxName(dstVarName);
+							break;
+						case UID:
 							// not applicable
+							break;
+						default:
+							throw new IllegalArgumentException();
 						}
 
 						counts[4]++;
@@ -210,11 +262,7 @@ public class Mappings {
 					MethodVarInstance var = getMethodVar(srcClsName, srcMethodName, srcMethodDesc, varIndex, lvIndex, startOpIdx, asmIndex, false);
 
 					if (var != null) {
-						if (isNames) {
-							if (var.getMappedComment() == null || replace) var.setMappedComment(comment);
-						} else {
-							// not applicable
-						}
+						if (var.getMappedComment() == null || replace) var.setMappedComment(comment);
 
 						//counts[4]++;
 					}
@@ -222,12 +270,12 @@ public class Mappings {
 
 				private MethodVarInstance getMethodVar(String srcClsName, String srcName, String srcDesc,
 						int varIndex, int lvIndex, int startOpIdx, int asmIndex, boolean isArg) {
-					ClassInstance cls = env.getLocalClsByName(srcClsName);
+					ClassInstance cls = findClass(srcClsName, fieldSource, env);
 					MethodInstance method;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-					} else if ((method = cls.getMethod(srcName, srcDesc)) == null || !method.isReal()) {
+					} else if ((method = cls.getMethod(srcName, srcDesc, fieldSource.type)) == null || !method.isReal()) {
 						System.out.println("can't find mapped method "+srcClsName+"/"+srcName);
 					} else if (varIndex < -1 || varIndex >= (isArg ? method.getArgs() : method.getVars()).length) {
 						System.out.println("invalid var index "+varIndex+" for method "+method);
@@ -277,21 +325,32 @@ public class Mappings {
 
 				@Override
 				public void acceptField(String srcClsName, String srcName, String srcDesc, String dstClsName, String dstName, String dstDesc) {
-					ClassInstance cls = env.getLocalClsByName(srcClsName);
+					ClassInstance cls = findClass(srcClsName, fieldSource, env);
 					FieldInstance field;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
+					} else if ((field = cls.getField(srcName, srcDesc, fieldSource.type)) == null || !field.isReal()) {
 						System.out.println("can't find mapped field "+srcClsName+"/"+srcName+" ("+(cls.hasMappedName() ? cls.getName(NameType.MAPPED)+"/" : "")+dstName+")");
 					} else {
-						if (isNames) {
+						switch (fieldTarget) {
+						case MAPPED:
 							if (!field.hasMappedName() || replace) {
 								for (FieldInstance f : field.getAllHierarchyMembers()) {
 									f.setMappedName(dstName);
 								}
 							}
-						} else {
+
+							break;
+						case AUX:
+							if (!field.hasAuxName() || replace) {
+								for (FieldInstance f : field.getAllHierarchyMembers()) {
+									f.setAuxName(dstName);
+								}
+							}
+
+							break;
+						case UID:
 							String prefix = env.getGlobal().fieldUidPrefix;
 
 							if (!dstName.startsWith(prefix)) {
@@ -309,6 +368,10 @@ public class Mappings {
 									}
 								}
 							}
+
+							break;
+						default:
+							throw new IllegalArgumentException();
 						}
 
 						counts[5]++;
@@ -317,12 +380,12 @@ public class Mappings {
 
 				@Override
 				public void acceptFieldComment(String srcClsName, String srcName, String srcDesc, String comment) {
-					ClassInstance cls = env.getLocalClsByName(srcClsName);
+					ClassInstance cls = findClass(srcClsName, fieldSource, env);
 					FieldInstance field;
 
 					if (cls == null) {
 						if (warnedClasses.add(srcClsName)) System.out.println("can't find mapped class "+srcClsName);
-					} else if ((field = cls.getField(srcName, srcDesc)) == null || !field.isReal()) {
+					} else if ((field = cls.getField(srcName, srcDesc, fieldSource.type)) == null || !field.isReal()) {
 						System.out.println("can't find mapped field "+srcClsName+"/"+srcName);
 					} else {
 						if (field.getMappedComment() == null || replace) field.setMappedComment(comment);
@@ -332,7 +395,7 @@ public class Mappings {
 
 				@Override
 				public void acceptMeta(String key, String value) {
-					if (!isNames) {
+					if (fieldTarget == MappingField.UID) {
 						switch (key) {
 						case Mappings.metaUidNextClass: {
 							int val = Integer.parseInt(value);
@@ -360,6 +423,21 @@ public class Mappings {
 
 		System.out.printf("Loaded mappings for %d classes, %d methods (%d args) and %d fields (comments: %d/%d/%d).%n",
 				counts[0], counts[2], counts[4], counts[5], counts[1], counts[3], counts[6]);
+	}
+
+	private static ClassInstance findClass(String name, MappingField type, LocalClassEnv env) {
+		switch (type) {
+		case PLAIN:
+			return env.getLocalClsByName(name);
+		case MAPPED:
+		case AUX:
+		case UID:
+			ClassInstance ret = env.getClsByName(name, type.type);
+
+			return ret != null && !ret.isShared() ? ret : null;
+		default:
+			throw new IllegalArgumentException();
+		}
 	}
 
 	private static int findVarIndexByLv(MethodVarInstance[] vars, int lvIndex, int startOpcodeIdx) {

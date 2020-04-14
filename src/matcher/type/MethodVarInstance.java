@@ -81,31 +81,32 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 			if (uid >= 0) return (isArg ? env.argUidPrefix : env.varUidPrefix)+uid;
 		}
 
-		boolean plain = type != NameType.MAPPED;
-		boolean mapped = type == NameType.MAPPED || type == NameType.MAPPED_PLAIN || type == NameType.MAPPED_TMP_PLAIN || type == NameType.MAPPED_LOCTMP_PLAIN;
-		boolean tmp = type == NameType.MAPPED_TMP_PLAIN || type == NameType.TMP_PLAIN;
 		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
 		String ret;
 
-		if (mapped && mappedName != null) {
+		if (type.mapped && mappedName != null) {
 			// MAPPED_*, local name available
 			ret = mappedName;
-		} else if (mapped && matchedInstance != null && matchedInstance.mappedName != null) {
+		} else if (type.mapped && matchedInstance != null && matchedInstance.mappedName != null) {
 			// MAPPED_*, remote name available
 			ret = matchedInstance.mappedName;
-		} else if (mapped && !nameObfuscated && hasValidOrigName()) {
+		} else if (type.mapped && !nameObfuscated && hasValidOrigName()) {
 			// MAPPED_*, local deobf
 			ret = origName;
-		} else if (mapped && matchedInstance != null && !matchedInstance.nameObfuscated) {
+		} else if (type.mapped && matchedInstance != null && !matchedInstance.nameObfuscated) {
 			// MAPPED_*, remote deobf
 			ret = matchedInstance.origName;
-		} else if (tmp && matchedInstance != null && matchedInstance.tmpName != null) {
+		} else if (type.aux && auxName != null) {
+			ret = auxName;
+		} else if (type.aux && matchedInstance != null && matchedInstance.auxName != null) {
+			ret = matchedInstance.auxName;
+		} else if (type.tmp && matchedInstance != null && matchedInstance.tmpName != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
 			ret = matchedInstance.tmpName;
-		} else if ((tmp || locTmp) && tmpName != null) {
+		} else if ((type.tmp || locTmp) && tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
-		} else if (plain) {
+		} else if (type.plain) {
 			ret = hasValidOrigName() ? origName : getTypedId();
 		} else {
 			ret = null;
@@ -194,6 +195,15 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	}
 
 	@Override
+	public boolean hasAuxName() {
+		return auxName != null;
+	}
+
+	public void setAuxName(String name) {
+		this.auxName = name;
+	}
+
+	@Override
 	public MethodVarInstance getMatch() {
 		return matchedInstance;
 	}
@@ -238,5 +248,8 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 
 	private String mappedName;
 	String mappedComment;
+
+	String auxName;
+
 	private MethodVarInstance matchedInstance;
 }

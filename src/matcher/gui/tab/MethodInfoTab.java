@@ -48,6 +48,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Name", nameLabel, grid, row);
 		row = addRow("Tmp name", tmpNameLabel, grid, row);
 		row = addRow("Mapped name", mappedNameLabel, grid, row);
+		row = addRow("AUX name", auxNameLabel, grid, row);
 		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Args", argLabel, grid, row);
@@ -99,6 +100,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText("-");
 			tmpNameLabel.setText("-");
 			mappedNameLabel.setText("-");
+			auxNameLabel.setText("-");
 			uidLabel.setText("-");
 			nameObfLabel.setText("-");
 			argLabel.setText("-");
@@ -120,6 +122,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText(method.getName());
 			tmpNameLabel.setText(method.hasLocalTmpName() ? method.getName(NameType.LOCTMP_PLAIN) : "-");
 			mappedNameLabel.setText(method.hasMappedName() ? method.getName(NameType.MAPPED) : "-");
+			auxNameLabel.setText(method.hasAuxName() ? method.getName(NameType.AUX) : "-");
 			uidLabel.setText(method.getUid() >= 0 ? Integer.toString(method.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(method.isNameObfuscated()));
 			argLabel.setText(Arrays.stream(method.getArgs()).map(a -> getVarName(a, nameType)).collect(Collectors.joining("\n")));
@@ -159,6 +162,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 	private final Label nameLabel = new Label();
 	private final Label tmpNameLabel = new Label();
 	private final Label mappedNameLabel = new Label();
+	private final Label auxNameLabel = new Label();
 	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
 	private final Label argLabel = new Label();

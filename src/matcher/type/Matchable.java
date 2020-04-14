@@ -13,6 +13,7 @@ public interface Matchable<T> {
 
 	boolean hasMappedName();
 	boolean hasLocalTmpName();
+	boolean hasAuxName();
 
 	Matchable<?> getOwner();
 	ClassEnv getEnv();

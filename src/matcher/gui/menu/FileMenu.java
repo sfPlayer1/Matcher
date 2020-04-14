@@ -189,6 +189,8 @@ public class FileMenu extends Menu {
 
 		if (format == null || format.hasSingleFile()) {
 			SelectedFile res = Gui.requestFile("Select mapping file", window, getMappingLoadExtensionFilters(), true); // TODO: pre-select format if non-null
+			if (res == null) return; // aborted
+
 			file = res.path;
 			format = getFormat(res.filter.getDescription());
 		} else {
@@ -217,7 +219,11 @@ public class FileMenu extends Menu {
 			MappingsLoadSettings settings = result.get();
 			ClassEnvironment env = gui.getMatcher().getEnv();
 
-			Mappings.load(file, loadFormat, settings.nsSource, settings.nsTarget, settings.a ? env.getEnvA() : env.getEnvB(), settings.names, settings.replace);
+			Mappings.load(file, loadFormat,
+					settings.nsSource, settings.nsTarget,
+					settings.fieldSource, settings.fieldTarget,
+					(settings.a ? env.getEnvA() : env.getEnvB()),
+					settings.replace);
 		} catch (IOException e) {
 			e.printStackTrace();
 			gui.showAlert(AlertType.ERROR, "Load error", "Error while loading mappings", e.getMessage());

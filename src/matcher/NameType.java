@@ -1,44 +1,93 @@
 package matcher;
 
 public enum NameType {
-	MAPPED, MAPPED_PLAIN, PLAIN, UID_PLAIN, TMP_PLAIN, LOCTMP_PLAIN, MAPPED_TMP_PLAIN, MAPPED_LOCTMP_PLAIN;
+	PLAIN(true, false, false, false),
+	MAPPED(false, true, false, false),
+	AUX(false, false, false, true),
 
-	public NameType withMapped(boolean mapped) {
-		if (mapped) {
-			if (this == PLAIN) return MAPPED_PLAIN;
-			if (this == TMP_PLAIN) return MAPPED_TMP_PLAIN;
-			if (this == LOCTMP_PLAIN) return MAPPED_LOCTMP_PLAIN;
-			if (this == UID_PLAIN) throw new IllegalStateException();
+	MAPPED_PLAIN(true, true, false, false),
+	MAPPED_AUX_PLAIN(true, true, false, true),
+	MAPPED_TMP_PLAIN(true, true, true, false),
+	MAPPED_LOCTMP_PLAIN(true, true, false, false),
+
+	UID_PLAIN(true, false, false, false),
+	TMP_PLAIN(true, false, true, false),
+	LOCTMP_PLAIN(true, false, false, false),
+	AUX_PLAIN(true, false, false, true);
+
+	private NameType(boolean plain, boolean mapped, boolean tmp, boolean aux) {
+		this.plain = plain;
+		this.mapped = mapped;
+		this.tmp = tmp;
+		this.aux = aux;
+	}
+
+	public NameType withMapped(boolean value) {
+		if (mapped == value) return this;
+
+		if (value) {
+			if (aux) return MAPPED_AUX_PLAIN;
+			if (tmp) return MAPPED_TMP_PLAIN;
+			if (plain) return MAPPED_PLAIN;
+
+			return MAPPED;
 		} else {
-			if (this == MAPPED_PLAIN) return PLAIN;
-			if (this == MAPPED_TMP_PLAIN) return TMP_PLAIN;
+			if (aux) return plain ? AUX_PLAIN : AUX;
+			if (tmp) return TMP_PLAIN;
 			if (this == MAPPED_LOCTMP_PLAIN) return LOCTMP_PLAIN;
-		}
 
-		return this;
+			return PLAIN;
+		}
 	}
 
-	public NameType withTmp(boolean tmp) {
-		if (tmp) {
-			if (this == MAPPED_PLAIN) return MAPPED_TMP_PLAIN;
-			if (this == PLAIN) return TMP_PLAIN;
+	public NameType withAux(boolean value) {
+		if (aux == value) return this;
+
+		if (value) {
+			if (mapped) return MAPPED_AUX_PLAIN;
+			if (plain) return AUX_PLAIN;
+
+			return AUX;
 		} else {
-			if (this == TMP_PLAIN || this == LOCTMP_PLAIN) return PLAIN;
-			if (this == MAPPED_TMP_PLAIN || this == MAPPED_LOCTMP_PLAIN) return MAPPED_PLAIN;
-		}
+			if (mapped) return MAPPED_PLAIN;
 
-		return this;
+			return PLAIN;
+		}
 	}
 
-	public NameType withUnmatchedTmp(boolean unmatched) {
-		if (unmatched) {
-			if (this == TMP_PLAIN) return LOCTMP_PLAIN;
-			if (this == MAPPED_TMP_PLAIN) return MAPPED_LOCTMP_PLAIN;
+	public NameType withTmp(boolean value) {
+		if (tmp == value) return this;
+
+		if (value) {
+			if (mapped) return MAPPED_TMP_PLAIN;
+
+			return TMP_PLAIN;
 		} else {
-			if (this == LOCTMP_PLAIN) return TMP_PLAIN;
-			if (this == MAPPED_LOCTMP_PLAIN) return MAPPED_TMP_PLAIN;
-		}
+			if (mapped) return MAPPED_PLAIN;
 
-		return this;
+			return PLAIN;
+		}
 	}
+
+	// transform between tmp <-> loctmp
+	public NameType withUnmatchedTmp(boolean value) {
+		boolean locTmp = this == MAPPED_LOCTMP_PLAIN || this == LOCTMP_PLAIN;
+
+		if (value == locTmp || !tmp && !locTmp) return this;
+
+		if (value) {
+			if (mapped) return MAPPED_LOCTMP_PLAIN;
+
+			return LOCTMP_PLAIN;
+		} else {
+			if (mapped) return MAPPED_TMP_PLAIN;
+
+			return TMP_PLAIN;
+		}
+	}
+
+	public final boolean plain;
+	public final boolean mapped;
+	public final boolean tmp;
+	public final boolean aux;
 }

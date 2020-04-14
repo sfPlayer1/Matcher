@@ -490,7 +490,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 
 				for (ClassInstance cls : arrayClasses.values()) {
 					String name = cls.getName(nameType);
-					if (name.length() != reqNameLen) continue;
+					if (name == null || name.length() != reqNameLen) continue;
 
 					if (id.startsWith(name, start + 1)) return cls;
 				}
@@ -500,7 +500,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 
 				for (ClassInstance cls : classes.values()) {
 					String name = cls.getName(nameType);
-					if (name.length() != reqNameLen) continue;
+					if (name == null || name.length() != reqNameLen) continue;
 
 					if (id.startsWith(name, 1)) return cls;
 				}

@@ -44,6 +44,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Name", nameLabel, grid, row);
 		row = addRow("Tmp name", tmpNameLabel, grid, row);
 		row = addRow("Mapped name", mappedNameLabel, grid, row);
+		row = addRow("AUX name", auxNameLabel, grid, row);
 		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Type", typeLabel, grid, row);
@@ -91,6 +92,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText("-");
 			tmpNameLabel.setText("-");
 			mappedNameLabel.setText("-");
+			auxNameLabel.setText("-");
 			uidLabel.setText("-");
 			nameObfLabel.setText("-");
 			typeLabel.setText("-");
@@ -108,6 +110,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText(field.getName());
 			tmpNameLabel.setText(field.hasLocalTmpName() ? field.getName(NameType.LOCTMP_PLAIN) : "-");
 			mappedNameLabel.setText(field.hasMappedName() ? field.getName(NameType.MAPPED) : "-");
+			auxNameLabel.setText(field.hasAuxName() ? field.getName(NameType.AUX) : "-");
 			uidLabel.setText(field.getUid() >= 0 ? Integer.toString(field.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(field.isNameObfuscated()));
 			typeLabel.setText(getName(field.getType(), nameType));
@@ -133,6 +136,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 	private final Label nameLabel = new Label();
 	private final Label tmpNameLabel = new Label();
 	private final Label mappedNameLabel = new Label();
+	private final Label auxNameLabel = new Label();
 	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
 	private final Label typeLabel = new Label();
