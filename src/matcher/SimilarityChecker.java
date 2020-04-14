@@ -53,6 +53,10 @@ public final class SimilarityChecker {
 	public static float compare(MethodInstance a, MethodInstance b) {
 		if (a.getMatch() != b) return 0;
 
+		if (a.getAsmNode() == null || b.getAsmNode() == null) {
+			return (a.getAsmNode() == null) == (b.getAsmNode() == null) ? 1 : 0;
+		}
+
 		float retTypeScore = ClassifierUtil.checkPotentialEquality(a.getRetType(), b.getRetType()) ? 1 : 0;
 		float argTypeScore = 0;
 
