@@ -117,36 +117,66 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
 		String ret;
+		boolean fromMatched; // name retrieved from matched class
 
 		if (type.mapped && mappedName != null) {
 			// MAPPED_*, local name available
 			ret = mappedName;
+			fromMatched = false;
 		} else if (type.mapped && matchedClass != null && matchedClass.mappedName != null) {
 			// MAPPED_*, remote name available
 			ret = matchedClass.mappedName;
+			fromMatched = true;
 		} else if (type.mapped && !nameObfuscated) {
 			// MAPPED_*, local deobf
 			ret = getInnerName0(getName());
+			fromMatched = false;
 		} else if (type.mapped && matchedClass != null && !matchedClass.nameObfuscated) {
 			// MAPPED_*, remote deobf
-			ret = getInnerName0(matchedClass.getName());
+			ret = matchedClass.getInnerName0(matchedClass.getName());
+			fromMatched = true;
 		} else if (type.aux && auxName != null) {
 			ret = auxName;
+			fromMatched = false;
 		} else if (type.aux && matchedClass != null && matchedClass.auxName != null) {
 			ret = matchedClass.auxName;
+			fromMatched = true;
 		} else if (type.tmp && matchedClass != null && matchedClass.tmpName != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
 			ret = matchedClass.tmpName;
+			fromMatched = true;
 		} else if ((type.tmp || locTmp) && tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
 			ret = tmpName;
+			fromMatched = false;
 		} else if (type.plain) {
 			ret = getInnerName0(getName());
+			fromMatched = false;
 		} else {
-			ret = null;
+			return null;
 		}
 
-		return outerClass != null ? getNestedName(outerClass.getName(type), ret) : ret;
+		assert ret == null || !hasOuterName(ret);
+
+		/*
+		 * ret-outer: whether ret's source has an outer class
+		 * this-outer: whether this has an outer class
+		 * has outer class -> assume not normal name with pkg, but plain inner class name
+		 *
+		 * ret-outer this-outer action                    ret-example this-example result-example
+		 *     n         n      ret                        a/b         d/e          a/b
+		 *     n         y      this.outer+ret.strip-pkg   a/b         d/e$f        d/e$b
+		 *     y         n      ret.outer.pkg+ret          a/b$c       d/e          a/c
+		 *     y         y      this.outer+ret             a/b$c       d/e$f        d/e$c
+		 */
+
+		if (!fromMatched || (outerClass == null) == (matchedClass.outerClass == null)) { // ret-outer == this-outer
+			return outerClass != null ? getNestedName(outerClass.getName(type), ret) : ret;
+		} else if (outerClass != null) { // ret is normal name, strip package from ret before concatenating
+			return getNestedName(outerClass.getName(type), ret.substring(ret.lastIndexOf('/') + 1));
+		} else { // ret is an outer name, restore pkg
+			return getNestedName(matchedClass.outerClass.getName(type), ret);
+		}
 	}
 
 	private String getInnerName0(String name) {
