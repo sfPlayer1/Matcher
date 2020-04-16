@@ -146,8 +146,13 @@ class Tiny2Impl {
 					className = unescapeOpt(parts[1 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[1 + nsB], escapedNames);
 
-					if (!className.isEmpty() && !mappedName.isEmpty()) {
-						mappingAcceptor.acceptClass(className, mappedName, true);
+					if (!className.isEmpty()) {
+						if (!mappedName.isEmpty()) {
+							mappingAcceptor.acceptClass(className, mappedName, true);
+						}
+					} else { // className is empty -> fall back to primary name
+						className = nsB == 0 ? mappedName : unescapeOpt(parts[1], escapedNames);
+						assert !className.isEmpty();
 					}
 
 					inClass = true;
@@ -168,12 +173,17 @@ class Tiny2Impl {
 					memberName = unescapeOpt(parts[2 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[2 + nsB], escapedNames);
 
-					if (!className.isEmpty() && !memberName.isEmpty() && !mappedName.isEmpty()) {
-						if (isMethod) {
-							mappingAcceptor.acceptMethod(className, memberName, memberDesc, null, mappedName, null);
-						} else {
-							mappingAcceptor.acceptField(className, memberName, memberDesc, null, mappedName, null);
+					if (!memberName.isEmpty()) {
+						if (!mappedName.isEmpty()) {
+							if (isMethod) {
+								mappingAcceptor.acceptMethod(className, memberName, memberDesc, null, mappedName, null);
+							} else {
+								mappingAcceptor.acceptField(className, memberName, memberDesc, null, mappedName, null);
+							}
 						}
+					} else { // memberName is empty -> fall back to primary name
+						memberName = nsB == 0 ? mappedName : unescapeOpt(parts[2], escapedNames);
+						assert !memberName.isEmpty();
 					}
 
 					if (isMethod) {
@@ -194,7 +204,7 @@ class Tiny2Impl {
 					varLvIndex = Integer.parseInt(parts[1]);
 					String mappedName = unescapeOpt(parts[2 + nsB], escapedNames);
 
-					if (!className.isEmpty() && !memberName.isEmpty() && !mappedName.isEmpty()) {
+					if (!mappedName.isEmpty()) {
 						mappingAcceptor.acceptMethodArg(className, memberName, memberDesc, -1, varLvIndex, null, mappedName);
 					}
 
@@ -207,7 +217,7 @@ class Tiny2Impl {
 					varLvtIndex = Integer.parseInt(parts[3]);
 					String mappedName = unescapeOpt(parts[4 + nsB], escapedNames);
 
-					if (!className.isEmpty() && !memberName.isEmpty() && !mappedName.isEmpty()) {
+					if (!mappedName.isEmpty()) {
 						mappingAcceptor.acceptMethodVar(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, null, mappedName);
 					}
 
@@ -216,12 +226,10 @@ class Tiny2Impl {
 					if (parts.length != 2) throw new IOException("invalid member comment in line "+lineNumber);
 					String comment = unescape(parts[1]);
 
-					if (!className.isEmpty() && !memberName.isEmpty()) {
-						if (inMethod) {
-							mappingAcceptor.acceptMethodComment(className, memberName, memberDesc, comment);
-						} else {
-							mappingAcceptor.acceptFieldComment(className, memberName, memberDesc, comment);
-						}
+					if (inMethod) {
+						mappingAcceptor.acceptMethodComment(className, memberName, memberDesc, comment);
+					} else {
+						mappingAcceptor.acceptFieldComment(className, memberName, memberDesc, comment);
 					}
 				}
 			} else if (indent == 3) {
@@ -229,12 +237,10 @@ class Tiny2Impl {
 					if (parts.length != 2) throw new IOException("invalid method var comment in line "+lineNumber);
 					String comment = unescape(parts[1]);
 
-					if (!className.isEmpty() && !memberName.isEmpty()) {
-						if (inMethodParam) {
-							mappingAcceptor.acceptMethodArgComment(className, memberName, memberDesc, -1, varLvIndex, comment);
-						} else {
-							mappingAcceptor.acceptMethodVarComment(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, comment);
-						}
+					if (inMethodParam) {
+						mappingAcceptor.acceptMethodArgComment(className, memberName, memberDesc, -1, varLvIndex, comment);
+					} else {
+						mappingAcceptor.acceptMethodVarComment(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, comment);
 					}
 				}
 			}
