@@ -445,7 +445,7 @@ public class Matcher {
 
 	public boolean autoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		boolean assumeBothOrNoneObfuscated = env.assumeBothOrNoneObfuscated;
-		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && (!assumeBothOrNoneObfuscated || cls.isNameObfuscated()) && cls.getMatch() == null;
+		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && (!assumeBothOrNoneObfuscated || cls.isNameObfuscated()) && !cls.hasMatch() && cls.isMatchable();
 
 		List<ClassInstance> classes = env.getClassesA().stream()
 				.filter(filter)
@@ -551,10 +551,10 @@ public class Matcher {
 			Function<ClassInstance, T[]> memberGetter, IRanker<T> ranker, double maxScore,
 			DoubleConsumer progressReceiver, AtomicInteger totalUnmatched) {
 		List<ClassInstance> classes = env.getClassesA().stream()
-				.filter(cls -> cls.getUri() != null && cls.getMatch() != null && memberGetter.apply(cls).length > 0)
+				.filter(cls -> cls.getUri() != null && cls.hasMatch() && memberGetter.apply(cls).length > 0)
 				.filter(cls -> {
 					for (T member : memberGetter.apply(cls)) {
-						if (member.getMatch() == null) return true;
+						if (!member.hasMatch() && member.isMatchable()) return true;
 					}
 
 					return false;
@@ -569,7 +569,7 @@ public class Matcher {
 			int unmatched = 0;
 
 			for (T member : memberGetter.apply(cls)) {
-				if (member.getMatch() != null) continue;
+				if (member.hasMatch() || !member.isMatchable()) continue;
 
 				List<RankResult<T>> ranking = ranker.rank(member, memberGetter.apply(cls.getMatch()), level, env, maxMismatch);
 
@@ -609,12 +609,12 @@ public class Matcher {
 	private boolean autoMatchMethodVars(boolean isArg, Function<MethodInstance, MethodVarInstance[]> supplier,
 			ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		List<MethodInstance> methods = env.getClassesA().stream()
-				.filter(cls -> cls.getUri() != null && cls.getMatch() != null && cls.getMethods().length > 0)
+				.filter(cls -> cls.getUri() != null && cls.hasMatch() && cls.getMethods().length > 0)
 				.flatMap(cls -> Stream.<MethodInstance>of(cls.getMethods()))
-				.filter(m -> m.getMatch() != null && supplier.apply(m).length > 0)
+				.filter(m -> m.hasMatch() && supplier.apply(m).length > 0)
 				.filter(m -> {
 					for (MethodVarInstance a : supplier.apply(m)) {
-						if (a.getMatch() == null) return true;
+						if (!a.hasMatch() && a.isMatchable()) return true;
 					}
 
 					return false;
@@ -634,7 +634,7 @@ public class Matcher {
 				int unmatched = 0;
 
 				for (MethodVarInstance var : supplier.apply(m)) {
-					if (var.getMatch() != null) continue;
+					if (var.hasMatch() || !var.isMatchable()) continue;
 
 					List<RankResult<MethodVarInstance>> ranking = MethodVarClassifier.rank(var, supplier.apply(m.getMatch()), level, env, maxMismatch);
 
@@ -718,24 +718,24 @@ public class Matcher {
 			if (inputsOnly && !cls.isInput()) continue;
 
 			totalClassCount++;
-			if (cls.getMatch() != null) matchedClassCount++;
+			if (cls.hasMatch()) matchedClassCount++;
 
 			for (MethodInstance method : cls.getMethods()) {
 				if (method.isReal()) {
 					totalMethodCount++;
 
-					if (method.getMatch() != null) matchedMethodCount++;
+					if (method.hasMatch()) matchedMethodCount++;
 
 					for (MethodVarInstance arg : method.getArgs()) {
 						totalMethodArgCount++;
 
-						if (arg.getMatch() != null) matchedMethodArgCount++;
+						if (arg.hasMatch()) matchedMethodArgCount++;
 					}
 
 					for (MethodVarInstance var : method.getVars()) {
 						totalMethodVarCount++;
 
-						if (var.getMatch() != null) matchedMethodVarCount++;
+						if (var.hasMatch()) matchedMethodVarCount++;
 					}
 				}
 			}
@@ -744,7 +744,7 @@ public class Matcher {
 				if (field.isReal()) {
 					totalFieldCount++;
 
-					if (field.getMatch() != null) matchedFieldCount++;
+					if (field.hasMatch()) matchedFieldCount++;
 				}
 			}
 		}

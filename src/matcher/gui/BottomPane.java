@@ -47,6 +47,12 @@ public class BottomPane extends StackPane implements IGuiComponent {
 
 		center.getChildren().add(matchButton);
 
+		matchableButton.setText("unmatchable");
+		matchableButton.setOnAction(event -> toggleMatchable());
+		matchableButton.setDisable(true);
+
+		center.getChildren().add(matchableButton);
+
 		matchPerfectMembersButton.setText("match 100% members");
 		matchPerfectMembersButton.setOnAction(event -> matchPerfectMembers());
 		matchPerfectMembersButton.setDisable(true);
@@ -102,6 +108,25 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		MethodVarInstance varB = dstPane.getSelectedMethodVar();
 
 		matchButton.setDisable(!canMatchClasses(clsA, clsB) && !canMatchMembers(memberA, memberB) && !canMatchVars(varA, varB));
+		/*
+		 * class-null   class-matchable   class-matched    member-null    member-matchable    member-matched    var-null    var-matchable    var-matched   disabled   text          target
+		 * 1            x                 x                x              x                   x                 x           x                x             1          unmatchable   -
+		 * 0            0                 x                x              x                   x                 x           x                x             0          matchable     cls
+		 * 0            1                 0                x              x                   x                 x           x                x             0          unmatchable   cls
+		 * 0            1                 1                1              x                   x                 x           x                x             1          unmatchable   -
+		 * 0            1                 1                0              0                   x                 x           x                x             0          matchable     member
+		 * 0            1                 1                0              1                   0                 x           x                x             0          unmatchable   member
+		 * 0            1                 1                0              1                   1                 1           x                x             1          unmatchable   -
+		 * 0            1                 1                0              1                   1                 0           0                x             0          matchable     var
+		 * 0            1                 1                0              1                   1                 0           1                0             0          unmatchable   var
+		 * 0            1                 1                0              1                   1                 0           1                1             1          unmatchable   -
+		 */
+		matchableButton.setDisable(clsA == null || clsA.isMatchable() && clsA.hasMatch()
+				&& (memberA == null || memberA.isMatchable() && memberA.hasMatch()
+				&& (varA == null || varA.isMatchable() && varA.hasMatch())));
+		matchableButton.setText(clsA != null && (!clsA.isMatchable()
+				|| memberA != null && (!memberA.isMatchable()
+						|| varA != null && !varA.isMatchable())) ? "matchable" : "unmatchable");
 		unmatchClassButton.setDisable(!canUnmatchClass(clsA));
 		unmatchMemberButton.setDisable(!canUnmatchMember(memberA));
 		unmatchVarButton.setDisable(!canUnmatchVar(varA));
@@ -112,15 +137,15 @@ public class BottomPane extends StackPane implements IGuiComponent {
 	// match / unmatch actions implementation
 
 	private boolean canMatchClasses(ClassInstance clsA, ClassInstance clsB) {
-		return clsA != null && clsB != null && clsA.getMatch() != clsB;
+		return clsA != null && clsB != null && clsA.getMatch() != clsB && clsA.isMatchable() && clsB.isMatchable();
 	}
 
 	private boolean canMatchMembers(MemberInstance<?> memberA, MemberInstance<?> memberB) {
-		return memberA != null && memberB != null && memberA.getClass() == memberB.getClass() && memberA.getMatch() != memberB;
+		return memberA != null && memberB != null && memberA.getClass() == memberB.getClass() && memberA.getMatch() != memberB && memberA.isMatchable() && memberB.isMatchable();
 	}
 
 	private boolean canMatchVars(MethodVarInstance varA, MethodVarInstance varB) {
-		return varA != null && varB != null && varA.isArg() == varB.isArg() && varA.getMatch() != varB;
+		return varA != null && varB != null && varA.isArg() == varB.isArg() && varA.getMatch() != varB && varA.isMatchable() && varB.isMatchable();
 	}
 
 	private void match() {
@@ -165,11 +190,11 @@ public class BottomPane extends StackPane implements IGuiComponent {
 
 	private static boolean hasUnmatchedMembers(ClassInstance cls) {
 		for (MethodInstance m : cls.getMethods()) {
-			if (!m.hasMatch()) return true;
+			if (!m.hasMatch() && m.isMatchable()) return true;
 		}
 
 		for (FieldInstance m : cls.getFields()) {
-			if (!m.hasMatch()) return true;
+			if (!m.hasMatch() && m.isMatchable()) return true;
 		}
 
 		return false;
@@ -187,7 +212,7 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		boolean matchedAnyMethods = false;
 
 		for (MethodInstance m : clsA.getMethods()) {
-			if (m.hasMatch()) continue;
+			if (m.hasMatch() || !m.isMatchable()) continue;
 
 			List<RankResult<MethodInstance>> results = MethodClassifier.rank(m, clsB.getMethods(), ClassifierLevel.Full, gui.getEnv());
 
@@ -210,7 +235,7 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		boolean matchedAnyFields = false;
 
 		for (FieldInstance m : clsA.getFields()) {
-			if (m.hasMatch()) continue;
+			if (m.hasMatch() || !m.isMatchable()) continue;
 
 			List<RankResult<FieldInstance>> results = FieldClassifier.rank(m, clsB.getFields(), ClassifierLevel.Full, gui.getEnv());
 
@@ -239,7 +264,7 @@ public class BottomPane extends StackPane implements IGuiComponent {
 	}
 
 	private boolean canUnmatchClass(ClassInstance cls) {
-		return cls != null && cls.getMatch() != null;
+		return cls != null && cls.hasMatch();
 	}
 
 	private void unmatchClass() {
@@ -282,6 +307,42 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		gui.onMatchChange(EnumSet.of(MatchType.MethodVar));
 	}
 
+	private void toggleMatchable() {
+		ClassInstance cls = srcPane.getSelectedClass();
+		if (cls == null) return;
+
+		if (!cls.isMatchable() || !cls.hasMatch()) {
+			cls.setMatchable(!cls.isMatchable());
+			gui.onMatchChange(EnumSet.allOf(MatchType.class));
+			return;
+		}
+
+		MemberInstance<?> member = srcPane.getSelectedMethod();
+		if (member == null) member = srcPane.getSelectedField();
+
+		if (!member.isMatchable() || !member.hasMatch()) {
+			boolean newValue = !member.isMatchable();
+
+			if (member instanceof MethodInstance) {
+				for (MemberInstance<?> m : member.getAllHierarchyMembers()) {
+					m.setMatchable(newValue);
+				}
+			} else {
+				member.setMatchable(newValue);
+			}
+
+			gui.onMatchChange(member instanceof MethodInstance ? EnumSet.of(MatchType.Method, MatchType.MethodVar) : EnumSet.of(MatchType.Field));
+			return;
+		}
+
+		MethodVarInstance var = srcPane.getSelectedMethodVar();
+
+		if (!var.isMatchable() || !var.hasMatch()) {
+			var.setMatchable(!var.isMatchable());
+			gui.onMatchChange(EnumSet.of(MatchType.MethodVar));
+			return;
+		}
+	}
 
 	private class SelectListener implements IGuiComponent {
 		@Override
@@ -314,6 +375,10 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		return matchButton;
 	}
 
+	public Button getMatchableButton() {
+		return matchableButton;
+	}
+
 	public Button getMatchPerfectMembersButton() {
 		return matchPerfectMembersButton;
 	}
@@ -334,6 +399,7 @@ public class BottomPane extends StackPane implements IGuiComponent {
 	private final MatchPaneSrc srcPane;
 	private final MatchPaneDst dstPane;
 	private final Button matchButton = new Button();
+	private final Button matchableButton = new Button();
 	private final Button matchPerfectMembersButton = new Button();
 	private final Button unmatchClassButton = new Button();
 	private final Button unmatchMemberButton = new Button();

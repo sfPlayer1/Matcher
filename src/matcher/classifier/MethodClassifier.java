@@ -65,7 +65,7 @@ public class MethodClassifier {
 	}
 
 	public static List<RankResult<MethodInstance>> rank(MethodInstance src, MethodInstance[] dsts, ClassifierLevel level, ClassEnvironment env, double maxMismatch) {
-		if (src.getMatch() != null) { // already matched,  limit dsts to the match
+		if (src.hasMatch()) { // already matched,  limit dsts to the match
 			if (!Arrays.asList(dsts).contains(src.getMatch())) {
 				return Collections.emptyList();
 			} else if (dsts.length != 1) {

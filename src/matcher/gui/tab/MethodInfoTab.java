@@ -57,6 +57,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Signature", sigLabel, grid, row);
 		row = addRow("Parents", parentLabel, grid, row);
 		row = addRow("Children", childLabel, grid, row);
+		row = addRow("Hierarchy", hierarchyLabel, grid, row);
 		row = addRow("Local vars", varLabel, grid, row);
 		row = addRow("Refs in", refMethodInLabel, grid, row);
 		row = addRow("Refs out", refMethodOutLabel, grid, row);
@@ -109,6 +110,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 			sigLabel.setText("-");
 			parentLabel.setText("-");
 			childLabel.setText("-");
+			hierarchyLabel.setText("-");
 			varLabel.setText("-");
 			refMethodInLabel.setText("-");
 			refMethodOutLabel.setText("-");
@@ -134,6 +136,12 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 
 			parentLabel.setText(!method.getParents().isEmpty() ? formatClass(method.getParents(), nameType) : "-");
 			childLabel.setText(!method.isFinal() ? formatClass(method.getChildren(), nameType) : "-");
+
+			if (method.getAllHierarchyMembers() != null && method.getAllHierarchyMembers().size() > 1) {
+				hierarchyLabel.setText(format(method.getAllHierarchyMembers().stream().filter(m -> m != method).map(MethodInstance::getCls), nameType));
+			} else {
+				hierarchyLabel.setText("-");
+			}
 
 			varLabel.setText(Arrays.stream(method.getVars()).map(a -> getVarName(a, nameType)).collect(Collectors.joining("\n")));
 
@@ -171,6 +179,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 	private final Label sigLabel = new Label();
 	private final Label parentLabel = new Label();
 	private final Label childLabel = new Label();
+	private final Label hierarchyLabel = new Label();
 	private final Label varLabel = new Label();
 	private final Label refMethodInLabel = new Label();
 	private final Label refMethodOutLabel = new Label();

@@ -269,11 +269,24 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
+	public boolean isMatchable() {
+		return matchable;
+	}
+
+	@Override
+	public void setMatchable(boolean matchable) {
+		assert matchable || matchedClass == null;
+
+		this.matchable = matchable;
+	}
+
+	@Override
 	public ClassInstance getMatch() {
 		return matchedClass;
 	}
 
 	public void setMatch(ClassInstance cls) {
+		assert cls == null || isMatchable();
 		assert cls == null || cls.getEnv() != env && !cls.getEnv().isShared();
 
 		this.matchedClass = cls;
@@ -286,7 +299,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		boolean anyUnmatched = false;
 
 		for (MethodInstance m : methods) {
-			if (!m.hasMatch() || recursive && !m.isFullyMatched(true)) {
+			if (m.isMatchable() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
 				anyUnmatched = true;
 				break;
 			}
@@ -294,11 +307,11 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 		if (anyUnmatched) {
 			for (MethodInstance a : methods) {
-				if (a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
+				if (!a.isMatchable() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
 
 				// check for any potential match to ignore methods that are impossible to match
 				for (MethodInstance b : matchedClass.methods) {
-					if (!b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
+					if (b.isMatchable() && !b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
 						return false;
 					}
 				}
@@ -308,7 +321,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		anyUnmatched = false;
 
 		for (FieldInstance m : fields) {
-			if (!m.hasMatch() || recursive && !m.isFullyMatched(true)) {
+			if (m.isMatchable() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
 				anyUnmatched = true;
 				break;
 			}
@@ -316,10 +329,10 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 		if (anyUnmatched) {
 			for (FieldInstance a : fields) {
-				if (a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
+				if (!a.isMatchable() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
 
 				for (FieldInstance b : matchedClass.fields) {
-					if (!b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
+					if (b.isMatchable() && !b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
 						return false;
 					}
 				}
@@ -1123,5 +1136,6 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 	private String auxName;
 
+	private boolean matchable = true;
 	private ClassInstance matchedClass;
 }

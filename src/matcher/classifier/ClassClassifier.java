@@ -432,8 +432,10 @@ public class ClassClassifier {
 			if (clsA.getMethods().length > 0 && clsB.getMethods().length > 0) {
 				double maxScore = MethodClassifier.getMaxScore(level);
 
-				for (MethodInstance methodA : clsA.getMethods()) {
-					List<RankResult<MethodInstance>> ranking = MethodClassifier.rank(methodA, clsB.getMethods(), level, env);
+				for (MethodInstance method : clsA.getMethods()) {
+					if (!method.isMatchable()) continue;
+
+					List<RankResult<MethodInstance>> ranking = MethodClassifier.rank(method, clsB.getMethods(), level, env);
 					if (Matcher.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += Matcher.getScore(ranking.get(0).getScore(), maxScore);
 				}
 			}
@@ -441,8 +443,10 @@ public class ClassClassifier {
 			if (clsA.getFields().length > 0 && clsB.getFields().length > 0) {
 				double maxScore = FieldClassifier.getMaxScore(level);
 
-				for (FieldInstance fieldA : clsA.getFields()) {
-					List<RankResult<FieldInstance>> ranking = FieldClassifier.rank(fieldA, clsB.getFields(), level, env);
+				for (FieldInstance field : clsA.getFields()) {
+					if (!field.isMatchable()) continue;
+
+					List<RankResult<FieldInstance>> ranking = FieldClassifier.rank(field, clsB.getFields(), level, env);
 					if (Matcher.checkRank(ranking, absThreshold, relThreshold, maxScore)) match += Matcher.getScore(ranking.get(0).getScore(), maxScore);
 				}
 			}

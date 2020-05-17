@@ -48,6 +48,7 @@ public class ClassifierUtil {
 		if (a == b) return true;
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
+		if (!a.isMatchable() || !b.isMatchable()) return false;
 		if (a.isArray() != b.isArray()) return false;
 		if (a.isArray() && !checkPotentialEquality(a.getElementClass(), b.getElementClass())) return false;
 		if (!checkNameObfMatch(a, b)) return false;
@@ -72,6 +73,7 @@ public class ClassifierUtil {
 		if (a == b) return true;
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
+		if (!a.isMatchable() || !b.isMatchable()) return false;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
 		if (!checkNameObfMatch(a, b)) return false;
 
@@ -82,6 +84,7 @@ public class ClassifierUtil {
 		if (a == b) return true;
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
+		if (!a.isMatchable() || !b.isMatchable()) return false;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
 		if (!checkNameObfMatch(a, b)) return false;
 
@@ -92,6 +95,7 @@ public class ClassifierUtil {
 		if (a == b) return true;
 		if (a.getMatch() != null) return a.getMatch() == b;
 		if (b.getMatch() != null) return b.getMatch() == a;
+		if (!a.isMatchable() || !b.isMatchable()) return false;
 		if (a.isArg() != b.isArg()) return false;
 		if (!checkPotentialEquality(a.getMethod(), b.getMethod())) return false;
 		if (!checkNameObfMatch(a, b)) return false;

@@ -20,6 +20,9 @@ public interface Matchable<T> {
 
 	int getUid();
 
+	boolean isMatchable();
+	void setMatchable(boolean matchable);
+
 	default boolean hasMatch() {
 		return getMatch() != null;
 	}

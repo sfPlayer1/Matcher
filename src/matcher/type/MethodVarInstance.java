@@ -204,11 +204,25 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	}
 
 	@Override
+	public boolean isMatchable() {
+		return matchable && method.isMatchable();
+	}
+
+	@Override
+	public void setMatchable(boolean matchable) {
+		assert !matchable || method.isMatchable();
+		assert matchable || matchedInstance == null;
+
+		this.matchable = matchable;
+	}
+
+	@Override
 	public MethodVarInstance getMatch() {
 		return matchedInstance;
 	}
 
 	public void setMatch(MethodVarInstance match) {
+		assert match == null || isMatchable();
 		assert match == null || method == match.method.getMatch();
 
 		this.matchedInstance = match;
@@ -251,5 +265,6 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 
 	String auxName;
 
+	private boolean matchable = true;
 	private MethodVarInstance matchedInstance;
 }

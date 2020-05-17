@@ -3,6 +3,7 @@ package matcher.gui.tab;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
@@ -135,7 +136,11 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 	}
 
 	static String format(Collection<? extends Matchable<?>> c, NameType nameType) {
-		return c.stream().map(v -> getName(v, nameType)).sorted().collect(Collectors.joining("\n"));
+		return format(c.stream(), nameType);
+	}
+
+	static String format(Stream<? extends Matchable<?>> stream, NameType nameType) {
+		return stream.map(v -> getName(v, nameType)).sorted().collect(Collectors.joining("\n"));
 	}
 
 	static String getName(Matchable<?> m, NameType nameType) {

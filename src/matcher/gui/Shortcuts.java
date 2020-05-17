@@ -23,5 +23,7 @@ class Shortcuts {
 				gui.getBottomPane().getUnmatchClassButton().fireEvent(new ActionEvent());
 			}
 		});
+		// I - ignore (toggle matchable)
+		accelerators.put(new KeyCodeCombination(KeyCode.I), () -> gui.getBottomPane().getMatchableButton().fireEvent(new ActionEvent()));
 	}
 }

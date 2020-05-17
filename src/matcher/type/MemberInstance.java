@@ -277,11 +277,25 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	@Override
+	public boolean isMatchable() {
+		return matchable && cls.isMatchable();
+	}
+
+	@Override
+	public void setMatchable(boolean matchable) {
+		assert !matchable || cls.isMatchable();
+		assert matchable || matchedInstance == null;
+
+		this.matchable = matchable;
+	}
+
+	@Override
 	public T getMatch() {
 		return matchedInstance;
 	}
 
 	public void setMatch(T match) {
+		assert match == null || isMatchable();
 		assert match == null || cls == match.cls.getMatch();
 
 		this.matchedInstance = match;
@@ -320,5 +334,6 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 
 	String auxName;
 
+	private boolean matchable = true;
 	T matchedInstance;
 }

@@ -204,7 +204,9 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 				return String.format("-fx-text-fill: #%02x%02x%02x", (int) (red * 255), (int) (green * 255), (int) (blue * 255));
 			}
 		} else {
-			if (item.getMatch() == null) {
+			if (!item.isMatchable()) {
+				return "-fx-text-fill: dimgray;";
+			} else if (item.getMatch() == null) {
 				return "-fx-text-fill: darkred;";
 			} else if (!item.isFullyMatched(false)) { // TODO: change recursive to true once arg+var matching is further implemented
 				return "-fx-text-fill: chocolate;";
@@ -567,8 +569,16 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	};
 
 	private static final Comparator<? extends Matchable<?>> matchStatusComparator = (a, b) -> {
-		if (a.hasMatch() != b.hasMatch()) {
+		// sort order: unmatched partially-matched fully-matched-shallow fully-matched-recursive unmatchable
+
+		if (a.isMatchable() != b.isMatchable()) {
+			return a.isMatchable() ? -1 : 1;
+		} else if (!a.isMatchable()) {
+			return 0;
+		} else if (a.hasMatch() != b.hasMatch()) {
 			return a.hasMatch() ? 1 : -1;
+		} else if (!a.hasMatch()) {
+			return 0;
 		}
 
 		boolean aFull = a.isFullyMatched(false);
@@ -576,6 +586,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		if (aFull != bFull) {
 			return aFull ? 1 : -1;
+		} else if (!aFull) {
+			return 0;
 		}
 
 		aFull = a.isFullyMatched(true);

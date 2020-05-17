@@ -14,12 +14,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.DoubleConsumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import matcher.Matcher;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.InputFile;
+import matcher.type.LocalClassEnv;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
@@ -138,7 +140,7 @@ public class MatchesIo {
 						}
 					}
 
-					if (line.startsWith("c\t")) {
+					if (line.startsWith("c\t")) { // class
 						int pos = line.indexOf('\t', 2);
 						if (pos == -1 || pos == 2 || pos + 1 == line.length()) throw new IOException("invalid matches file");
 						String idA = line.substring(2, pos);
@@ -152,10 +154,30 @@ public class MatchesIo {
 						} else if ((target = env.getLocalClsByIdB(idB)) == null) {
 							System.err.println("Unknown b class "+idA);
 							currentClass = null;
+						} else if (!currentClass.isMatchable() || !target.isMatchable()) {
+							System.err.println("Unmatchable a/b class "+idA+"/"+idB);
+							currentClass = null;
 						} else {
 							matcher.match(currentClass, target);
 						}
+					} else if (line.startsWith("cu\t")) { // class unmatchable
+						char side;
+						if (line.length() < 6 || (side = line.charAt(3)) != 'a' && side != 'b' || line.charAt(4) != '\t') throw new IOException("invalid matches file");
+
+						String id = line.substring(5);
+						ClassInstance cls = side == 'a' ? env.getLocalClsByIdA(id) : env.getLocalClsByIdB(id);
+						currentClass = null;
+						currentMethod = null;
+
+						if (cls == null) {
+							System.err.println("Unknown "+side+" class "+id);
+						} else {
+							if (cls.hasMatch()) matcher.unmatch(cls);
+							cls.setMatchable(false);
+						}
 					} else if (line.startsWith("\tm\t") || line.startsWith("\tf\t")) { // method or field
+						currentMethod = null;
+
 						if (currentClass != null) {
 							int pos = line.indexOf('\t', 3);
 							if (pos == -1 || pos == 3 || pos + 1 == line.length()) throw new IOException("invalid matches file");
@@ -170,11 +192,13 @@ public class MatchesIo {
 									System.err.println("Unknown a method "+idA+" in class "+currentClass);
 								} else if ((b = currentClass.getMatch().getMethod(idB)) == null) {
 									System.err.println("Unknown b method "+idB+" in class "+currentClass.getMatch());
+								} else if (!a.isMatchable() || !b.isMatchable()) {
+									System.err.println("Unmatchable a/b method "+idA+"/"+idB);
+									currentMethod = null;
 								} else {
 									matcher.match(a, b);
 								}
 							} else {
-								currentMethod = null;
 								FieldInstance a = currentClass.getField(idA);
 								FieldInstance b;
 
@@ -182,8 +206,36 @@ public class MatchesIo {
 									System.err.println("Unknown a field "+idA+" in class "+currentClass);
 								} else if ((b = currentClass.getMatch().getField(idB)) == null) {
 									System.err.println("Unknown b field "+idB+" in class "+currentClass.getMatch());
+								} else if (!a.isMatchable() || !b.isMatchable()) {
+									System.err.println("Unmatchable a/b field "+idA+"/"+idB);
 								} else {
 									matcher.match(a, b);
+								}
+							}
+						}
+					} else if (line.startsWith("\tmu\t") || line.startsWith("\tfu\t")) { // method or field unmatchable
+						currentMethod = null;
+
+						if (currentClass != null) {
+							char side;
+							if (line.length() < 7 || (side = line.charAt(4)) != 'a' && side != 'b' || line.charAt(5) != '\t') throw new IOException("invalid matches file");
+
+							String id = line.substring(6);
+							ClassInstance cls = side == 'a' ? currentClass : currentClass.getMatch();
+							assert cls != null; // currentClass must have been matched before, so shouldn't be null
+							MemberInstance<?> member = line.charAt(1) == 'm' ? cls.getMethod(id) : cls.getField(id);
+
+							if (member == null) {
+								System.err.println("Unknown member "+id+" in class "+cls);
+							} else {
+								if (member.hasMatch()) matcher.unmatch(member);
+
+								if (member instanceof MethodInstance) {
+									for (MemberInstance<?> m : member.getAllHierarchyMembers()) {
+										m.setMatchable(false);
+									}
+								} else {
+									member.setMatchable(false);
 								}
 							}
 						}
@@ -195,30 +247,60 @@ public class MatchesIo {
 							int idxA = Integer.parseInt(line.substring(5, pos));
 							int idxB = Integer.parseInt(line.substring(pos + 1));
 							MethodInstance matchedMethod = currentMethod.getMatch();
+							assert matchedMethod != null; // matchedMethod must have been matched before, so shouldn't be null
 
-							if (matchedMethod == null) {
-								System.err.println("Arg for unmatched method "+currentMethod);
+							MethodVarInstance[] varsA, varsB;
+							String type;
+
+							if (line.charAt(3) == 'a') {
+								type = "arg";
+								varsA = currentMethod.getArgs();
+								varsB = matchedMethod.getArgs();
 							} else {
-								MethodVarInstance[] varsA, varsB;
-								String type;
+								type = "var";
+								varsA = currentMethod.getVars();
+								varsB = matchedMethod.getVars();
+							}
 
-								if (line.startsWith("\t\tma\t")) {
-									type = "arg";
-									varsA = currentMethod.getArgs();
-									varsB = matchedMethod.getArgs();
-								} else {
-									type = "var";
-									varsA = currentMethod.getVars();
-									varsB = matchedMethod.getVars();
-								}
+							if (idxA < 0 || idxA >= varsA.length) {
+								System.err.println("Unknown a method "+type+" "+idxA+" in method "+currentMethod);
+							} else if (idxB < 0 || idxB >= varsB.length) {
+								System.err.println("Unknown b method "+type+" "+idxB+" in method "+matchedMethod);
+							} else if (!varsA[idxA].isMatchable() || !varsB[idxB].isMatchable()) {
+								System.err.println("Unmatchable a/b method "+type+" "+idxA+"/"+idxB+" in method "+currentMethod+"/"+matchedMethod);
+								currentMethod = null;
+							} else {
+								matcher.match(varsA[idxA], varsB[idxB]);
+							}
+						}
+					} else if (line.startsWith("\t\tmau\t") || line.startsWith("\t\tmvu\t")) { // method arg or method var unmatchable
+						if (currentMethod != null) {
+							char side;
+							if (line.length() < 9 || (side = line.charAt(6)) != 'a' && side != 'b' || line.charAt(7) != '\t') throw new IOException("invalid matches file");
 
-								if (idxA < 0 || idxA >= varsA.length) {
-									System.err.println("Unknown a method "+type+" "+idxA+" in method "+currentMethod);
-								} else if (idxB < 0 || idxB >= varsB.length) {
-									System.err.println("Unknown b method "+type+" "+idxB+" in method "+matchedMethod);
-								} else {
-									matcher.match(varsA[idxA], varsB[idxB]);
-								}
+							MethodInstance method = side == 'a' ? currentMethod : currentMethod.getMatch();
+							assert method != null; // currentMethod must have been matched before, so shouldn't be null
+
+							int idx = Integer.parseInt(line.substring(8));
+
+							MethodVarInstance[] vars;
+							String type;
+
+							if (line.charAt(3) == 'a') {
+								type = "arg";
+								vars = method.getArgs();
+							} else {
+								type = "var";
+								vars = method.getVars();
+							}
+
+							if (idx < 0 || idx >= vars.length) {
+								System.err.println("Unknown a method "+type+" "+idx+" in method "+method);
+							} else {
+								MethodVarInstance var = vars[idx];
+
+								if (var.hasMatch()) matcher.unmatch(var);
+								var.setMatchable(false);
 							}
 						}
 					}
@@ -234,9 +316,12 @@ public class MatchesIo {
 
 	public static boolean write(Matcher matcher, Path path) throws IOException {
 		ClassEnvironment env = matcher.getEnv();
-		List<ClassInstance> classes = env.getClassesA().stream()
-				.filter(cls -> cls.getMatch() != null)
-				.sorted(Comparator.comparing(cls -> cls.getId()))
+		List<ClassInstance> classes = Stream.concat(env.getClassesA().stream()
+				.filter(cls -> cls.hasMatch() || !cls.isMatchable())
+				.sorted(Comparator.comparing(cls -> cls.getId())),
+				env.getClassesB().stream()
+				.filter(cls -> !cls.isMatchable())
+				.sorted(Comparator.comparing(cls -> cls.getId())))
 				.collect(Collectors.toList());
 		if (classes.isEmpty()) return false;
 
@@ -278,17 +363,12 @@ public class MatchesIo {
 				writer.write('\n');
 			}
 
+			LocalClassEnv envA = env.getEnvA();
+
 			for (ClassInstance cls : classes) {
 				assert !cls.isShared();
 
-				writer.write("c\t");
-				writer.write(cls.getId());
-				writer.write('\t');
-				writer.write(cls.getMatch().getId());
-				writer.write('\n');
-
-				writeMethods(cls.getMethods(), writer);
-				writeFields(cls.getFields(), writer);
+				writeClass(cls, cls.getEnv() == envA ? 'a' : 'b', writer);
 			}
 		}
 
@@ -307,49 +387,117 @@ public class MatchesIo {
 		}
 	}
 
-	private static void writeMethods(MethodInstance[] methods, Writer out) throws IOException {
-		for (MethodInstance method : methods) {
-			if (method.getMatch() == null) continue;
+	private static void writeClass(ClassInstance cls, char side, Writer out) throws IOException {
+		if (cls.hasMatch()) {
+			out.write("c\t");
+			out.write(cls.getId());
+			out.write('\t');
+			out.write(cls.getMatch().getId());
+			out.write('\n');
 
-			writeMemberMain(method, out, true);
+			for (MethodInstance method : cls.getMethods()) {
+				if (method.hasMatch() || !method.isMatchable()) {
+					writeMethod(method, 'a', out);
+				}
+			}
 
+			for (FieldInstance field : cls.getFields()) {
+				if (field.hasMatch() || !field.isMatchable()) {
+					writeMemberMain(field, 'a', out);
+				}
+			}
+
+			for (MethodInstance method : cls.getMatch().getMethods()) {
+				if (!method.isMatchable()) {
+					writeMethod(method, 'b', out);
+				}
+			}
+
+			for (FieldInstance field : cls.getMatch().getFields()) {
+				if (!field.isMatchable()) {
+					writeMemberMain(field, 'b', out);
+				}
+			}
+		} else {
+			assert !cls.isMatchable();
+
+			out.write("cu\t");
+			out.write(side);
+			out.write('\t');
+			out.write(cls.getId());
+			out.write('\n');
+		}
+	}
+
+	private static void writeMethod(MethodInstance method, char side, Writer out) throws IOException {
+		writeMemberMain(method, side, out);
+
+		if (method.hasMatch()) {
 			for (MethodVarInstance arg : method.getArgs()) {
-				if (arg.getMatch() == null) continue;
-
-				out.write("\t\tma\t");
-				out.write(Integer.toString(arg.getIndex()));
-				out.write('\t');
-				out.write(Integer.toString(arg.getMatch().getIndex()));
-				out.write('\n');
+				if (arg.hasMatch() || !arg.isMatchable()) {
+					writeVar(arg, 'a', out);
+				}
 			}
 
 			for (MethodVarInstance var : method.getVars()) {
-				if (var.getMatch() == null) continue;
+				if (var.hasMatch() || !var.isMatchable()) {
+					writeVar(var, 'a', out);
+				}
+			}
 
-				out.write("\t\tmv\t");
-				out.write(Integer.toString(var.getIndex()));
-				out.write('\t');
-				out.write(Integer.toString(var.getMatch().getIndex()));
-				out.write('\n');
+			for (MethodVarInstance arg : method.getMatch().getArgs()) {
+				if (!arg.isMatchable()) {
+					writeVar(arg, 'b', out);
+				}
+			}
+
+			for (MethodVarInstance var : method.getMatch().getVars()) {
+				if (!var.isMatchable()) {
+					writeVar(var, 'b', out);
+				}
 			}
 		}
 	}
 
-	private static void writeFields(FieldInstance[] fields, Writer out) throws IOException {
-		for (FieldInstance field : fields) {
-			if (field.getMatch() == null) continue;
+	private static void writeMemberMain(MemberInstance<?> member, char side, Writer out) throws IOException {
+		out.write('\t');
+		out.write(member instanceof MethodInstance ? 'm' : 'f');
 
-			writeMemberMain(field, out, false);
+		if (member.hasMatch()) {
+			out.write('\t');
+			out.write(member.getId());
+			out.write('\t');
+			out.write(member.getMatch().getId());
+		} else {
+			assert !member.isMatchable();
+
+			out.write("u\t");
+			out.write(side);
+			out.write('\t');
+			out.write(member.getId());
 		}
+
+		out.write('\n');
 	}
 
-	private static void writeMemberMain(MemberInstance<?> member, Writer out, boolean isMethod) throws IOException {
-		out.write('\t');
-		out.write(isMethod ? 'm' : 'f');
-		out.write('\t');
-		out.write(member.getId());
-		out.write('\t');
-		out.write(member.getMatch().getId());
+	private static void writeVar(MethodVarInstance var, char side, Writer out) throws IOException {
+		out.write("\t\tm");
+		out.write(var.isArg() ? 'a' : 'v');
+
+		if (var.hasMatch()) {
+			out.write('\t');
+			out.write(Integer.toString(var.getIndex()));
+			out.write('\t');
+			out.write(Integer.toString(var.getMatch().getIndex()));
+		} else {
+			assert !var.isMatchable();
+
+			out.write("u\t");
+			out.write(side);
+			out.write('\t');
+			out.write(Integer.toString(var.getIndex()));
+		}
+
 		out.write('\n');
 	}
 
