@@ -1,11 +1,20 @@
 package matcher.srcprocess;
 
+import java.io.BufferedReader;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.JavaToken;
+import com.github.javaparser.JavaToken.Kind;
 import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ParserConfiguration.LanguageLevel;
+import com.github.javaparser.Position;
+import com.github.javaparser.Problem;
+import com.github.javaparser.Range;
+import com.github.javaparser.TokenRange;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -59,9 +68,53 @@ public class SrcDecorator {
 
 		CompilationUnit cu;
 
-		try {
+		fromTry: try {
 			cu = JavaParser.parse(src);
 		} catch (ParseProblemException e) {
+			fix: {
+				for (Problem problem : e.getProblems()) {
+					//CFR will insert super statements in inner classes after any captured locals, which crashes JavaParser
+					//We can move the super statements around so there's no crash, so long as we can find what to move where
+					if (!problem.getMessage().startsWith("Parse error. Found \"super\"") || !problem.getLocation().isPresent()) break fix;
+					TokenRange range = problem.getLocation().get();
+
+					JavaToken start = range.getBegin();
+					while (start.getKind() != Kind.SUPER.getKind()) {
+						//If we can't find the super token for whatever reason no fixing can be done
+						if (!start.getNextToken().isPresent()) break fix;
+
+						start = start.getNextToken().get();
+					}
+
+					JavaToken end = start;
+					do {
+						//If we can't find the end of the super statement
+						if (!end.getNextToken().isPresent()) break fix;
+
+						end = end.getNextToken().get();
+					} while (end.getKind() != Kind.SEMICOLON.getKind());
+
+					JavaToken to = range.getBegin();
+					while (to.getKind() != Kind.LBRACE.getKind()) {
+						//If we can't find the method header the statement is in
+						if (!to.getPreviousToken().isPresent()) break fix;
+
+						to = to.getPreviousToken().get();
+					}
+
+					//Unpack the limits of each statement so it's clear what needs to move in the source
+					if (!to.getRange().isPresent() || !start.getRange().isPresent() || !end.getRange().isPresent()) break fix;
+					src = moveStatement(src, Range.range(start.getRange().get().begin, end.getRange().get().end), to.getRange().get().end);
+				}
+
+				try {
+					cu = JavaParser.parse(src);
+					break fromTry;
+				} catch (ParseProblemException eAgain) {
+					e.addSuppressed(eAgain); //Well we tried
+				}
+			}
+
 			throw new SrcParseException(src, e);
 		}
 
@@ -86,6 +139,45 @@ public class SrcDecorator {
 		private static final long serialVersionUID = 6164216517595646716L;
 
 		public final String source;
+	}
+
+	private static String moveStatement(String source, Range slice, Position to) {
+		System.out.println("Shifting " + slice + " to " + to);
+
+		//Remember that lines are counted from 1 not 0, so the indexes have to be offset backwards
+		List<String> lines = new BufferedReader(new StringReader(source)).lines().collect(Collectors.toList());
+
+		String sliceLine;
+		if (slice.begin.line != slice.end.line) {
+			String sliceStart = lines.get(slice.begin.line - 1);
+			StringBuilder insert = new StringBuilder(sliceStart.substring(slice.begin.column - 1));
+
+			for (int i = slice.begin.line, end = slice.end.line - 1; i < end; i++) {
+				insert.append(lines.get(i)).append(System.lineSeparator());
+			}
+
+			String sliceEnd = lines.get(slice.end.line - 1);
+			sliceLine = insert.append(sliceEnd.substring(0, slice.end.column)).toString();
+		} else {
+			sliceLine = lines.get(slice.begin.line - 1).substring(slice.begin.column - 1, slice.end.column);
+		}
+		sliceLine = sliceLine.trim();
+
+		StringBuilder rebuiltSource = new StringBuilder();
+
+		for (int i = 0, end = to.line; i < end; i++) {
+			rebuiltSource.append(lines.get(i)).append(System.lineSeparator());
+		}
+		rebuiltSource.append(sliceLine).append(" //Matcher moved").append(System.lineSeparator());
+		for (int i = to.line, end = slice.begin.line - 1; i < end; i++) {
+			rebuiltSource.append(lines.get(i)).append(System.lineSeparator());
+		}
+		rebuiltSource.append("/* ").append(sliceLine).append(" */");
+		for (int i = slice.end.line, end = lines.size(); i < end; i++) {
+			rebuiltSource.append(System.lineSeparator()).append(lines.get(i));
+		}
+
+		return rebuiltSource.toString();
 	}
 
 	private static void handleComment(String comment, Node n) {
