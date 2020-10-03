@@ -71,48 +71,11 @@ public class SrcDecorator {
 		fromTry: try {
 			cu = JavaParser.parse(src);
 		} catch (ParseProblemException e) {
-			fix: {
-				for (Problem problem : e.getProblems()) {
-					//CFR will insert super statements in inner classes after any captured locals, which crashes JavaParser
-					//We can move the super statements around so there's no crash, so long as we can find what to move where
-					if (!problem.getMessage().startsWith("Parse error. Found \"super\"") || !problem.getLocation().isPresent()) break fix;
-					TokenRange range = problem.getLocation().get();
-
-					JavaToken start = range.getBegin();
-					while (start.getKind() != Kind.SUPER.getKind()) {
-						//If we can't find the super token for whatever reason no fixing can be done
-						if (!start.getNextToken().isPresent()) break fix;
-
-						start = start.getNextToken().get();
-					}
-
-					JavaToken end = start;
-					do {
-						//If we can't find the end of the super statement
-						if (!end.getNextToken().isPresent()) break fix;
-
-						end = end.getNextToken().get();
-					} while (end.getKind() != Kind.SEMICOLON.getKind());
-
-					JavaToken to = range.getBegin();
-					while (to.getKind() != Kind.LBRACE.getKind()) {
-						//If we can't find the method header the statement is in
-						if (!to.getPreviousToken().isPresent()) break fix;
-
-						to = to.getPreviousToken().get();
-					}
-
-					//Unpack the limits of each statement so it's clear what needs to move in the source
-					if (!to.getRange().isPresent() || !start.getRange().isPresent() || !end.getRange().isPresent()) break fix;
-					src = moveStatement(src, Range.range(start.getRange().get().begin, end.getRange().get().end), to.getRange().get().end);
-				}
-
-				try {
-					cu = JavaParser.parse(src);
-					break fromTry;
-				} catch (ParseProblemException eAgain) {
-					e.addSuppressed(eAgain); //Well we tried
-				}
+			try {
+				cu = preFormatCompile(src, e.getProblems());
+				if (cu != null) break fromTry;
+			} catch (ParseProblemException eAgain) {
+				e.addSuppressed(eAgain); //Well we tried
 			}
 
 			throw new SrcParseException(src, e);
@@ -139,6 +102,45 @@ public class SrcDecorator {
 		private static final long serialVersionUID = 6164216517595646716L;
 
 		public final String source;
+	}
+
+	private static CompilationUnit preFormatCompile(String src, List<Problem> problems) {
+		for (Problem problem : problems) {
+			//CFR will insert super statements in inner classes after any captured locals, which crashes JavaParser
+			//We can move the super statements around so there's no crash, so long as we can find what to move where
+			if (!problem.getMessage().startsWith("Parse error. Found \"super\"") || !problem.getLocation().isPresent()) return null;
+			TokenRange range = problem.getLocation().get();
+
+			JavaToken start = range.getBegin();
+			while (start.getKind() != Kind.SUPER.getKind()) {
+				//If we can't find the super token for whatever reason no fixing can be done
+				if (!start.getNextToken().isPresent()) return null;
+
+				start = start.getNextToken().get();
+			}
+
+			JavaToken end = start;
+			do {
+				//If we can't find the end of the super statement
+				if (!end.getNextToken().isPresent()) return null;
+
+				end = end.getNextToken().get();
+			} while (end.getKind() != Kind.SEMICOLON.getKind());
+
+			JavaToken to = range.getBegin();
+			while (to.getKind() != Kind.LBRACE.getKind()) {
+				//If we can't find the method header the statement is in
+				if (!to.getPreviousToken().isPresent()) return null;
+
+				to = to.getPreviousToken().get();
+			}
+
+			//Unpack the limits of each statement so it's clear what needs to move in the source
+			if (!to.getRange().isPresent() || !start.getRange().isPresent() || !end.getRange().isPresent()) return null;
+			src = moveStatement(src, Range.range(start.getRange().get().begin, end.getRange().get().end), to.getRange().get().end);
+		}
+
+		return JavaParser.parse(src);
 	}
 
 	private static String moveStatement(String source, Range slice, Position to) {
