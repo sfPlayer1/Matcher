@@ -82,6 +82,8 @@ public class Gui extends Application {
 		scene = new Scene(border, 1400, 800);
 		Shortcuts.init(this);
 
+		scene.getStylesheets().add("css/darktheme.css");
+
 		for (Consumer<Gui> l : loadListeners) {
 			l.accept(this);
 		}
