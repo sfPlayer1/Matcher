@@ -82,8 +82,6 @@ public class Gui extends Application {
 		scene = new Scene(border, 1400, 800);
 		Shortcuts.init(this);
 
-		scene.getStylesheets().add("css/darktheme.css");
-
 		for (Consumer<Gui> l : loadListeners) {
 			l.accept(this);
 		}
@@ -191,6 +189,26 @@ public class Gui extends Application {
 		if (this.useDiffColors == useDiffColors) return;
 
 		this.useDiffColors = useDiffColors;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange();
+		}
+	}
+
+	public boolean isUseDarkTheme() {
+		return useDarkTheme;
+	}
+
+	public void setUseDarkTheme(boolean useDarkTheme) {
+		if (this.useDarkTheme == useDarkTheme) return;
+
+		this.useDarkTheme = useDarkTheme;
+
+		if (useDarkTheme) {
+			this.scene.getStylesheets().add("css/darktheme.css");
+		} else {
+			this.scene.getStylesheets().remove("css/darktheme.css");
+		}
 
 		for (IGuiComponent c : components) {
 			c.onViewChange();
@@ -419,6 +437,8 @@ public class Gui extends Application {
 	private boolean useClassTreeView;
 	private boolean showNonInputs;
 	private boolean useDiffColors;
+
+	private boolean useDarkTheme;
 
 	private NameType nameType = NameType.MAPPED_PLAIN;
 	private BuiltinDecompiler decompiler = BuiltinDecompiler.CFR;

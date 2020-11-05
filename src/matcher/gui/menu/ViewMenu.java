@@ -123,6 +123,14 @@ public class ViewMenu extends Menu {
 		});
 
 		getItems().add(menu);
+
+		getItems().add(new SeparatorMenuItem());
+		checkMenuItem = new CheckMenuItem("Use dark theme");
+		checkMenuItem.setSelected(gui.isUseDarkTheme());
+		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue != null) gui.setUseDarkTheme(newValue);
+		});
+		getItems().add(checkMenuItem);
 	}
 
 	private final Gui gui;

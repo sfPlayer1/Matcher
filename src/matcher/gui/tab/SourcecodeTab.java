@@ -53,6 +53,8 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	private void init() {
 		displayText("no class selected");
 		setContent(webView);
+
+		onViewChange(); // A not particularly brilliant way to make sure the light syntax stylesheet is loaded
 	}
 
 	@Override
@@ -72,6 +74,13 @@ public class SourcecodeTab extends Tab implements IGuiComponent {
 	@Override
 	public void onViewChange() {
 		ClassInstance cls = selectionProvider.getSelectedClass();
+
+		webView.getEngine().setUserStyleSheetLocation(
+				getClass().getResource(
+						gui.isUseDarkTheme()
+								? "/css/darksyntax.css"
+								: "/css/lightsyntax.css"
+				).toString());
 
 		if (cls != null) {
 			update(cls, true);

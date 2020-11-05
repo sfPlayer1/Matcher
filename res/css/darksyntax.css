@@ -1,0 +1,33 @@
+body {
+    background-color: #1b1717;
+    color: white;
+    font-family: monospace;
+    white-space: pre;
+    margin: 0.2rem;
+    tab-size: 4;
+}
+
+.comment {
+	color: #7FAF9F;
+}
+
+.keyword {
+	color: #BF4095;
+	font-weight: bold;
+}
+
+.string {
+	color: #6A40FF;
+}
+
+.field {
+	color: #4040F0;
+}
+
+.annotation {
+	color: #A4A4A4;
+}
+
+.variable {
+	color: #AA7E7E;
+}
