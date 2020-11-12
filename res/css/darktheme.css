@@ -1,3 +1,4 @@
 .root {
     -fx-base: #000000;
+    -fx-control-inner-background: #202020;
 }

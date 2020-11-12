@@ -179,9 +179,17 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			float similarity = item.getSimilarity();
 
 			if (similarity < epsilon) {
-				return "-fx-text-fill: darkred;";
+				return !gui.isUseDarkTheme()
+						? "-fx-text-fill: darkred;"
+						: "-fx-text-fill: #FF4A4A;";
 			} else if (similarity > 1 - epsilon) {
-				return "-fx-text-fill: darkgreen;";
+				return !gui.isUseDarkTheme()
+						? "-fx-text-fill: darkgreen;"
+						: "-fx-text-fill: chartreuse;";
+			} else if (gui.isUseDarkTheme()) {
+				// I do not understand the purpose of the else block of this condition,
+				// so I just elected to return a fixed yellow in the dark theme.
+				return "-fx-text-fill: #FFF08F;";
 			} else {
 				final float hue0 = 30; // red, darkred=0
 				final float hue1 = 90; // green, darkgreen=120
@@ -205,13 +213,21 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			}
 		} else {
 			if (!item.isMatchable()) {
-				return "-fx-text-fill: dimgray;";
+				return !gui.isUseDarkTheme()
+						? "-fx-text-fill: dimgray;"
+						: "-fx-text-fill: gray;";
 			} else if (item.getMatch() == null) {
-				return "-fx-text-fill: darkred;";
+				return !gui.isUseDarkTheme()
+						? "-fx-text-fill: darkred;"
+						: "-fx-text-fill: #FF4A4A;";
 			} else if (!item.isFullyMatched(false)) { // TODO: change recursive to true once arg+var matching is further implemented
-				return "-fx-text-fill: chocolate;";
+				return !gui.isUseDarkTheme()
+						? "-fx-text-fill: chocolate;"
+						: "-fx-text-fill: sandybrown;";
 			} else {
-				return "-fx-text-fill: darkgreen;";
+				return !gui.isUseDarkTheme()
+						? "-fx-text-fill: darkgreen;"
+						: "-fx-text-fill: chartreuse;";
 			}
 		}
 	}
