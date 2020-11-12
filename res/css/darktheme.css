@@ -1,4 +1,10 @@
 .root {
     -fx-base: #000000;
     -fx-control-inner-background: #202020;
+    -fx-selection-bar: #505050;
+    -fx-selection-bar-non-focused: #303030;
+}
+
+.menu-bar {
+    -fx-background-color: -fx-control-inner-background;
 }
