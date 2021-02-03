@@ -14,6 +14,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -112,7 +113,7 @@ public class FileMenu extends Menu {
 		newProject(Config.getProjectConfig());
 	}
 
-	public void newProject(ProjectConfig config) {
+	public CompletableFuture<Boolean> newProject(ProjectConfig config) {
 		Dialog<ProjectConfig> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
@@ -125,20 +126,29 @@ public class FileMenu extends Menu {
 		dialog.getDialogPane().setContent(content);
 		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
-		dialog.showAndWait().ifPresent(newConfig -> {
-			if (!newConfig.isValid()) return;
+		ProjectConfig newConfig = dialog.showAndWait().orElse(null);
+		if (newConfig == null || !newConfig.isValid()) return CompletableFuture.completedFuture(false);
 
-			Config.setProjectConfig(newConfig);
-			Config.saveAsLast();
+		Config.setProjectConfig(newConfig);
+		Config.saveAsLast();
 
-			gui.getMatcher().reset();
-			gui.onProjectChange();
+		gui.getMatcher().reset();
+		gui.onProjectChange();
 
-			gui.runProgressTask("Initializing files...",
-					progressReceiver -> gui.getMatcher().init(newConfig, progressReceiver),
-					() -> gui.onProjectChange(),
-					Throwable::printStackTrace);
-		});
+		CompletableFuture<Boolean> ret = new CompletableFuture<>();
+
+		gui.runProgressTask("Initializing files...",
+				progressReceiver -> {
+					gui.getMatcher().init(newConfig, progressReceiver);
+					ret.complete(true);
+				},
+				() -> gui.onProjectChange(),
+				exc -> {
+					exc.printStackTrace();
+					ret.complete(false);
+				});
+
+		return ret;
 	}
 
 	private void loadProject() {

@@ -23,6 +23,10 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 		this.selectionProvider = selectionProvider;
 		this.unmatchedTmp = unmatchedTmp;
 
+		for (int i = 0; i < NameType.AUX_COUNT; i++) {
+			auxNameLabels[i] = new Label();
+		}
+
 		init();
 	}
 
@@ -38,7 +42,11 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 		row = addRow("Name", nameLabel, grid, row);
 		row = addRow("Tmp name", tmpNameLabel, grid, row);
 		row = addRow("Mapped name", mappedNameLabel, grid, row);
-		row = addRow("AUX name", auxNameLabel, grid, row);
+
+		for (int i = 0; i < NameType.AUX_COUNT; i++) {
+			row = addRow("AUX name "+(i+1), auxNameLabels[i], grid, row);
+		}
+
 		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
 		row = addRow("Type", typeLabel, grid, row);
@@ -85,7 +93,11 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText("-");
 			tmpNameLabel.setText("-");
 			mappedNameLabel.setText("-");
-			auxNameLabel.setText("-");
+
+			for (int i = 0; i < NameType.AUX_COUNT; i++) {
+				auxNameLabels[i].setText("-");
+			}
+
 			uidLabel.setText("-");
 			nameObfLabel.setText("-");
 			typeLabel.setText("-");
@@ -102,7 +114,11 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 			nameLabel.setText(var.getName());
 			tmpNameLabel.setText(var.hasLocalTmpName() ? var.getName(NameType.LOCTMP_PLAIN) : "-");
 			mappedNameLabel.setText(var.hasMappedName() ? var.getName(NameType.MAPPED) : "-");
-			auxNameLabel.setText(var.hasAuxName() ? var.getName(NameType.AUX) : "-");
+
+			for (int i = 0; i < NameType.AUX_COUNT; i++) {
+				auxNameLabels[i].setText(var.hasAuxName(i) ? var.getName(NameType.getAux(i)) : "-");
+			}
+
 			uidLabel.setText(var.getUid() >= 0 ? Integer.toString(var.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(var.isNameObfuscated()));
 			typeLabel.setText(getName(var.getType(), nameType));
@@ -123,7 +139,7 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 	private final Label nameLabel = new Label();
 	private final Label tmpNameLabel = new Label();
 	private final Label mappedNameLabel = new Label();
-	private final Label auxNameLabel = new Label();
+	private final Label[] auxNameLabels = new Label[NameType.AUX_COUNT];
 	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
 	private final Label typeLabel = new Label();

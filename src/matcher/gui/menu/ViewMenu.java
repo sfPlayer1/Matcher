@@ -6,6 +6,7 @@ import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
+import matcher.NameType;
 import matcher.gui.Gui;
 import matcher.gui.Gui.SortKey;
 import matcher.srcprocess.BuiltinDecompiler;
@@ -76,12 +77,15 @@ public class ViewMenu extends Menu {
 		});
 		getItems().add(checkMenuItem);
 
-		checkMenuItem = new CheckMenuItem("Use aux names");
-		checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withAux(false));
-		checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
-			if (newValue != null) gui.setNameType(gui.getNameType().withAux(newValue));
-		});
-		getItems().add(checkMenuItem);
+		for (int i = 0; i < NameType.AUX_COUNT; i++) {
+			final int index = i;
+			checkMenuItem = new CheckMenuItem(String.format("Use aux%s names", i > 0 ? Integer.toString(i + 1) : ""));
+			checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withAux(i, false));
+			checkMenuItem.selectedProperty().addListener((observable, oldValue, newValue) -> {
+				if (newValue != null) gui.setNameType(gui.getNameType().withAux(index, newValue));
+			});
+			getItems().add(checkMenuItem);
+		}
 
 		checkMenuItem = new CheckMenuItem("Use tmp names");
 		checkMenuItem.setSelected(gui.getNameType() != gui.getNameType().withTmp(false));

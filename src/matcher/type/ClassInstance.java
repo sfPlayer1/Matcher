@@ -135,11 +135,11 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			// MAPPED_*, remote deobf
 			ret = matchedClass.getInnerName0(matchedClass.getName());
 			fromMatched = true;
-		} else if (type.aux && auxName != null) {
-			ret = auxName;
+		} else if (type.isAux() && auxName != null && auxName.length > type.getAuxIndex() && auxName[type.getAuxIndex()] != null) {
+			ret = auxName[type.getAuxIndex()];
 			fromMatched = false;
-		} else if (type.aux && matchedClass != null && matchedClass.auxName != null) {
-			ret = matchedClass.auxName;
+		} else if (type.isAux() && matchedClass != null && matchedClass.auxName != null && matchedClass.auxName.length > type.getAuxIndex() && matchedClass.auxName[type.getAuxIndex()] != null) {
+			ret = matchedClass.auxName[type.getAuxIndex()];
 			fromMatched = true;
 		} else if (type.tmp && matchedClass != null && matchedClass.tmpName != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
@@ -896,14 +896,15 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
-	public boolean hasAuxName() {
-		return auxName != null;
+	public boolean hasAuxName(int index) {
+		return auxName != null && auxName.length > index && auxName[index] != null;
 	}
 
-	public void setAuxName(String name) {
+	public void setAuxName(int index, String name) {
 		assert name == null || !hasOuterName(name);
 
-		this.auxName = name;
+		if (this.auxName == null) this.auxName = new String[NameType.AUX_COUNT];
+		this.auxName[index] = name;
 	}
 
 	public boolean isAssignableFrom(ClassInstance c) {
@@ -1134,7 +1135,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	private String mappedName;
 	private String mappedComment;
 
-	private String auxName;
+	private String[] auxName;
 
 	private boolean matchable = true;
 	private ClassInstance matchedClass;

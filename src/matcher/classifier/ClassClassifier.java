@@ -52,7 +52,7 @@ public class ClassClassifier {
 		addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
 
-	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
+	public static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
 		if (levels.length == 0) levels = ClassifierLevel.ALL;
 
 		classifier.weight = weight;
@@ -533,8 +533,8 @@ public class ClassClassifier {
 		}
 	}
 
-	static abstract class AbstractClassifier implements IClassifier<ClassInstance> {
-		AbstractClassifier(String name) {
+	public static abstract class AbstractClassifier implements IClassifier<ClassInstance> {
+		public AbstractClassifier(String name) {
 			this.name = name;
 		}
 

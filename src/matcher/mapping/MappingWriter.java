@@ -67,8 +67,10 @@ public class MappingWriter implements MappingAcceptor, Closeable {
 		case MAPPED_TMP_PLAIN:
 			return "named-tmp";
 		case AUX:
+		case AUX2:
 		case AUX_PLAIN:
-			return "aux";
+		case AUX2_PLAIN:
+			return type.getAuxIndex() > 0 ? String.format("aux%d", type.getAuxIndex()) : "aux";
 		case MAPPED_AUX_PLAIN:
 			return "named-aux";
 		default: throw new IllegalArgumentException();

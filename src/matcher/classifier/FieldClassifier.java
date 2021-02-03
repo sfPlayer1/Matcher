@@ -37,7 +37,7 @@ public class FieldClassifier {
 		addClassifier(writeRefsBci, 6, ClassifierLevel.Extra);
 	}
 
-	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
+	public static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
 		if (levels.length == 0) levels = ClassifierLevel.ALL;
 
 		classifier.weight = weight;
@@ -308,8 +308,8 @@ public class FieldClassifier {
 		return a.getAsmNode() == null && b.getAsmNode() == null ? 1 : 0;
 	}
 
-	private static abstract class AbstractClassifier implements IClassifier<FieldInstance> {
-		AbstractClassifier(String name) {
+	public static abstract class AbstractClassifier implements IClassifier<FieldInstance> {
+		public AbstractClassifier(String name) {
 			this.name = name;
 		}
 

@@ -96,10 +96,10 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 		} else if (type.mapped && matchedInstance != null && !matchedInstance.nameObfuscated) {
 			// MAPPED_*, remote deobf
 			ret = matchedInstance.origName;
-		} else if (type.aux && auxName != null) {
-			ret = auxName;
-		} else if (type.aux && matchedInstance != null && matchedInstance.auxName != null) {
-			ret = matchedInstance.auxName;
+		} else if (type.isAux() && auxName != null && auxName.length > type.getAuxIndex() && auxName[type.getAuxIndex()] != null) {
+			ret = auxName[type.getAuxIndex()];
+		} else if (type.isAux() && matchedInstance != null && matchedInstance.auxName != null && matchedInstance.auxName.length > type.getAuxIndex() && matchedInstance.auxName[type.getAuxIndex()] != null) {
+			ret = matchedInstance.auxName[type.getAuxIndex()];
 		} else if (type.tmp && matchedInstance != null && matchedInstance.tmpName != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
 			ret = matchedInstance.tmpName;
@@ -195,12 +195,13 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	}
 
 	@Override
-	public boolean hasAuxName() {
-		return auxName != null;
+	public boolean hasAuxName(int index) {
+		return auxName != null && auxName.length > index && auxName[index] != null;
 	}
 
-	public void setAuxName(String name) {
-		this.auxName = name;
+	public void setAuxName(int index, String name) {
+		if (this.auxName == null) this.auxName = new String[NameType.AUX_COUNT];
+		this.auxName[index] = name;
 	}
 
 	@Override
@@ -263,7 +264,7 @@ public class MethodVarInstance implements Matchable<MethodVarInstance> {
 	private String mappedName;
 	String mappedComment;
 
-	String auxName;
+	String[] auxName;
 
 	private boolean matchable = true;
 	private MethodVarInstance matchedInstance;

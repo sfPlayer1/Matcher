@@ -53,7 +53,8 @@ public class Mappings {
 
 							break;
 						case AUX:
-							if (!cls.hasAuxName() || replace) {
+						case AUX2:
+							if (!cls.hasAuxName(fieldTarget.type.getAuxIndex()) || replace) {
 								if (ClassInstance.hasOuterName(dstName)) {
 									if (!includesOuterNames) {
 										System.out.println("Ignoring extra outer name parts for "+dstName);
@@ -62,7 +63,7 @@ public class Mappings {
 									dstName = ClassInstance.getInnerName(dstName);
 								}
 
-								cls.setAuxName(dstName);
+								cls.setAuxName(fieldTarget.type.getAuxIndex(), dstName);
 							}
 
 							break;
@@ -146,9 +147,10 @@ public class Mappings {
 
 							break;
 						case AUX:
-							if (!method.hasAuxName() || replace) {
+						case AUX2:
+							if (!method.hasAuxName(fieldTarget.type.getAuxIndex()) || replace) {
 								for (MethodInstance m : method.getAllHierarchyMembers()) {
-									m.setAuxName(dstName);
+									m.setAuxName(fieldTarget.type.getAuxIndex(), dstName);
 								}
 							}
 
@@ -207,7 +209,8 @@ public class Mappings {
 							if (!arg.hasMappedName() || replace) arg.setMappedName(dstArgName);
 							break;
 						case AUX:
-							if (!arg.hasAuxName() || replace) arg.setAuxName(dstArgName);
+						case AUX2:
+							if (!arg.hasAuxName(fieldTarget.type.getAuxIndex()) || replace) arg.setAuxName(fieldTarget.type.getAuxIndex(), dstArgName);
 							break;
 						case UID:
 							// not applicable
@@ -243,7 +246,8 @@ public class Mappings {
 							if (!var.hasMappedName() || replace) var.setMappedName(dstVarName);
 							break;
 						case AUX:
-							if (!var.hasAuxName() || replace) var.setAuxName(dstVarName);
+						case AUX2:
+							if (!var.hasAuxName(fieldTarget.type.getAuxIndex()) || replace) var.setAuxName(fieldTarget.type.getAuxIndex(), dstVarName);
 							break;
 						case UID:
 							// not applicable
@@ -343,9 +347,10 @@ public class Mappings {
 
 							break;
 						case AUX:
-							if (!field.hasAuxName() || replace) {
+						case AUX2:
+							if (!field.hasAuxName(fieldTarget.type.getAuxIndex()) || replace) {
 								for (FieldInstance f : field.getAllHierarchyMembers()) {
-									f.setAuxName(dstName);
+									f.setAuxName(fieldTarget.type.getAuxIndex(), dstName);
 								}
 							}
 
@@ -431,6 +436,7 @@ public class Mappings {
 			return env.getLocalClsByName(name);
 		case MAPPED:
 		case AUX:
+		case AUX2:
 		case UID:
 			ClassInstance ret = env.getClsByName(name, type.type);
 

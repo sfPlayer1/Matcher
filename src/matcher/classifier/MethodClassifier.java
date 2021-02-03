@@ -45,7 +45,7 @@ public class MethodClassifier {
 		addClassifier(inRefsBci, 6, ClassifierLevel.Extra);
 	}
 
-	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
+	public static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
 		if (levels.length == 0) levels = ClassifierLevel.ALL;
 
 		classifier.weight = weight;
@@ -364,8 +364,8 @@ public class MethodClassifier {
 		return a.getAsmNode() == null && b.getAsmNode() == null ? 1 : 0;
 	}
 
-	private static abstract class AbstractClassifier implements IClassifier<MethodInstance> {
-		AbstractClassifier(String name) {
+	public static abstract class AbstractClassifier implements IClassifier<MethodInstance> {
+		public AbstractClassifier(String name) {
 			this.name = name;
 		}
 
