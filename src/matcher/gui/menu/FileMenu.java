@@ -236,7 +236,7 @@ public class FileMenu extends Menu {
 					settings.replace);
 		} catch (IOException e) {
 			e.printStackTrace();
-			gui.showAlert(AlertType.ERROR, "Load error", "Error while loading mappings", e.getMessage());
+			gui.showAlert(AlertType.ERROR, "Load error", "Error while loading mappings", e.toString());
 			return;
 		}
 

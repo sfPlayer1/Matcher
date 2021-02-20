@@ -2,7 +2,7 @@ package matcher.type;
 
 import matcher.NameType;
 
-public interface Matchable<T> {
+public interface Matchable<T extends Matchable> {
 	String getId();
 	String getName();
 	String getName(NameType type);
