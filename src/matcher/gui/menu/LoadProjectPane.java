@@ -20,8 +20,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
+
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;
+import matcher.gui.GuiUtil;
 
 public class LoadProjectPane extends VBox {
 	LoadProjectPane(List<Path> paths, boolean verifyFiles, Window window, Node okButton) {
@@ -65,6 +67,14 @@ public class LoadProjectPane extends VBox {
 			list.getItems().removeIf(selected::contains);
 		});
 
+		Button upButton = new Button("up");
+		footer.getChildren().add(upButton);
+		upButton.setOnAction(event ->  GuiUtil.moveSelectionUp(list));
+
+		Button downButton = new Button("down");
+		footer.getChildren().add(downButton);
+		downButton.setOnAction(event ->  GuiUtil.moveSelectionDown(list));
+
 		ListChangeListener<Path> itemChangeListener = change -> {
 			okButton.setDisable(paths.isEmpty());
 		};
@@ -76,6 +86,8 @@ public class LoadProjectPane extends VBox {
 			boolean empty = selectedIndices.isEmpty();
 
 			removeButton.setDisable(empty);
+			upButton.setDisable(empty);
+			downButton.setDisable(empty);
 		};
 
 		list.getSelectionModel().getSelectedItems().addListener(selectChangeListener);

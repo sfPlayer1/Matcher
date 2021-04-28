@@ -862,7 +862,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		return mappedName != null
 				|| matchedClass != null && matchedClass.mappedName != null
 				|| elementClass != null && elementClass.hasMappedName()
-				|| outerClass != null && outerClass.hasMappedName();
+				/*|| outerClass != null && outerClass.hasMappedName() TODO: for anonymous only?*/;
 	}
 
 	public boolean hasNoFullyMappedName() {
@@ -1094,7 +1094,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		}
 	}
 
-	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getId);
+	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getName);
 
 	private static final ClassInstance[] noArrays = new ClassInstance[0];
 	private static final MethodInstance[] noMethods = new MethodInstance[0];

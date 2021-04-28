@@ -21,7 +21,7 @@ import matcher.mapping.MappingState.VarMappingState;
 import matcher.type.ClassInstance;
 
 class EnigmaImpl {
-	public static void read(Path dir, boolean reverse, MappingAcceptor mappingAcceptor) throws IOException {
+	public static void read(Path dir, boolean reverse, FlatMappingVisitor mappingAcceptor) throws IOException {
 		if (reverse) throw new UnsupportedOperationException(); // TODO: implement
 
 		try (Stream<Path> stream = Files.find(dir,
@@ -32,9 +32,11 @@ class EnigmaImpl {
 		} catch (UncheckedIOException e) {
 			throw e.getCause();
 		}
+
+		mappingAcceptor.visitEnd();
 	}
 
-	private static void readFile(Path file, MappingAcceptor mappingAcceptor) {
+	private static void readFile(Path file, FlatMappingVisitor mappingAcceptor) {
 		try (BufferedReader reader = Files.newBufferedReader(file)) {
 			String line;
 			Context context = null;
@@ -82,15 +84,25 @@ class EnigmaImpl {
 
 					String srcName = parts[1];
 
-					if (context != null && !ClassInstance.hasOuterName(srcName)) { // recent Enigma doesn't include the outer names, but the class must be an inner class
-						srcName = ClassInstance.getNestedName(((ClassContext) context).name, srcName);
+					if (context != null && !ClassInstance.hasOuterName(srcName)) { // inner class, recent Enigma doesn't include the outer names, restore it from context
+						srcName = ClassInstance.getNestedName(((ClassContext) context).srcName, srcName);
 					}
+
+					String dstName;
 
 					if (parts.length == 3) {
-						mappingAcceptor.acceptClass(srcName, parts[2], false);
+						dstName = parts[2];
+
+						if (context != null && !ClassInstance.hasOuterName(dstName)) { // inner class, recent Enigma doesn't include the outer names, restore it from context
+							dstName = ClassInstance.getNestedName(((ClassContext) context).dstName, dstName);
+						}
+
+						mappingAcceptor.visitClass(srcName, dstName);
+					} else {
+						dstName = srcName;
 					}
 
-					context = new ClassContext((ClassContext) context, srcName);
+					context = new ClassContext((ClassContext) context, srcName, dstName);
 					indent++;
 
 					break;
@@ -103,7 +115,7 @@ class EnigmaImpl {
 					ClassContext classContext = (ClassContext) context;
 
 					if (parts.length == 4) {
-						mappingAcceptor.acceptMethod(classContext.name, parts[1], parts[3], null, parts[2], null);
+						mappingAcceptor.visitMethod(classContext.srcName, parts[1], parts[3], null, parts[2], null);
 					}
 
 					context = new MemberContext(classContext, true, parts[1], parts[parts.length - 1]);
@@ -125,9 +137,9 @@ class EnigmaImpl {
 					String name = parts[2];
 
 					if (isArg) {
-						mappingAcceptor.acceptMethodArg(classContext.name, methodContext.name, methodContext.desc, -1, lvIndex, null, name);
+						mappingAcceptor.visitMethodArg(classContext.srcName, methodContext.name, methodContext.desc, -1, lvIndex, null, null, null, null, name);
 					} else {
-						mappingAcceptor.acceptMethodVar(classContext.name, methodContext.name, methodContext.desc, -1, lvIndex, -1, -1, null, name);
+						mappingAcceptor.visitMethodVar(classContext.srcName, methodContext.name, methodContext.desc, -1, lvIndex, -1, null, null, null, null, name);
 					}
 
 					context = new VarContext(methodContext, isArg, lvIndex);
@@ -142,7 +154,7 @@ class EnigmaImpl {
 					ClassContext classContext = (ClassContext) context;
 
 					if (parts.length == 4) {
-						mappingAcceptor.acceptField(classContext.name, parts[1], parts[3], null, parts[2], null);
+						mappingAcceptor.visitField(classContext.srcName, parts[1], parts[3], null, parts[2], null);
 					}
 
 					context = new MemberContext(classContext, false, parts[1], parts[parts.length - 1]);
@@ -192,27 +204,34 @@ class EnigmaImpl {
 		if (offset < len) out.append(line, offset, len);
 	}
 
-	private static void applyComment(CharSequence comment, Context context, MappingAcceptor mappingAcceptor) {
+	private static void applyComment(CharSequence comment, Context context, FlatMappingVisitor mappingAcceptor) {
 		String commentStr = comment.toString();
 
 		if (context instanceof ClassContext) {
 			ClassContext ctx = (ClassContext) context;
-			mappingAcceptor.acceptClassComment(ctx.name, commentStr);
+			mappingAcceptor.visitClassComment(ctx.srcName, (String) null, commentStr);
 		} else if (context instanceof MemberContext) {
 			MemberContext ctx = (MemberContext) context;
 
 			if (ctx.isMethod) {
-				mappingAcceptor.acceptMethodComment(ctx.parent.name, ctx.name, ctx.desc, commentStr);
+				mappingAcceptor.visitMethodComment(ctx.parent.srcName, ctx.name, ctx.desc,
+						commentStr);
 			} else {
-				mappingAcceptor.acceptFieldComment(ctx.parent.name, ctx.name, ctx.desc, commentStr);
+				mappingAcceptor.visitFieldComment(ctx.parent.srcName, ctx.name, ctx.desc,
+						(String) null, null, null,
+						commentStr);
 			}
 		} else if (context instanceof VarContext) {
 			VarContext ctx = (VarContext) context;
 
 			if (ctx.isArg) {
-				mappingAcceptor.acceptMethodArgComment(ctx.parent.parent.name, ctx.parent.name, ctx.parent.desc, -1, ctx.lvIndex, commentStr);
+				mappingAcceptor.visitMethodArgComment(ctx.parent.parent.srcName, ctx.parent.name, ctx.parent.desc, -1, ctx.lvIndex, null,
+						(String) null, null, null, null,
+						commentStr);
 			} else {
-				mappingAcceptor.acceptMethodVarComment(ctx.parent.parent.name, ctx.parent.name, ctx.parent.desc, -1, ctx.lvIndex, -1, -1, commentStr);
+				mappingAcceptor.visitMethodVarComment(ctx.parent.parent.srcName, ctx.parent.name, ctx.parent.desc, -1, ctx.lvIndex, -1, null,
+						(String) null, null, null, null,
+						commentStr);
 			}
 		} else {
 			throw new IllegalStateException();
@@ -224,9 +243,10 @@ class EnigmaImpl {
 	}
 
 	private static final class ClassContext implements Context {
-		ClassContext(ClassContext parent, String name) {
+		ClassContext(ClassContext parent, String srcName, String dstName) {
 			this.parent = parent;
-			this.name = name;
+			this.srcName = srcName;
+			this.dstName = dstName;
 		}
 
 		@Override
@@ -235,7 +255,8 @@ class EnigmaImpl {
 		}
 
 		final ClassContext parent;
-		final String name;
+		final String srcName;
+		final String dstName;
 	}
 
 	private static final class MemberContext implements Context {
@@ -303,15 +324,6 @@ class EnigmaImpl {
 		}
 
 		writer.write('\n');
-
-		if (!clsState.innerClasses.isEmpty()) {
-			List<ClassMappingState> classes = new ArrayList<>(clsState.innerClasses);
-			classes.sort(classComparator);
-
-			for (ClassMappingState innerCls : classes) {
-				writeClass(innerCls, prefix.concat("\t"), writer);
-			}
-		}
 
 		if (clsState.comment != null) {
 			writeComment(clsState.comment, prefix, "\t", writer);
@@ -385,8 +397,8 @@ class EnigmaImpl {
 					}
 				}
 
-				if (!method.varMap.isEmpty()) {
-					List<VarMappingState> vars = new ArrayList<>(method.varMap.values());
+				if (!method.vars.isEmpty()) {
+					List<VarMappingState> vars = new ArrayList<>(method.vars);
 					vars.sort(varComparator);
 
 					for (VarMappingState var : vars) {
@@ -408,6 +420,15 @@ class EnigmaImpl {
 				}
 			}
 		}
+
+		if (!clsState.innerClasses.isEmpty()) {
+			List<ClassMappingState> classes = new ArrayList<>(clsState.innerClasses);
+			classes.sort(classComparator);
+
+			for (ClassMappingState innerCls : classes) {
+				writeClass(innerCls, prefix.concat("\t"), writer);
+			}
+		}
 	}
 
 	private static void writeComment(String comment, String prefixA, String prefixB, Writer writer) throws IOException {
@@ -427,21 +448,25 @@ class EnigmaImpl {
 	private static void writeCommentLine(String comment, int start, int end, String prefixA, String prefixB, Writer writer) throws IOException {
 		writer.write(prefixA);
 		writer.write(prefixB);
-		writer.write("COMMENT ");
+		writer.write("COMMENT");
 
-		for (int i = start; i < end; i++) {
-			char c = comment.charAt(i);
-			int idx = toEscape.indexOf(c);
+		if (end > start) {
+			writer.write(' ');
 
-			if (idx >= 0) {
-				if (i > start) writer.write(comment, start, i - start);
-				writer.write('\\');
-				writer.write(escaped.charAt(idx));
-				start = i + 1;
+			for (int i = start; i < end; i++) {
+				char c = comment.charAt(i);
+				int idx = toEscape.indexOf(c);
+
+				if (idx >= 0) {
+					if (i > start) writer.write(comment, start, i - start);
+					writer.write('\\');
+					writer.write(escaped.charAt(idx));
+					start = i + 1;
+				}
 			}
-		}
 
-		if (start < end) writer.write(comment, start, end - start);
+			if (start < end) writer.write(comment, start, end - start);
+		}
 
 		writer.write('\n');
 	}

@@ -113,6 +113,12 @@ public class Matcher {
 		init(config, progressReceiver);
 	}
 
+	public static Path resolvePath(Collection<Path> inputDirs, InputFile inputFile) throws IOException {
+		List<Path> ret = resolvePaths(inputDirs, Collections.singletonList(inputFile));
+
+		return ret.get(0);
+	}
+
 	public static List<Path> resolvePaths(Collection<Path> inputDirs, Collection<InputFile> inputFiles) throws IOException {
 		List<Path> ret = new ArrayList<>(inputFiles.size());
 
@@ -193,10 +199,10 @@ public class Matcher {
 				}
 			}
 
-			MethodInstance matchedSrc = src.getMatchedHierarchyMember();
-			if (matchedSrc == null) continue;
+			MethodInstance matchedDst = src.getHierarchyMatch();
+			if (matchedDst == null) continue;
 
-			Set<MethodInstance> dstHierarchyMembers = matchedSrc.getMatch().getAllHierarchyMembers();
+			Set<MethodInstance> dstHierarchyMembers = matchedDst.getAllHierarchyMembers();
 			if (dstHierarchyMembers.size() <= 1) continue;
 
 			for (MethodInstance dst : b.getMethods()) {

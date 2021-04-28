@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import matcher.NameType;
 import matcher.mapping.MappingState.ArgMappingState;
 import matcher.mapping.MappingState.ClassMappingState;
 import matcher.mapping.MappingState.FieldMappingState;
@@ -35,12 +34,12 @@ class Tiny2Impl {
 			throw new IOException("invalid/unsupported tiny file (incorrect header)");
 		}
 
-		if (parts.length < 3) throw new IOException("invalid tiny v1 namespace definition");
+		if (parts.length < 3) throw new IOException("invalid tiny v2 namespace definition");
 
 		return Arrays.copyOfRange(parts, 3, parts.length);
 	}
 
-	public static void read(BufferedReader reader, String nsSource, String nsTarget, MappingAcceptor mappingAcceptor) throws IOException {
+	public static void read(BufferedReader reader, String nsSource, String nsTarget, FlatMappingVisitor visitor) throws IOException {
 		String firstLine = reader.readLine();
 		String[] parts;
 
@@ -119,6 +118,7 @@ class Tiny2Impl {
 		String className = null;
 		String memberName = null;
 		String memberDesc = null;
+		String memberSubName = null;
 		int varLvIndex = 0;
 		int varStartOpIdx = 0;
 		int varLvtIndex = 0;
@@ -148,7 +148,7 @@ class Tiny2Impl {
 
 					if (!className.isEmpty()) {
 						if (!mappedName.isEmpty()) {
-							mappingAcceptor.acceptClass(className, mappedName, true);
+							visitor.visitClass(className, mappedName);
 						}
 					} else { // className is empty -> fall back to primary name
 						className = nsB == 0 ? mappedName : unescapeOpt(parts[1], escapedNames);
@@ -176,9 +176,9 @@ class Tiny2Impl {
 					if (!memberName.isEmpty()) {
 						if (!mappedName.isEmpty()) {
 							if (isMethod) {
-								mappingAcceptor.acceptMethod(className, memberName, memberDesc, null, mappedName, null);
+								visitor.visitMethod(className, memberName, memberDesc, null, mappedName, null);
 							} else {
-								mappingAcceptor.acceptField(className, memberName, memberDesc, null, mappedName, null);
+								visitor.visitField(className, memberName, memberDesc, null, mappedName, null);
 							}
 						}
 					} else { // memberName is empty -> fall back to primary name
@@ -193,7 +193,7 @@ class Tiny2Impl {
 					}
 				} else if (inClass && section.equals("c")) { // class comment: c <comment>
 					if (parts.length != 2) throw new IOException("invalid class comment in line "+lineNumber);
-					mappingAcceptor.acceptClassComment(className, unescape(parts[1]));
+					visitor.visitClassComment(className, (String) null, unescape(parts[1]));
 				}
 			} else if (indent == 2) {
 				inMethodParam = inMethodVar = false;
@@ -202,10 +202,11 @@ class Tiny2Impl {
 					if (parts.length != nsCount + 2) throw new IOException("invalid method parameter decl in line "+lineNumber);
 
 					varLvIndex = Integer.parseInt(parts[1]);
+					memberSubName = unescapeOpt(parts[2 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[2 + nsB], escapedNames);
 
 					if (!mappedName.isEmpty()) {
-						mappingAcceptor.acceptMethodArg(className, memberName, memberDesc, -1, varLvIndex, null, mappedName);
+						visitor.visitMethodArg(className, memberName, memberDesc, -1, varLvIndex, memberSubName, null, null, null, mappedName);
 					}
 
 					inMethodParam = true;
@@ -215,10 +216,11 @@ class Tiny2Impl {
 					varLvIndex = Integer.parseInt(parts[1]);
 					varStartOpIdx = Integer.parseInt(parts[2]);
 					varLvtIndex = Integer.parseInt(parts[3]);
+					memberSubName = unescapeOpt(parts[4 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[4 + nsB], escapedNames);
 
 					if (!mappedName.isEmpty()) {
-						mappingAcceptor.acceptMethodVar(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, null, mappedName);
+						visitor.visitMethodVar(className, memberName, memberDesc, varLvtIndex, varLvIndex, varStartOpIdx, memberSubName, null, null, null, mappedName);
 					}
 
 					inMethodVar = true;
@@ -227,9 +229,9 @@ class Tiny2Impl {
 					String comment = unescape(parts[1]);
 
 					if (inMethod) {
-						mappingAcceptor.acceptMethodComment(className, memberName, memberDesc, comment);
+						visitor.visitMethodComment(className, memberName, memberDesc, comment);
 					} else {
-						mappingAcceptor.acceptFieldComment(className, memberName, memberDesc, comment);
+						visitor.visitFieldComment(className, memberName, memberDesc, (String) null, null, null, comment);
 					}
 				}
 			} else if (indent == 3) {
@@ -238,13 +240,15 @@ class Tiny2Impl {
 					String comment = unescape(parts[1]);
 
 					if (inMethodParam) {
-						mappingAcceptor.acceptMethodArgComment(className, memberName, memberDesc, -1, varLvIndex, comment);
+						visitor.visitMethodArgComment(className, memberName, memberDesc, -1, varLvIndex, memberSubName, (String) null, null, null, null, comment);
 					} else {
-						mappingAcceptor.acceptMethodVarComment(className, memberName, memberDesc, -1, varLvIndex, varStartOpIdx, varLvtIndex, comment);
+						visitor.visitMethodVarComment(className, memberName, memberDesc, varLvtIndex, varLvIndex, varStartOpIdx, memberSubName, (String) null, null, null, null, comment);
 					}
 				}
 			}
 		}
+
+		visitor.visitEnd();
 	}
 
 	private static String[] splitAtTab(String s, int offset, int partCountHint) {
@@ -296,14 +300,18 @@ class Tiny2Impl {
 		return ret.toString();
 	}
 
-	public static void write(Path file, MappingState state, NameType srcType, NameType dstType) throws IOException {
+	public static void write(Path file, MappingState state) throws IOException {
 		boolean needEscapes = checkEscapeNeed(state);
 
 		try (BufferedWriter writer = createWriter(file)) {
 			writer.write("tiny\t2\t0\t");
-			writer.write(MappingWriter.getTinyTypeName(srcType));
-			writer.write('\t');
-			writer.write(MappingWriter.getTinyTypeName(dstType));
+			writer.write(state.srcNamespace);
+
+			for (String dstNamespace : state.dstNamespaces) {
+				writer.write('\t');
+				writer.write(dstNamespace);
+			}
+
 			writer.write(eol);
 
 
@@ -362,8 +370,8 @@ class Tiny2Impl {
 						}
 					}
 
-					for (VarMappingState varState : mthState.varMap.values()) {
-						writer.write("\t\tp\t");
+					for (VarMappingState varState : mthState.vars) {
+						writer.write("\t\tv\t");
 						writer.write(Integer.toString(varState.lvIndex));
 						writer.write('\t');
 						writer.write(Integer.toString(varState.startOpIdx));
@@ -423,7 +431,7 @@ class Tiny2Impl {
 					}
 				}
 
-				for (VarMappingState varState : mthState.varMap.values()) {
+				for (VarMappingState varState : mthState.vars) {
 					if (varState.name != null && needEscape(varState.name) || varState.mappedName != null && needEscape(varState.mappedName)) {
 						return true;
 					}

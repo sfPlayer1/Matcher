@@ -28,6 +28,22 @@ public enum NameType {
 		this.aux = aux;
 	}
 
+	public NameType withPlain(boolean value) {
+		if (plain == value) return this;
+
+		if (value) {
+			if (mapped) return MAPPED_PLAIN;
+
+			return VALUES[AUX_PLAIN.ordinal() + aux - 1];
+		} else if (this == MAPPED_PLAIN) {
+			return MAPPED;
+		} else if (aux > 0 && !mapped && !tmp) {
+			return VALUES[AUX.ordinal() + aux - 1];
+		} else {
+			throw new UnsupportedOperationException();
+		}
+	}
+
 	public NameType withMapped(boolean value) {
 		if (mapped == value) return this;
 

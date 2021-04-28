@@ -1,6 +1,8 @@
 package matcher.gui.menu;
 
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
+
 import matcher.gui.Gui;
 import matcher.gui.IGuiComponent;
 
@@ -12,11 +14,21 @@ public class MainMenuBar extends MenuBar implements IGuiComponent {
 	}
 
 	private void init() {
-		getMenus().add(fileMenu = new FileMenu(gui));
-		getMenus().add(matchingMenu = new MatchingMenu(gui));
-		getMenus().add(mappingMenu = new MappingMenu(gui));
-		getMenus().add(uidMenu = new UidMenu(gui));
-		getMenus().add(viewMenu = new ViewMenu(gui));
+		fileMenu = addMenu(new FileMenu(gui));
+		matchingMenu = addMenu(new MatchingMenu(gui));
+		mappingMenu = addMenu(new MappingMenu(gui));
+		uidMenu = addMenu(new UidMenu(gui));
+		viewMenu = addMenu(new ViewMenu(gui));
+	}
+
+	private <T extends Menu> T addMenu(T menu) {
+		getMenus().add(menu);
+
+		if (menu instanceof IGuiComponent) {
+			gui.addListeningComponent((IGuiComponent) menu);
+		}
+
+		return menu;
 	}
 
 	public FileMenu getFileMenu() {

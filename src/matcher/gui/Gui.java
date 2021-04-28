@@ -37,6 +37,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
+
 import matcher.Matcher;
 import matcher.NameType;
 import matcher.gui.menu.MainMenuBar;
@@ -106,6 +107,10 @@ public class Gui extends Application {
 
 	public Scene getScene() {
 		return scene;
+	}
+
+	public void addListeningComponent(IGuiComponent component) {
+		components.add(component);
 	}
 
 	public MainMenuBar getMenu() {

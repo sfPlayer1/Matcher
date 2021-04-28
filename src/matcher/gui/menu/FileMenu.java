@@ -2,12 +2,8 @@ package matcher.gui.menu;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -15,9 +11,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import javafx.application.Platform;
@@ -31,6 +24,8 @@ import javafx.scene.control.SeparatorMenuItem;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
+
+import matcher.Util;
 import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
@@ -155,20 +150,19 @@ public class FileMenu extends Menu {
 		SelectedFile res = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (res == null) return;
 
-		Path file = res.path;
+		ProjectLoadSettings newConfig = requestProjectLoadSettings();
+		if (newConfig == null) return;
 
-		requestProjectLoadSettings(newConfig -> {
-			gui.getMatcher().reset();
-			gui.onProjectChange();
+		gui.getMatcher().reset();
+		gui.onProjectChange();
 
-			gui.runProgressTask("Initializing files...",
-					progressReceiver -> MatchesIo.read(file, newConfig.paths, newConfig.verifyFiles, gui.getMatcher(), progressReceiver),
-					() -> gui.onProjectChange(),
-					Throwable::printStackTrace);
-		});
+		gui.runProgressTask("Initializing files...",
+				progressReceiver -> MatchesIo.read(res.path, newConfig.paths, newConfig.verifyFiles, gui.getMatcher(), progressReceiver),
+				() -> gui.onProjectChange(),
+				Throwable::printStackTrace);
 	}
 
-	public void requestProjectLoadSettings(Consumer<? super ProjectLoadSettings> consumer) {
+	public ProjectLoadSettings requestProjectLoadSettings() {
 		Dialog<ProjectLoadSettings> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
@@ -182,15 +176,14 @@ public class FileMenu extends Menu {
 		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
 		ProjectLoadSettings settings = dialog.showAndWait().orElse(null);
-		if (settings == null) return;
 
-		if (!settings.paths.isEmpty()) {
+		if (settings != null && !settings.paths.isEmpty()) {
 			Config.setInputDirs(settings.paths);
 			Config.setVerifyInputFiles(settings.verifyFiles);
 			Config.saveAsLast();
 		}
 
-		consumer.accept(settings);
+		return settings;
 	}
 
 	private void loadMappings(MappingFormat format) {
@@ -292,7 +285,7 @@ public class FileMenu extends Menu {
 				if (!gui.requestConfirmation("Save Confirmation", "Replace existing data", "The selected save location is not empty.\nDo you want to clear and reuse it?")) return;
 
 				try {
-					if (!clearDir(path, file -> !Files.isDirectory(file) && !file.getFileName().toString().endsWith(".mapping"))) {
+					if (!Util.clearDir(path, file -> !Files.isDirectory(file) && !file.getFileName().toString().endsWith(".mapping"))) {
 						gui.showAlert(AlertType.ERROR, "Save error", "Error while preparing save location", "The target directory contains non-mapping files.");
 						return;
 					}
@@ -326,7 +319,7 @@ public class FileMenu extends Menu {
 		dialog.setTitle("Mappings export settings");
 		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-		SaveMappingsPane content = new SaveMappingsPane();
+		SaveMappingsPane content = new SaveMappingsPane(format.hasNamespaces);
 		dialog.getDialogPane().setContent(content);
 		dialog.setResultConverter(button -> button == ButtonType.OK ? content.getSettings() : null);
 		final Path savePath = path;
@@ -340,13 +333,13 @@ public class FileMenu extends Menu {
 					Files.deleteIfExists(savePath);
 				}
 
-				if (!Mappings.save(savePath, saveFormat, settings.a ? env.getEnvA() : env.getEnvB(), settings.srcName, settings.dstName, settings.verbosity)) {
+				if (!Mappings.save(savePath, saveFormat, (settings.a ? env.getEnvA() : env.getEnvB()),
+						settings.nsTypes, settings.nsNames, settings.verbosity, settings.fieldsFirst)) {
 					gui.showAlert(AlertType.WARNING, "Mapping save warning", "No mappings to save", "There are currently no names mapped to matched classes, so saving was aborted.");
 				}
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-				return;
 			}
 		});
 	}
@@ -358,39 +351,6 @@ public class FileMenu extends Menu {
 			e.printStackTrace();
 			return false;
 		}
-	}
-
-	private static boolean clearDir(Path path, Predicate<Path> disallowed) throws IOException {
-		try (Stream<Path> stream = Files.walk(path, FileVisitOption.FOLLOW_LINKS)) {
-			if (stream.anyMatch(disallowed)) return false;
-		}
-
-		AtomicBoolean ret = new AtomicBoolean(true);
-
-		Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				if (disallowed.test(file)) {
-					ret.set(false);
-
-					return FileVisitResult.TERMINATE;
-				} else {
-					Files.delete(file);
-
-					return FileVisitResult.CONTINUE;
-				}
-			}
-
-			@Override
-			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-				if (exc != null) throw exc;
-				if (!dir.equals(path)) Files.delete(dir);
-
-				return FileVisitResult.CONTINUE;
-			}
-		});
-
-		return ret.get();
 	}
 
 	private static MappingFormat getFormat(Path file) {

@@ -8,11 +8,13 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
+
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+
 import matcher.NameType;
 import matcher.classifier.ClassClassifier;
 import matcher.classifier.ClassifierLevel;
@@ -24,8 +26,8 @@ import matcher.type.ClassEnv;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.Matchable;
 import matcher.type.MatchType;
+import matcher.type.Matchable;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
@@ -403,6 +405,10 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			case "name":
 			case "mapped":
 			case "mappedname":
+			case "aux":
+			case "auxname":
+			case "aux2":
+			case "aux2name":
 				opTypeA = OP_TYPE_MATCHABLE;
 				break;
 			case "supercls":
@@ -514,6 +520,14 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			case "mapped":
 			case "mappedname":
 				stack.add(((Matchable<?>) opA).getName(NameType.MAPPED_PLAIN));
+				break;
+			case "aux":
+			case "auxname":
+				stack.add(((Matchable<?>) opA).getName(NameType.AUX_PLAIN));
+				break;
+			case "aux2":
+			case "aux2name":
+				stack.add(((Matchable<?>) opA).getName(NameType.AUX2_PLAIN));
 				break;
 			case "supercls":
 				stack.add(((ClassInstance) opA).getSuperClass());

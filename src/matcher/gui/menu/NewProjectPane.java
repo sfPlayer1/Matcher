@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,10 +33,12 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
+
 import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
-import matcher.gui.GuiConstants;
 import matcher.gui.Gui.SelectedFile;
+import matcher.gui.GuiConstants;
+import matcher.gui.GuiUtil;
 
 public class NewProjectPane extends GridPane {
 	NewProjectPane(ProjectConfig config, Window window, Node okButton) {
@@ -93,11 +94,11 @@ public class NewProjectPane extends GridPane {
 			classPathA.clear();
 			classPathA.addAll(classPathB);
 			classPathB.setAll(paths);
-			
+
 			String tmp = nonObfuscatedClassPatternA.getText();
 			nonObfuscatedClassPatternA.setText(nonObfuscatedClassPatternB.getText());
 			nonObfuscatedClassPatternB.setText(tmp);
-			
+
 			tmp = nonObfuscatedMemberPatternA.getText();
 			nonObfuscatedMemberPatternA.setText(nonObfuscatedMemberPatternB.getText());
 			nonObfuscatedMemberPatternB.setText(tmp);
@@ -222,41 +223,11 @@ public class NewProjectPane extends GridPane {
 
 		Button upButton = new Button("up");
 		footer.getChildren().add(upButton);
-		upButton.setOnAction(event -> {
-			MultipleSelectionModel<Path> selection = list.getSelectionModel();
-			List<Integer> selected = new ArrayList<>(selection.getSelectedIndices());
-
-			list.getSelectionModel().clearSelection();
-
-			for (int idx : selected) {
-				if (idx > 0 && !selection.isSelected(idx - 1)) {
-					Path e = list.getItems().remove(idx);
-					list.getItems().add(idx - 1, e);
-					selection.select(idx - 1);
-				} else {
-					selection.select(idx);
-				}
-			}
-		});
+		upButton.setOnAction(event -> GuiUtil.moveSelectionUp(list));
 
 		Button downButton = new Button("down");
 		footer.getChildren().add(downButton);
-		downButton.setOnAction(event -> {
-			MultipleSelectionModel<Path> selection = list.getSelectionModel();
-			List<Integer> selected = new ArrayList<>(selection.getSelectedIndices());
-			Collections.reverse(selected);
-			list.getSelectionModel().clearSelection();
-
-			for (int idx : selected) {
-				if (idx < list.getItems().size() - 1 && !selection.isSelected(idx + 1)) {
-					Path e = list.getItems().remove(idx);
-					list.getItems().add(idx + 1, e);
-					selection.select(idx + 1);
-				} else {
-					selection.select(idx);
-				}
-			}
-		});
+		downButton.setOnAction(event -> GuiUtil.moveSelectionDown(list));
 
 		ListChangeListener<Path> changeListener = change -> {
 			List<Integer> selectedIndices = list.getSelectionModel().getSelectedIndices();

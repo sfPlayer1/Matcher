@@ -7,7 +7,8 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.time.ZonedDateTime;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -21,6 +22,7 @@ import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.InputFile;
+import matcher.type.InputFile.HashType;
 import matcher.type.LocalClassEnv;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
@@ -76,27 +78,44 @@ public class MatchesIo {
 							throw new IllegalStateException(state.name());
 						}
 
-						int pos = line.indexOf('\t', 2);
+						// v1: \t\t<file>
+						// v2: \t\t<size>\t<sha256>\t<file>
+						// v3: \t\t<size>\t<hashAlg>\t<hash>\t<file>
+
+						final int indent = 2;
+						int sizeEnd = line.indexOf('\t', indent);
 						long size = InputFile.unknownSize;
 						byte[] hash = null;
+						HashType hashType = null;
+						int fileStart;
 
-						if (pos == -1) {
-							pos = 2;
-						} else if (!verifyInputs) {
-							if (pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
-							pos = line.indexOf('\t', pos + 1);
-							if (pos == -1 || pos == pos + 1 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
-							pos++;
+						if (sizeEnd < 0) { // v1
+							fileStart = indent;
 						} else {
-							if (pos == 2 || pos + 1 >= line.length()) throw new IOException("invalid matches file");
-							size = Long.parseLong(line.substring(2, pos));
-							int pos2 = line.indexOf('\t', pos + 1);
-							if (pos2 == -1 || pos2 == pos + 1 || pos2 + 1 >= line.length()) throw new IOException("invalid matches file");
-							hash = Base64.getDecoder().decode(line.substring(pos + 1, pos2));
-							pos = pos2 + 1;
+							if (verifyInputs) {
+								size = Long.parseLong(line.substring(indent, sizeEnd));
+							}
+
+							int hashOrAlgEnd = line.indexOf('\t', sizeEnd + 1);
+							int v3HashEnd = line.indexOf('\t', hashOrAlgEnd + 1);
+							int hashStart;
+
+							if (v3HashEnd < 0) { // v2
+								hashStart = sizeEnd + 1;
+								fileStart = hashOrAlgEnd + 1;
+								hashType = HashType.SHA256;
+							} else { // v3
+								hashStart = hashOrAlgEnd + 1;
+								fileStart = v3HashEnd + 1;
+								hashType = HashType.valueOf(line.substring(sizeEnd + 1, hashOrAlgEnd));
+							}
+
+							if (verifyInputs) {
+								hash = Base64.getDecoder().decode(line.substring(hashStart, fileStart - 1));
+							}
 						}
 
-						inputFiles.add(new InputFile(line.substring(pos), size, hash));
+						inputFiles.add(new InputFile(line.substring(fileStart), size, hash, hashType));
 					} else {
 						switch (line.substring(1, line.length() - 1)) {
 						case "a":
@@ -327,7 +346,7 @@ public class MatchesIo {
 
 		try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
 			writer.write("Matches saved ");
-			writer.write(ZonedDateTime.now().toString());
+			writer.write(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 			writer.write(", input files:\n\ta:\n");
 			writeInputFiles(env.getInputFilesA(), writer);
 			writer.write("\tb:\n");
@@ -380,7 +399,9 @@ public class MatchesIo {
 			out.write("\t\t");
 			out.write(Long.toString(file.size));
 			out.write('\t');
-			out.write(Base64.getEncoder().encodeToString(file.sha256));
+			out.write(file.hashType.name());
+			out.write('\t');
+			out.write(Base64.getEncoder().encodeToString(file.hash));
 			out.write('\t');
 			out.write(file.path.getFileName().toString().replace('\n', ' '));
 			out.write('\n');

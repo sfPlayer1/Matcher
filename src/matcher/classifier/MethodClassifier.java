@@ -72,10 +72,10 @@ public class MethodClassifier {
 				dsts = new MethodInstance[] { src.getMatch() };
 			}
 		} else { // limit dsts to the same method tree if there's a matched src
-			MethodInstance matched = src.getMatchedHierarchyMember();
+			MethodInstance matched = src.getHierarchyMatch();
 
 			if (matched != null) {
-				Set<MethodInstance> dstHierarchyMembers = matched.getMatch().getAllHierarchyMembers();
+				Set<MethodInstance> dstHierarchyMembers = matched.getAllHierarchyMembers();
 				MethodInstance[] newDsts = new MethodInstance[dsts.length];
 				int writeIdx = 0;
 

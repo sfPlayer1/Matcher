@@ -64,8 +64,8 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 			ret = matchedInstance.origName;
 		} else if (type.isAux() && auxName != null && auxName.length > type.getAuxIndex() && auxName[type.getAuxIndex()] != null) {
 			ret = auxName[type.getAuxIndex()];
-		} else if (type.isAux() && matchedInstance != null && matchedInstance.auxName != null && matchedInstance.auxName.length > type.getAuxIndex() && matchedInstance.auxName[type.getAuxIndex()] != null) {
-			ret = matchedInstance.auxName[type.getAuxIndex()];
+		} else if (type.isAux() && cls.isInput() && (ret = getAuxName(type.getAuxIndex())) != null) {
+			// *_AUX*, remote aux available
 		} else if (type.tmp && cls.isInput() && (ret = getTmpName()) != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
 		} else if ((type.tmp || locTmp) && tmpName != null) {
@@ -151,19 +151,23 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		return children;
 	}
 
-	@SuppressWarnings("unchecked")
-	public T getMatchedHierarchyMember() {
+	public T getHierarchyMatch() {
 		assert hierarchyMembers != null; // only available for input classes
 
-		if (getMatch() != null) return (T) this;
+		T ret = getMatch();
+		if (ret != null) return ret;
 
 		ClassEnv reqEnv = cls.getEnv();
 
 		for (T m : hierarchyMembers) {
-			if (m.getMatch() != null) {
+			ret = m.getMatch();
+
+			if (ret != null) {
 				ClassEnv env = m.cls.getEnv();
 
-				if (env.isShared() || env == reqEnv) return m;
+				if (env.isShared() || env == reqEnv) {
+					return ret;
+				}
 			}
 		}
 
@@ -269,7 +273,25 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 
 	@Override
 	public boolean hasAuxName(int index) {
-		return auxName != null && auxName.length > index && auxName[index] != null;
+		return getAuxName(index) != null;
+	}
+
+	private String getAuxName(int index) {
+		assert hierarchyMembers != null; // only available for input classes
+
+		if (auxName != null && auxName.length > index && auxName[index] != null) {
+			return auxName[index];
+		} else if (matchedInstance != null && matchedInstance.auxName != null && matchedInstance.auxName.length > index && matchedInstance.auxName[index] != null) {
+			return matchedInstance.auxName[index];
+		} else if (hierarchyMembers != null && hierarchyMembers.size() > 1) {
+			for (MemberInstance<?> m : hierarchyMembers) {
+				if (m.matchedInstance != null && m.matchedInstance.auxName != null && m.matchedInstance.auxName.length > index && m.matchedInstance.auxName[index] != null) {
+					return m.matchedInstance.auxName[index];
+				}
+			}
+		}
+
+		return null;
 	}
 
 	public void setAuxName(int index, String name) {
