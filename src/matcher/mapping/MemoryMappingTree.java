@@ -253,11 +253,17 @@ public final class MemoryMappingTree implements MappingTree, MappingVisitor {
 	@Override
 	public boolean visitField(String srcName, String srcDesc) {
 		if (currentClass == null) throw new UnsupportedOperationException("Tried to visit field before owning class");
+
 		currentMethod = null;
 
-		FieldEntry field = new FieldEntry(currentClass, srcName, srcDesc);
+		FieldEntry field = currentClass.getField(srcName, srcDesc);
+
+		if (field == null) {
+			field = new FieldEntry(currentClass, srcName, srcDesc);
+			currentClass.addField(field);
+		}
+
 		currentEntry = field;
-		currentClass.addField(field);
 
 		return true;
 	}
@@ -266,8 +272,14 @@ public final class MemoryMappingTree implements MappingTree, MappingVisitor {
 	public boolean visitMethod(String srcName, String srcDesc) {
 		if (currentClass == null) throw new UnsupportedOperationException("Tried to visit method before owning class");
 
-		currentEntry = currentMethod = new MethodEntry(currentClass, srcName, srcDesc);
-		currentClass.addMethod(currentMethod);
+		MethodEntry method = currentClass.getMethod(srcName, srcDesc);
+
+		if (method == null) {
+			method = new MethodEntry(currentClass, srcName, srcDesc);
+			currentClass.addMethod(method);
+		}
+
+		currentEntry = currentMethod = method;
 
 		return true;
 	}
@@ -276,9 +288,14 @@ public final class MemoryMappingTree implements MappingTree, MappingVisitor {
 	public boolean visitMethodArg(int argPosition, int lvIndex, String srcName) {
 		if (currentMethod == null) throw new UnsupportedOperationException("Tried to visit method argument before owning method");
 
-		MethodArgEntry arg = new MethodArgEntry(currentMethod, argPosition, lvIndex, srcName);
+		MethodArgEntry arg = currentMethod.getArg(argPosition, lvIndex, srcName);
+
+		if (arg == null) {
+			arg = new MethodArgEntry(currentMethod, argPosition, lvIndex, srcName);
+			currentMethod.addArg(arg);
+		}
+
 		currentEntry = arg;
-		currentMethod.addArg(arg);
 
 		return true;
 	}
@@ -287,9 +304,14 @@ public final class MemoryMappingTree implements MappingTree, MappingVisitor {
 	public boolean visitMethodVar(int lvtRowIndex, int lvIndex, int startOpIdx, String srcName) {
 		if (currentMethod == null) throw new UnsupportedOperationException("Tried to visit method variable before owning method");
 
-		MethodVarEntry var = new MethodVarEntry(currentMethod, lvtRowIndex, lvIndex, startOpIdx, srcName);
+		MethodVarEntry var = currentMethod.getVar(lvtRowIndex, lvIndex, startOpIdx, srcName);
+
+		if (var == null) {
+			var = new MethodVarEntry(currentMethod, lvtRowIndex, lvIndex, startOpIdx, srcName);
+			currentMethod.addVar(var);
+		}
+
 		currentEntry = var;
-		currentMethod.addVar(var);
 
 		return true;
 	}
