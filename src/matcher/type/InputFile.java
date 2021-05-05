@@ -20,6 +20,7 @@ public class InputFile {
 			this.size = Files.size(path);
 			this.hash = HashType.SHA256.hash(path);
 			this.hashType = HashType.SHA256;
+			this.pathHint = path;
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -29,37 +30,40 @@ public class InputFile {
 		this(fileName, unknownSize, null, null);
 	}
 
+	public InputFile(String fileName, Path pathHint) {
+		this(fileName, unknownSize, null, null, pathHint);
+	}
+
 	public InputFile(String fileName, byte[] hash, HashType hashType) {
 		this(fileName, unknownSize, hash, hashType);
 	}
 
-	public InputFile(String fileName, long size, byte[] hash, HashType hashType) {
-		if (fileName == null) throw new IllegalArgumentException();
+	public InputFile(String fileName, byte[] hash, HashType hashType, Path pathHint) {
+		this(fileName, unknownSize, hash, hashType, pathHint);
+	}
 
+	public InputFile(String fileName, long size, byte[] hash, HashType hashType) {
+		this(fileName, size, hash, hashType, null);
+	}
+
+	public InputFile(String fileName, long size, byte[] hash, HashType hashType, Path pathHint) {
 		this.path = null;
 		this.fileName = fileName;
 		this.size = size;
 		this.hash = hash;
 		this.hashType = hashType;
+		this.pathHint = pathHint;
 	}
 
 	public boolean hasPath() {
 		return path != null;
 	}
 
-	public String getFileName() {
-		if (fileName != null) {
-			return fileName;
-		} else {
-			return path.getFileName().toString();
-		}
-	}
-
 	public boolean equals(Path path) {
 		try {
 			if (this.path != null) return Files.isSameFile(path, this.path);
 
-			if (!getSanitizedFileName(path).equals(fileName)) return false;
+			if (fileName != null && !getSanitizedFileName(path).equals(fileName)) return false;
 			if (size != -1 && Files.size(path) != size) return false;
 
 			return hash == null || Arrays.equals(hash, hashType.hash(path));
@@ -86,12 +90,21 @@ public class InputFile {
 
 	@Override
 	public int hashCode() {
-		return getFileName().hashCode();
+		return toString().hashCode();
 	}
 
 	@Override
 	public String toString() {
-		return getFileName();
+		if (fileName != null) {
+			return fileName;
+		} else if (pathHint != null) {
+			return pathHint.getFileName().toString();
+		} else if (hash != null && hash.length >= 8) {
+			return Long.toUnsignedString((hash[0] & 0xffL) << 56 | (hash[1] & 0xffL) << 48 | (hash[2] & 0xffL) << 40 | (hash[3] & 0xffL) << 32
+					| (hash[4] & 0xffL) << 24 | (hash[5] & 0xffL) << 16 | (hash[6] & 0xffL) << 8 | hash[7] & 0xffL, 16);
+		} else {
+			return "unknown";
+		}
 	}
 
 	private static String getSanitizedFileName(Path path) {
@@ -157,4 +170,5 @@ public class InputFile {
 	public final long size;
 	public final byte[] hash;
 	public final HashType hashType;
+	public final Path pathHint;
 }

@@ -122,8 +122,24 @@ public class Matcher {
 	public static List<Path> resolvePaths(Collection<Path> inputDirs, Collection<InputFile> inputFiles) throws IOException {
 		List<Path> ret = new ArrayList<>(inputFiles.size());
 
-		for (InputFile inputFile : inputFiles) {
-			boolean found = false;
+		inputFileLoop: for (InputFile inputFile : inputFiles) {
+			if (inputFile.pathHint != null) {
+				if (inputFile.pathHint.isAbsolute()) {
+					if (Files.isRegularFile(inputFile.pathHint) && inputFile.equals(inputFile.pathHint)) {
+						ret.add(inputFile.pathHint);
+						continue inputFileLoop;
+					}
+				} else {
+					for (Path inputDir : inputDirs) {
+						Path file = inputDir.resolve(inputFile.pathHint);
+
+						if (Files.isRegularFile(file) && inputFile.equals(file)) {
+							ret.add(file);
+							continue inputFileLoop;
+						}
+					}
+				}
+			}
 
 			for (Path inputDir : inputDirs) {
 				try (Stream<Path> matches = Files.find(inputDir, Integer.MAX_VALUE, (path, attr) -> inputFile.equals(path), FileVisitOption.FOLLOW_LINKS)) {
@@ -131,15 +147,14 @@ public class Matcher {
 
 					if (file != null) {
 						ret.add(file);
-						found = true;
-						break;
+						continue inputFileLoop;
 					}
 				} catch (UncheckedIOException e) {
 					throw e.getCause();
 				}
 			}
 
-			if (!found) throw new IOException("can't find input "+inputFile.getFileName());
+			throw new IOException("can't find input "+inputFile);
 		}
 
 		return ret;
