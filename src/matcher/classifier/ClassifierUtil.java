@@ -349,7 +349,7 @@ public class ClassifierUtil {
 				default:
 					System.out.println("unexpected impl tag: "+implA.getTag());
 				}
-			} else {
+			} else if (!Util.isIrrelevantBsm(a.bsm)) {
 				System.out.printf("unknown invokedynamic bsm: %s/%s%s (tag=%d iif=%b)%n", a.bsm.getOwner(), a.bsm.getName(), a.bsm.getDesc(), a.bsm.getTag(), a.bsm.isInterface());
 			}
 

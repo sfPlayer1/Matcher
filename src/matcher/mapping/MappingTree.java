@@ -170,11 +170,41 @@ public interface MappingTree {
 	public interface ClassMapping extends ElementMapping {
 		Collection<? extends FieldMapping> getFields();
 		FieldMapping getField(String srcName, String srcDesc);
+
+		default FieldMapping getField(String name, String desc, int namespace) {
+			if (namespace < 0) return getField(name, desc);
+
+			for (FieldMapping field : getFields()) {
+				if (!name.equals(field.getDstName(namespace))) continue;
+				String mDesc;
+				if (desc != null && (mDesc = field.getDesc(namespace)) != null && !desc.equals(mDesc)) continue;
+
+				return field;
+			}
+
+			return null;
+		}
+
 		FieldMapping addField(FieldMapping field);
 		FieldMapping removeField(String srcName, String srcDesc);
 
 		Collection<? extends MethodMapping> getMethods();
 		MethodMapping getMethod(String srcName, String srcDesc);
+
+		default MethodMapping getMethod(String name, String desc, int namespace) {
+			if (namespace < 0) return getMethod(name, desc);
+
+			for (MethodMapping method : getMethods()) {
+				if (!name.equals(method.getDstName(namespace))) continue;
+				String mDesc;
+				if (desc != null && (mDesc = method.getDesc(namespace)) != null && !desc.equals(mDesc)) continue;
+
+				return method;
+			}
+
+			return null;
+		}
+
 		MethodMapping addMethod(MethodMapping method);
 		MethodMapping removeMethod(String srcName, String srcDesc);
 	}

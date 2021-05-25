@@ -8,9 +8,10 @@ public enum MappingFormat {
 	MCP("MCP", null, false, false, false, true, true, false),
 	SRG("SRG", "srg", false, false, false, false, false, false),
 	TSRG("TSRG", "tsrg", false, false, false, false, false, false),
+	TSRG2("TSRG2", "tsrg", false, true, false, false, true, false),
 	PROGUARD("ProGuard", "map", false, false, true, false, false, false);
 
-	private MappingFormat(String name, String fileExt, boolean isGzipped,
+	MappingFormat(String name, String fileExt, boolean isGzipped,
 			boolean hasNamespaces, boolean hasFieldDescriptors,
 			boolean supportsComments, boolean supportsArgs, boolean supportsLocals) {
 		this.name = name;

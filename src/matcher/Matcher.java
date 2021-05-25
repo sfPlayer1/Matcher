@@ -222,6 +222,14 @@ public class Matcher {
 
 			for (MethodInstance dst : b.getMethods()) {
 				if (dstHierarchyMembers.contains(dst)) {
+					for (MethodInstance m : src.getAllHierarchyMembers()) {
+						m.setMatchable(true);
+					}
+
+					for (MethodInstance m : dstHierarchyMembers) {
+						m.setMatchable(true);
+					}
+
 					match(src, dst);
 					break;
 				}

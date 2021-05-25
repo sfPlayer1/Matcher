@@ -169,7 +169,7 @@ class Tiny2Impl {
 					if (parts.length != nsCount + 2) throw new IOException("invalid "+(isMethod ? "method" : "field")+" decl in line "+lineNumber);
 
 					memberDesc = unescapeOpt(parts[1], escapedNames);
-					if (classMap != null) memberDesc = MappingReader.mapDesc(memberDesc, classMap);
+					if (classMap != null) memberDesc = MappingUtil.mapDesc(memberDesc, classMap);
 					memberName = unescapeOpt(parts[2 + nsA], escapedNames);
 					String mappedName = unescapeOpt(parts[2 + nsB], escapedNames);
 

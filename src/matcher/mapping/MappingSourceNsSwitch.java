@@ -29,7 +29,8 @@ public final class MappingSourceNsSwitch extends ForwardingMappingVisitor {
 		if (passThrough) {
 			return next.getFlags();
 		} else {
-			Set<MappingFlag> ret = EnumSet.copyOf(next.getFlags());
+			Set<MappingFlag> ret = EnumSet.noneOf(MappingFlag.class);
+			ret.addAll(next.getFlags());
 			ret.add(MappingFlag.NEEDS_MULTIPLE_PASSES);
 			ret.add(MappingFlag.NEEDS_UNIQUENESS);
 
@@ -209,10 +210,10 @@ public final class MappingSourceNsSwitch extends ForwardingMappingVisitor {
 			relay = next.visitClass(dstName);
 			break;
 		case FIELD:
-			relay = next.visitField(dstName, srcDesc != null ? MappingReader.mapDesc(srcDesc, classMap) : null);
+			relay = next.visitField(dstName, srcDesc != null ? MappingUtil.mapDesc(srcDesc, classMap) : null);
 			break;
 		case METHOD:
-			relay = next.visitMethod(dstName, srcDesc != null ? MappingReader.mapDesc(srcDesc, classMap) : null);
+			relay = next.visitMethod(dstName, srcDesc != null ? MappingUtil.mapDesc(srcDesc, classMap) : null);
 			break;
 		case METHOD_ARG:
 			relay = next.visitMethodArg(argIdx, lvIndex, dstName);

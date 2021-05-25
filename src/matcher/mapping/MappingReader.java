@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +47,8 @@ public final class MappingReader {
 						return MappingFormat.TINY;
 					case "tin":
 						return MappingFormat.TINY_2;
+					case "tsr": // tsrg2 <nsA> <nsB> ..<nsN>
+						return MappingFormat.TSRG2;
 					case "PK:":
 					case "CL:":
 					case "MD:":
@@ -86,16 +89,24 @@ public final class MappingReader {
 				}
 				case TINY_2:
 					return Tiny2Impl.getNamespaces(reader);
+				case TSRG2:
+					String firstLine = reader.readLine();
+					if (firstLine == null) throw new EOFException();
+
+					String[] parts = firstLine.split(" ");
+					if (parts.length < 3) throw new IOException("invalid tiny v1 namespace definition");
+
+					return Arrays.copyOfRange(parts, 1, parts.length);
 				default:
 					throw new IllegalStateException();
 				}
 			}
 		} else {
-			return new String[] { NS_SOURCE_FALLBACK, NS_TARGET_FALLBACK };
+			return new String[] { MappingUtil.NS_SOURCE_FALLBACK, MappingUtil.NS_TARGET_FALLBACK };
 		}
 	}
 
-	public static void read(Path file, MappingFormat format, String nsSource, String nsTarget, FlatMappingVisitor visitor) throws IOException {
+	public static void read(Path file, MappingFormat format, String nsSource, String nsTarget, MappingVisitor visitor) throws IOException {
 		if (format == null) {
 			format = detectFormat(file);
 			if (format == null) throw new IOException("invalid/unsupported mapping format");
@@ -103,28 +114,44 @@ public final class MappingReader {
 
 		switch (format) {
 		case TINY:
-			readTiny(file, nsSource, nsTarget, visitor);
+			//readTiny(file, nsSource, nsTarget, new RegularAsFlatMappingVisitor(visitor));
+			try (Reader reader = createReader(file, false)) {
+				Tiny1Reader.read(reader, new MappingSourceNsSwitch(visitor, nsSource));
+			}
+
 			break;
 		case TINY_GZIP:
-			readGzTiny(file, nsSource, nsTarget, visitor);
+			//readGzTiny(file, nsSource, nsTarget, new RegularAsFlatMappingVisitor(visitor));
+			try (Reader reader = createReader(file, true)) {
+				Tiny1Reader.read(reader, new MappingSourceNsSwitch(visitor, nsSource));
+			}
+
 			break;
 		case TINY_2:
-			readTiny2(file, nsSource, nsTarget, visitor);
+			//readTiny2(file, nsSource, nsTarget, new RegularAsFlatMappingVisitor(visitor));
+			try (Reader reader = createReader(file, false)) {
+				Tiny2Reader.read(reader, new MappingSourceNsSwitch(visitor, nsSource));
+			}
+
 			break;
 		case ENIGMA:
-			EnigmaImpl.read(file, isReverseMapping(nsSource, nsTarget), visitor);
+			EnigmaImpl.read(file, isReverseMapping(nsSource, nsTarget), new RegularAsFlatMappingVisitor(visitor));
 			break;
 		case MCP:
-			readMcp(file, isReverseMapping(nsSource, nsTarget), visitor);
+			readMcp(file, isReverseMapping(nsSource, nsTarget), new RegularAsFlatMappingVisitor(visitor));
 			break;
 		case SRG:
-			readSrg(file, isReverseMapping(nsSource, nsTarget), visitor);
+			readSrg(file, isReverseMapping(nsSource, nsTarget), new RegularAsFlatMappingVisitor(visitor));
 			break;
 		case TSRG:
-			readTSrg(file, isReverseMapping(nsSource, nsTarget), visitor);
+			readTSrg(file, isReverseMapping(nsSource, nsTarget), new RegularAsFlatMappingVisitor(visitor));
 			break;
 		case PROGUARD:
-			readProguard(file, isReverseMapping(nsSource, nsTarget), visitor);
+			//readProguard(file, isReverseMapping(nsSource, nsTarget), new RegularAsFlatMappingVisitor(visitor));
+			try (Reader reader = createReader(file, false)) {
+				ProGuardReader.read(reader, new MappingSourceNsSwitch(visitor, nsSource));
+			}
+
 			break;
 		default:
 			throw new IllegalStateException();
@@ -132,9 +159,9 @@ public final class MappingReader {
 	}
 
 	private static boolean isReverseMapping(String nsSource, String nsTarget) {
-		if (nsSource.equals(NS_SOURCE_FALLBACK) && nsTarget.equals(NS_TARGET_FALLBACK)) {
+		if (nsSource.equals(MappingUtil.NS_SOURCE_FALLBACK) && nsTarget.equals(MappingUtil.NS_TARGET_FALLBACK)) {
 			return false;
-		} else if (nsSource.equals(NS_TARGET_FALLBACK) && nsTarget.equals(NS_SOURCE_FALLBACK)) {
+		} else if (nsSource.equals(MappingUtil.NS_TARGET_FALLBACK) && nsTarget.equals(MappingUtil.NS_SOURCE_FALLBACK)) {
 			return true;
 		} else {
 			throw new IllegalArgumentException("invalid ns: "+nsSource+" -> "+nsTarget);
@@ -303,13 +330,13 @@ public final class MappingReader {
 		if (classMap != null) { // nsA != 0, remap owner+desc to nsA
 			for (String[] parts : pendingMethods) {
 				visitor.visitMethod(
-						classMap.getOrDefault(parts[1], parts[1]), parts[3 + nsA], mapDesc(parts[2], classMap),
+						classMap.getOrDefault(parts[1], parts[1]), parts[3 + nsA], MappingUtil.mapDesc(parts[2], classMap),
 						null, parts[3 + nsB], null);
 			}
 
 			for (String[] parts : pendingFields) {
 				visitor.visitField(
-						classMap.getOrDefault(parts[1], parts[1]), parts[3 + nsA], mapDesc(parts[2], classMap),
+						classMap.getOrDefault(parts[1], parts[1]), parts[3 + nsA], MappingUtil.mapDesc(parts[2], classMap),
 						null, parts[3 + nsB], null);
 			}
 		}
@@ -481,7 +508,7 @@ public final class MappingReader {
 				assert descEnd != -1;
 
 				String dstDesc = line.substring(clsEnd + token.length() - 1, descEnd); // start after ".<init>", end at =
-				String desc = mapDesc(dstDesc, clsReverseMap);
+				String desc = MappingUtil.mapDesc(dstDesc, clsReverseMap);
 
 				// extract parameters
 				clsEnd = line.lastIndexOf('|');
@@ -530,11 +557,11 @@ public final class MappingReader {
 			String srcNs, dstNs;
 
 			if (!reverse) {
-				srcNs = NS_SOURCE_FALLBACK;
-				dstNs = NS_TARGET_FALLBACK;
+				srcNs = MappingUtil.NS_SOURCE_FALLBACK;
+				dstNs = MappingUtil.NS_TARGET_FALLBACK;
 			} else {
-				srcNs = NS_TARGET_FALLBACK;
-				dstNs = NS_SOURCE_FALLBACK;
+				srcNs = MappingUtil.NS_TARGET_FALLBACK;
+				dstNs = MappingUtil.NS_SOURCE_FALLBACK;
 			}
 
 			visitor.visitNamespaces(srcNs, Collections.singletonList(dstNs));
@@ -765,7 +792,7 @@ public final class MappingReader {
 		if (reverse) { // remap desc
 			for (PendingMemberMapping m : pendingMethods) {
 				visitor.visitMethod(
-						m.owner, m.mappedName, mapDesc(m.desc, classMap),
+						m.owner, m.mappedName, MappingUtil.mapDesc(m.desc, classMap),
 						null, m.name, null);
 			}
 		}
@@ -872,13 +899,13 @@ public final class MappingReader {
 		if (reverse) { // remap desc
 			for (PendingMemberMapping m : pendingMethods) {
 				visitor.visitMethod(
-						m.owner, m.mappedName, mapDesc(m.desc, classMap),
+						m.owner, m.mappedName, MappingUtil.mapDesc(m.desc, classMap),
 						null, m.name, null);
 			}
 
 			for (PendingMemberMapping m : pendingFields) {
 				visitor.visitField(
-						m.owner, m.mappedName, mapDesc(m.desc, classMap),
+						m.owner, m.mappedName, MappingUtil.mapDesc(m.desc, classMap),
 						null, m.name, null);
 			}
 		}
@@ -1001,41 +1028,4 @@ public final class MappingReader {
 			return ret.toString();
 		}
 	}
-
-	static String mapDesc(String desc, Map<String, String> clsMap) {
-		return mapDesc(desc, 0, desc.length(), clsMap);
-	}
-
-	private static String mapDesc(String desc, int start, int end, Map<String, String> clsMap) {
-		StringBuilder ret = null;
-		int searchStart = start;
-		int clsStart;
-
-		while ((clsStart = desc.indexOf('L', searchStart)) >= 0) {
-			int clsEnd = desc.indexOf(';', clsStart + 1);
-			if (clsEnd < 0) throw new IllegalArgumentException();
-
-			String cls = desc.substring(clsStart + 1, clsEnd);
-			String mappedCls = clsMap.get(cls);
-
-			if (mappedCls != null) {
-				if (ret == null) ret = new StringBuilder(end - start);
-
-				ret.append(desc, start, clsStart + 1);
-				ret.append(mappedCls);
-				start = clsEnd;
-			}
-
-			searchStart = clsEnd + 1;
-		}
-
-		if (ret == null) return desc.substring(start, end);
-
-		ret.append(desc, start, end);
-
-		return ret.toString();
-	}
-
-	public static final String NS_SOURCE_FALLBACK = "source";
-	public static final String NS_TARGET_FALLBACK = "target";
 }

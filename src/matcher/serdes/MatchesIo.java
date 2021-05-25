@@ -177,6 +177,8 @@ public class MatchesIo {
 							System.err.println("Unmatchable a/b class "+idA+"/"+idB);
 							currentClass = null;
 						} else {
+							currentClass.setMatchable(true);
+							target.setMatchable(true);
 							matcher.match(currentClass, target);
 						}
 					} else if (line.startsWith("cu\t")) { // class unmatchable
@@ -215,6 +217,14 @@ public class MatchesIo {
 									System.err.println("Unmatchable a/b method "+idA+"/"+idB);
 									currentMethod = null;
 								} else {
+									for (MemberInstance<?> m : a.getAllHierarchyMembers()) {
+										m.setMatchable(true);
+									}
+
+									for (MemberInstance<?> m : b.getAllHierarchyMembers()) {
+										m.setMatchable(true);
+									}
+
 									matcher.match(a, b);
 								}
 							} else {
@@ -228,6 +238,8 @@ public class MatchesIo {
 								} else if (!a.isMatchable() || !b.isMatchable()) {
 									System.err.println("Unmatchable a/b field "+idA+"/"+idB);
 								} else {
+									a.setMatchable(true);
+									b.setMatchable(true);
 									matcher.match(a, b);
 								}
 							}
@@ -251,7 +263,9 @@ public class MatchesIo {
 
 								if (member instanceof MethodInstance) {
 									for (MemberInstance<?> m : member.getAllHierarchyMembers()) {
-										m.setMatchable(false);
+										if (!m.setMatchable(false)) {
+											System.err.printf("can't mark %s as unmatchable, already matched?%n", m);
+										}
 									}
 								} else {
 									member.setMatchable(false);
@@ -289,6 +303,8 @@ public class MatchesIo {
 								System.err.println("Unmatchable a/b method "+type+" "+idxA+"/"+idxB+" in method "+currentMethod+"/"+matchedMethod);
 								currentMethod = null;
 							} else {
+								varsA[idxA].setMatchable(true);
+								varsB[idxB].setMatchable(true);
 								matcher.match(varsA[idxA], varsB[idxB]);
 							}
 						}
@@ -319,6 +335,7 @@ public class MatchesIo {
 								MethodVarInstance var = vars[idx];
 
 								if (var.hasMatch()) matcher.unmatch(var);
+
 								var.setMatchable(false);
 							}
 						}

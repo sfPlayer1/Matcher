@@ -175,6 +175,11 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 	}
 
 	@Override
+	public MatchableKind getKind() {
+		return MatchableKind.METHOD;
+	}
+
+	@Override
 	public String getDisplayName(NameType type, boolean full) {
 		StringBuilder ret = new StringBuilder(64);
 		ret.append(super.getDisplayName(type, full));

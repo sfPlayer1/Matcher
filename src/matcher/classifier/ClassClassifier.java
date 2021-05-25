@@ -81,13 +81,13 @@ public class ClassClassifier {
 	private static AbstractClassifier classTypeCheck = new AbstractClassifier("class type check") {
 		@Override
 		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
-			int mask = Opcodes.ACC_ENUM | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION | Opcodes.ACC_ABSTRACT;
+			int mask = Opcodes.ACC_ENUM | Opcodes.ACC_INTERFACE | Opcodes.ACC_ANNOTATION | Opcodes.ACC_RECORD | Opcodes.ACC_ABSTRACT;
 			int resultA = clsA.getAccess() & mask;
 			int resultB = clsB.getAccess() & mask;
 
 			//assert Integer.bitCount(resultA) <= 3 && Integer.bitCount(resultB) <= 3;
 
-			return 1 - Integer.bitCount(resultA ^ resultB) / 4.;
+			return 1 - Integer.bitCount(resultA ^ resultB) / 5.;
 		}
 	};
 

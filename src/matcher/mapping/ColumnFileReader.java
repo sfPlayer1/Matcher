@@ -6,8 +6,9 @@ import java.io.Reader;
 import java.util.Arrays;
 
 final class ColumnFileReader implements Closeable {
-	public ColumnFileReader(Reader reader) {
+	public ColumnFileReader(Reader reader, char columnSeparator) {
 		this.reader = reader;
+		this.columnSeparator = columnSeparator;
 	}
 
 	@Override
@@ -15,27 +16,43 @@ final class ColumnFileReader implements Closeable {
 		reader.close();
 	}
 
+	/**
+	 * Try to read the current column with specific expected content.
+	 *
+	 * <p>The reader will point to the next column or end of line if successful, otherwise remains unchanged.
+	 *
+	 * @param expect content to expect
+	 * @return true if the column was read and had the expected content, false otherwise
+	 * @throws IOException
+	 */
 	public boolean nextCol(String expect) throws IOException {
+		if (eol) return false;
+
 		int len = expect.length();
 		if (!fillBuffer(len)) return false;
 
 		for (int i = 0; i < len; i++) {
-			if (buffer[bufferPos + i] != expect.charAt(i)) return false;
+			if (buffer[bufferPos + i] != expect.charAt(i)) return false; // read failed, not all of expect available
 		}
 
 		char trailing = 0;
 
 		if (fillBuffer(len + 1) // not eof
-				&& (trailing = buffer[bufferPos + len]) != '\t' // not end of column
+				&& (trailing = buffer[bufferPos + len]) != columnSeparator // not end of column
 				&& trailing != '\n' // not end of line
 				&& trailing != '\r') {
-			return false;
+			return false; // read failed, column contains data beyond expect
 		}
+
+		// successful read
 
 		bufferPos += expect.length();
 
-		if (trailing == '\t') {
+		// seek to the start of the next column
+		if (trailing == columnSeparator) {
 			bufferPos++;
+		} else {
+			eol = true;
 		}
 
 		return true;
@@ -69,11 +86,12 @@ final class ColumnFileReader implements Closeable {
 			while (end < bufferLimit) {
 				char c = buffer[end];
 
-				if (c == '\t' || c == '\n' || c == '\r') {
+				if (c == columnSeparator || c == '\n' || c == '\r') { // end of the current column
 					start = bufferPos;
 					bufferPos = end;
 
-					if (c == '\t') {
+					// seek to the start of the next column
+					if (c == columnSeparator) {
 						bufferPos++;
 					} else {
 						eol = true;
@@ -86,6 +104,8 @@ final class ColumnFileReader implements Closeable {
 
 				end++;
 			}
+
+			// buffer ran out, refill
 
 			int oldStart = bufferPos;
 			boolean filled = fillBuffer(end - bufferPos + 1);
@@ -128,11 +148,23 @@ final class ColumnFileReader implements Closeable {
 
 
 	public boolean nextLine(int indent) throws IOException {
-		do {
+		fillLopo: do {
 			while (bufferPos < bufferLimit) {
 				char c = buffer[bufferPos];
 
 				if (c == '\n') {
+					if (indent == 0) { // skip empty lines if indent is 0
+						if (!fillBuffer(2)) break fillLopo;
+
+						c = buffer[bufferPos + 1];
+
+						if (c == '\n' || c == '\r') { // 2+ consecutive new lines, consume first nl and retry
+							bufferPos++;
+							lineNumber++;
+							continue;
+						}
+					}
+
 					if (!fillBuffer(indent + 1)) return false;
 
 					for (int i = 1; i <= indent; i++) {
@@ -153,6 +185,10 @@ final class ColumnFileReader implements Closeable {
 		eol = eof = true;
 
 		return false;
+	}
+
+	public boolean hasExtraIndents() throws IOException {
+		return fillBuffer(1) && buffer[bufferPos] == '\t';
 	}
 
 	public int getLineNumber() {
@@ -213,6 +249,7 @@ final class ColumnFileReader implements Closeable {
 	}
 
 	private final Reader reader;
+	private final char columnSeparator;
 	private char[] buffer = new char[4096 * 4];
 	private int bufferPos;
 	private int bufferLimit;

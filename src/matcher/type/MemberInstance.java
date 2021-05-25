@@ -119,6 +119,18 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		return isStatic;
 	}
 
+	public boolean isPublic() {
+		return (getAccess() & Opcodes.ACC_PUBLIC) != 0;
+	}
+
+	public boolean isProtected() {
+		return (getAccess() & Opcodes.ACC_PROTECTED) != 0;
+	}
+
+	public boolean isPrivate() {
+		return (getAccess() & Opcodes.ACC_PRIVATE) != 0;
+	}
+
 	public boolean isFinal() {
 		return (getAccess() & Opcodes.ACC_FINAL) != 0;
 	}
@@ -255,6 +267,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		this.mappedName = mappedName;
 	}
 
+	@Override
 	public String getMappedComment() {
 		if (mappedComment != null) {
 			return mappedComment;
@@ -265,6 +278,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		}
 	}
 
+	@Override
 	public void setMappedComment(String comment) {
 		if (comment != null && comment.isEmpty()) comment = null;
 
@@ -305,11 +319,13 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	@Override
-	public void setMatchable(boolean matchable) {
-		assert !matchable || cls.isMatchable();
-		assert matchable || matchedInstance == null;
+	public boolean setMatchable(boolean matchable) {
+		if (!matchable && matchedInstance != null) return false;
+		if (matchable && !cls.isMatchable()) return false;
 
 		this.matchable = matchable;
+
+		return true;
 	}
 
 	@Override

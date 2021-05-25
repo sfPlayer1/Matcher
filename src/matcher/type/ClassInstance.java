@@ -86,6 +86,11 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
+	public MatchableKind getKind() {
+		return MatchableKind.CLASS;
+	}
+
+	@Override
 	public String getId() {
 		return id;
 	}
@@ -274,10 +279,12 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
-	public void setMatchable(boolean matchable) {
-		assert matchable || matchedClass == null;
+	public boolean setMatchable(boolean matchable) {
+		if (!matchable && matchedClass != null) return false;
 
 		this.matchable = matchable;
+
+		return true;
 	}
 
 	@Override
@@ -449,6 +456,10 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 	public boolean isAnnotation() {
 		return (getAccess() & Opcodes.ACC_ANNOTATION) != 0;
+	}
+
+	public boolean isRecord() {
+		return (getAccess() & Opcodes.ACC_RECORD) != 0;
 	}
 
 	public MethodInstance getMethod(String id) {
@@ -879,6 +890,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		this.mappedName = mappedName;
 	}
 
+	@Override
 	public String getMappedComment() {
 		if (mappedComment != null) {
 			return mappedComment;
@@ -889,6 +901,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		}
 	}
 
+	@Override
 	public void setMappedComment(String comment) {
 		if (comment != null && comment.isEmpty()) comment = null;
 

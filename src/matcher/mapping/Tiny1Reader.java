@@ -8,7 +8,7 @@ import java.util.Set;
 
 public final class Tiny1Reader {
 	public static List<String> getNamespaces(Reader reader) throws IOException {
-		return getNamespaces(new ColumnFileReader(reader));
+		return getNamespaces(new ColumnFileReader(reader, '\t'));
 	}
 
 	private static List<String> getNamespaces(ColumnFileReader reader) throws IOException {
@@ -29,7 +29,7 @@ public final class Tiny1Reader {
 	}
 
 	public static void read(Reader reader, MappingVisitor visitor) throws IOException {
-		read(new ColumnFileReader(reader), visitor);
+		read(new ColumnFileReader(reader, '\t'), visitor);
 	}
 
 	private static void read(ColumnFileReader reader, MappingVisitor visitor) throws IOException {
@@ -120,7 +120,7 @@ public final class Tiny1Reader {
 		}
 
 		if (parentVisitor != null) {
-			((MappingTree) visitor).accept(visitor);
+			((MappingTree) visitor).accept(parentVisitor);
 		}
 	}
 

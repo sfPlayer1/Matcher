@@ -11,6 +11,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+
 import matcher.classifier.ClassifierLevel;
 import matcher.classifier.FieldClassifier;
 import matcher.classifier.MethodClassifier;
@@ -325,7 +326,8 @@ public class BottomPane extends StackPane implements IGuiComponent {
 
 			if (member instanceof MethodInstance) {
 				for (MemberInstance<?> m : member.getAllHierarchyMembers()) {
-					m.setMatchable(newValue);
+					boolean res = m.setMatchable(newValue);
+					assert res;
 				}
 			} else {
 				member.setMatchable(newValue);

@@ -37,6 +37,11 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 	}
 
 	@Override
+	public MatchableKind getKind() {
+		return MatchableKind.FIELD;
+	}
+
+	@Override
 	public String getDisplayName(NameType type, boolean full) {
 		StringBuilder ret = new StringBuilder(64);
 

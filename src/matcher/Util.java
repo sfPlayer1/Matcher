@@ -186,6 +186,8 @@ public class Util {
 	public static Handle getTargetHandle(Handle bsm, Object[] bsmArgs) {
 		if (isJavaLambdaMetafactory(bsm)) {
 			return (Handle) bsmArgs[1];
+		} else if (isIrrelevantBsm(bsm)) {
+			return null;
 		} else {
 			System.out.printf("unknown invokedynamic bsm: %s/%s%s (tag=%d iif=%b)%n", bsm.getOwner(), bsm.getName(), bsm.getDesc(), bsm.getTag(), bsm.isInterface());
 
@@ -201,6 +203,10 @@ public class Util {
 						|| bsm.getName().equals("altMetafactory")
 						&& bsm.getDesc().equals("(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;"))
 				&& !bsm.isInterface();
+	}
+
+	public static boolean isIrrelevantBsm(Handle bsm) {
+		return bsm.getOwner().equals("java/lang/invoke/StringConcatFactory");
 	}
 
 	public static boolean isValidJavaIdentifier(String s) {
