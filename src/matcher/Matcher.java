@@ -222,14 +222,8 @@ public class Matcher {
 
 			for (MethodInstance dst : b.getMethods()) {
 				if (dstHierarchyMembers.contains(dst)) {
-					for (MethodInstance m : src.getAllHierarchyMembers()) {
-						m.setMatchable(true);
-					}
-
-					for (MethodInstance m : dstHierarchyMembers) {
-						m.setMatchable(true);
-					}
-
+					src.setMatchable(true);
+					dst.setMatchable(true);
 					match(src, dst);
 					break;
 				}
@@ -298,13 +292,31 @@ public class Matcher {
 		System.out.println("match method "+a+" -> "+b+(a.hasMappedName() ? " ("+a.getName(NameType.MAPPED_PLAIN)+")" : ""));
 
 		if (a.getMatch() != null) {
-			unmatchArgsVars(a);
-			a.getMatch().setMatch(null);
+			if (matchHierarchyMembers) {
+				for (MethodInstance m : a.getAllHierarchyMembers()) {
+					if (m.hasMatch()) {
+						unmatchArgsVars(m);
+						m.getMatch().setMatch(null);
+					}
+				}
+			} else {
+				unmatchArgsVars(a);
+				a.getMatch().setMatch(null);
+			}
 		}
 
 		if (b.getMatch() != null) {
-			b.getMatch().setMatch(null);
-			unmatchArgsVars(b);
+			if (matchHierarchyMembers) {
+				for (MethodInstance m : b.getAllHierarchyMembers()) {
+					if (m.hasMatch()) {
+						unmatchArgsVars(m);
+						m.getMatch().setMatch(null);
+					}
+				}
+			} else {
+				unmatchArgsVars(b);
+				b.getMatch().setMatch(null);
+			}
 		}
 
 		a.setMatch(b);

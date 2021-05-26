@@ -25,6 +25,8 @@ public interface Matchable<T extends Matchable<T>> {
 
 	int getUid();
 
+	boolean hasPotentialMatch();
+
 	boolean isMatchable();
 	boolean setMatchable(boolean matchable);
 

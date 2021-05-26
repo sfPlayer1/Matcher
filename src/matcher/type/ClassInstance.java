@@ -274,6 +274,18 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	@Override
+	public boolean hasPotentialMatch() {
+		if (matchedClass != null) return true;
+		if (!isMatchable()) return false;
+
+		for (ClassInstance o : env.getOther().getClasses()) {
+			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		}
+
+		return false;
+	}
+
+	@Override
 	public boolean isMatchable() {
 		return matchable;
 	}
@@ -303,46 +315,15 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	public boolean isFullyMatched(boolean recursive) {
 		if (matchedClass == null) return false;
 
-		boolean anyUnmatched = false;
-
 		for (MethodInstance m : methods) {
-			if (m.isMatchable() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
-				anyUnmatched = true;
-				break;
+			if (m.hasPotentialMatch() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
+				return false;
 			}
 		}
-
-		if (anyUnmatched) {
-			for (MethodInstance a : methods) {
-				if (!a.isMatchable() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
-
-				// check for any potential match to ignore methods that are impossible to match
-				for (MethodInstance b : matchedClass.methods) {
-					if (b.isMatchable() && !b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
-						return false;
-					}
-				}
-			}
-		}
-
-		anyUnmatched = false;
 
 		for (FieldInstance m : fields) {
-			if (m.isMatchable() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
-				anyUnmatched = true;
-				break;
-			}
-		}
-
-		if (anyUnmatched) {
-			for (FieldInstance a : fields) {
-				if (!a.isMatchable() || a.hasMatch() && (!recursive || a.isFullyMatched(true))) continue;
-
-				for (FieldInstance b : matchedClass.fields) {
-					if (b.isMatchable() && !b.hasMatch() && ClassifierUtil.checkPotentialEquality(a, b)) {
-						return false;
-					}
-				}
+			if (m.hasPotentialMatch() && (!m.hasMatch() || recursive && !m.isFullyMatched(true))) {
+				return false;
 			}
 		}
 

@@ -80,6 +80,9 @@ public class ClassifierUtil {
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
 		if (!checkNameObfMatch(a, b)) return false;
 
+		MethodInstance hierarchyMatch = a.getHierarchyMatch();
+		if (hierarchyMatch != null && !hierarchyMatch.getAllHierarchyMembers().contains(b)) return false;
+
 		return true;
 	}
 

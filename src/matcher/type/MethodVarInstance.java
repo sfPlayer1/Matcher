@@ -3,6 +3,7 @@ package matcher.type;
 import matcher.NameType;
 import matcher.SimilarityChecker;
 import matcher.Util;
+import matcher.classifier.ClassifierUtil;
 
 public final class MethodVarInstance implements Matchable<MethodVarInstance> {
 	MethodVarInstance(MethodInstance method, boolean isArg, int index, int lvIndex, int asmIndex,
@@ -209,6 +210,18 @@ public final class MethodVarInstance implements Matchable<MethodVarInstance> {
 	public void setAuxName(int index, String name) {
 		if (this.auxName == null) this.auxName = new String[NameType.AUX_COUNT];
 		this.auxName[index] = name;
+	}
+
+	@Override
+	public boolean hasPotentialMatch() {
+		if (matchedInstance != null) return true;
+		if (!method.hasMatch() || !isMatchable()) return false;
+
+		for (MethodVarInstance o : (isArg ? method.getMatch().getArgs() : method.getMatch().getVars())) {
+			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		}
+
+		return false;
 	}
 
 	@Override

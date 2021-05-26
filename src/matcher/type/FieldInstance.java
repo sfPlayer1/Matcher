@@ -9,6 +9,7 @@ import org.objectweb.asm.tree.FieldNode;
 
 import matcher.NameType;
 import matcher.Util;
+import matcher.classifier.ClassifierUtil;
 import matcher.type.Signature.FieldSignature;
 
 public final class FieldInstance extends MemberInstance<FieldInstance> {
@@ -106,6 +107,18 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 		if (uid < 0) return null;
 
 		return cls.env.getGlobal().fieldUidPrefix+uid;
+	}
+
+	@Override
+	public boolean hasPotentialMatch() {
+		if (matchedInstance != null) return true;
+		if (!cls.hasMatch() || !isMatchable()) return false;
+
+		for (FieldInstance o : cls.getMatch().getFields()) {
+			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		}
+
+		return false;
 	}
 
 	@Override

@@ -16,7 +16,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		this.cls = cls;
 		this.id = id;
 		this.origName = origName;
-		this.nameObfuscated = nameObfuscated;
+		this.nameObfuscatedLocal = nameObfuscated;
 		this.position = position;
 		this.isStatic = isStatic;
 
@@ -51,26 +51,30 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
 		String ret;
 
-		if (type.mapped && mappedName != null) {
+		if (type.mapped && hierarchyData != null && hierarchyData.mappedName != null) {
 			// MAPPED_*, local name available
-			ret = mappedName;
+			ret = hierarchyData.mappedName;
 		} else if (type.mapped && cls.isInput() && (ret = getMappedName()) != null) {
 			// MAPPED_*, remote name available
-		} else if (type.mapped && !nameObfuscated) {
+		} else if (type.mapped && !isNameObfuscated()) {
 			// MAPPED_*, local deobf
 			ret = origName;
-		} else if (type.mapped && matchedInstance != null && !matchedInstance.nameObfuscated) {
+		} else if (type.mapped && matchedInstance != null && !matchedInstance.isNameObfuscated()) {
 			// MAPPED_*, remote deobf
 			ret = matchedInstance.origName;
-		} else if (type.isAux() && auxName != null && auxName.length > type.getAuxIndex() && auxName[type.getAuxIndex()] != null) {
-			ret = auxName[type.getAuxIndex()];
+		} else if (type.isAux()
+				&& hierarchyData != null
+				&& hierarchyData.auxName != null
+				&& hierarchyData.auxName.length > type.getAuxIndex()
+				&& hierarchyData.auxName[type.getAuxIndex()] != null) {
+			ret = hierarchyData.auxName[type.getAuxIndex()];
 		} else if (type.isAux() && cls.isInput() && (ret = getAuxName(type.getAuxIndex())) != null) {
 			// *_AUX*, remote aux available
 		} else if (type.tmp && cls.isInput() && (ret = getTmpName()) != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
-		} else if ((type.tmp || locTmp) && tmpName != null) {
+		} else if ((type.tmp || locTmp) && hierarchyData != null && hierarchyData.tmpName != null) {
 			// MAPPED_TMP_* or MAPPED_LOCTMP_* with obf name or TMP_* or LOCTMP_*, local name available
-			ret = tmpName;
+			ret = hierarchyData.tmpName;
 		} else if (type.plain) {
 			ret = origName;
 		} else {
@@ -106,7 +110,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 
 	@Override
 	public boolean isNameObfuscated() {
-		return nameObfuscated;
+		return hierarchyData == null ? nameObfuscatedLocal : hierarchyData.nameObfuscated;
 	}
 
 	public int getPosition() {
@@ -164,14 +168,16 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	public T getHierarchyMatch() {
-		assert hierarchyMembers != null; // only available for input classes
+		assert hierarchyData != null; // only available for input classes
+
+		if (hierarchyData.matchedHierarchy == null) return null;
 
 		T ret = getMatch();
 		if (ret != null) return ret;
 
 		ClassEnv reqEnv = cls.getEnv();
 
-		for (T m : hierarchyMembers) {
+		for (T m : hierarchyData.getMembers()) {
 			ret = m.getMatch();
 
 			if (ret != null) {
@@ -187,55 +193,51 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	public Set<T> getAllHierarchyMembers() {
-		assert hierarchyMembers != null; // only available for input classes
+		assert hierarchyData != null; // only available for input classes
 
-		return hierarchyMembers;
+		return hierarchyData.getMembers();
 	}
 
 	@Override
 	public boolean hasLocalTmpName() {
-		return tmpName != null;
+		return hierarchyData != null && hierarchyData.tmpName != null;
 	}
 
 	private String getTmpName() {
-		assert hierarchyMembers != null; // only available for input classes
+		assert hierarchyData != null; // only available for input classes
 
-		if (tmpName != null) {
-			return tmpName;
-		} else if (matchedInstance != null && matchedInstance.tmpName != null) {
-			return matchedInstance.tmpName;
-		} else if (hierarchyMembers.size() > 1) {
-			for (MemberInstance<?> m : hierarchyMembers) {
-				if (m.matchedInstance != null && m.matchedInstance.tmpName != null) {
-					return m.matchedInstance.tmpName;
-				}
-			}
+		if (hierarchyData.tmpName != null) {
+			return hierarchyData.tmpName;
+		} else if (hierarchyData.matchedHierarchy != null && hierarchyData.matchedHierarchy.tmpName != null) {
+			return hierarchyData.matchedHierarchy.tmpName;
 		}
 
 		return null;
 	}
 
 	public void setTmpName(String tmpName) {
-		this.tmpName = tmpName;
+		hierarchyData.tmpName = tmpName;
 	}
 
 	@Override
 	public int getUid() {
-		if (uid >= 0) {
-			if (matchedInstance != null && matchedInstance.uid >= 0) {
-				return Math.min(uid, matchedInstance.uid);
+		assert hierarchyData != null; // only available for input classes
+
+		if (hierarchyData.uid >= 0) {
+			if (hierarchyData.matchedHierarchy != null && hierarchyData.matchedHierarchy.uid >= 0) {
+				return Math.min(hierarchyData.uid, hierarchyData.matchedHierarchy.uid);
 			} else {
-				return uid;
+				return hierarchyData.uid;
 			}
-		} else if (matchedInstance != null) {
-			return matchedInstance.uid;
+		} else if (hierarchyData.matchedHierarchy != null) {
+			return hierarchyData.matchedHierarchy.uid;
 		} else {
 			return -1;
 		}
 	}
 
 	public void setUid(int uid) {
-		this.uid = uid;
+		hierarchyData.matchedHierarchy.uid = uid;
 	}
 
 	protected abstract String getUidString();
@@ -246,25 +248,19 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	private String getMappedName() {
-		assert hierarchyMembers != null; // only available for input classes
+		assert hierarchyData != null; // only available for input classes
 
-		if (mappedName != null) {
-			return mappedName;
-		} else if (matchedInstance != null && matchedInstance.mappedName != null) {
-			return matchedInstance.mappedName;
-		} else if (hierarchyMembers != null && hierarchyMembers.size() > 1) {
-			for (MemberInstance<?> m : hierarchyMembers) {
-				if (m.matchedInstance != null && m.matchedInstance.mappedName != null) {
-					return m.matchedInstance.mappedName;
-				}
-			}
+		if (hierarchyData.mappedName != null) {
+			return hierarchyData.mappedName;
+		} else if (hierarchyData.matchedHierarchy != null && hierarchyData.matchedHierarchy.mappedName != null) {
+			return hierarchyData.matchedHierarchy.mappedName;
 		}
 
 		return null;
 	}
 
 	public void setMappedName(String mappedName) {
-		this.mappedName = mappedName;
+		hierarchyData.mappedName = mappedName;
 	}
 
 	@Override
@@ -291,39 +287,38 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	private String getAuxName(int index) {
-		assert hierarchyMembers != null; // only available for input classes
+		assert hierarchyData != null; // only available for input classes
 
-		if (auxName != null && auxName.length > index && auxName[index] != null) {
-			return auxName[index];
-		} else if (matchedInstance != null && matchedInstance.auxName != null && matchedInstance.auxName.length > index && matchedInstance.auxName[index] != null) {
-			return matchedInstance.auxName[index];
-		} else if (hierarchyMembers != null && hierarchyMembers.size() > 1) {
-			for (MemberInstance<?> m : hierarchyMembers) {
-				if (m.matchedInstance != null && m.matchedInstance.auxName != null && m.matchedInstance.auxName.length > index && m.matchedInstance.auxName[index] != null) {
-					return m.matchedInstance.auxName[index];
-				}
-			}
+		if (hierarchyData.auxName != null && hierarchyData.auxName.length > index && hierarchyData.auxName[index] != null) {
+			return hierarchyData.auxName[index];
+		} else if (hierarchyData.matchedHierarchy != null
+				&& hierarchyData.matchedHierarchy.auxName != null
+				&& hierarchyData.matchedHierarchy.auxName.length > index
+				&& hierarchyData.matchedHierarchy.auxName[index] != null) {
+			return hierarchyData.matchedHierarchy.auxName[index];
 		}
 
 		return null;
 	}
 
 	public void setAuxName(int index, String name) {
-		if (this.auxName == null) this.auxName = new String[NameType.AUX_COUNT];
-		this.auxName[index] = name;
+		if (hierarchyData.auxName == null) hierarchyData.auxName = new String[NameType.AUX_COUNT];
+		hierarchyData.auxName[index] = name;
 	}
 
 	@Override
 	public boolean isMatchable() {
-		return matchable && cls.isMatchable();
+		return hierarchyData != null && hierarchyData.matchable && cls.isMatchable();
 	}
 
 	@Override
 	public boolean setMatchable(boolean matchable) {
 		if (!matchable && matchedInstance != null) return false;
 		if (matchable && !cls.isMatchable()) return false;
+		if (hierarchyData == null) return !matchable;
+		if (!matchable && hierarchyData.matchedHierarchy != null) return false;
 
-		this.matchable = matchable;
+		hierarchyData.matchable = matchable;
 
 		return true;
 	}
@@ -338,6 +333,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		assert match == null || cls == match.cls.getMatch();
 
 		this.matchedInstance = match;
+		this.hierarchyData.matchedHierarchy = match != null ? match.hierarchyData : null;
 	}
 
 	@Override
@@ -357,22 +353,15 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	final ClassInstance cls;
 	final String id;
 	final String origName;
-	boolean nameObfuscated;
+	boolean nameObfuscatedLocal;
 	final int position;
 	final boolean isStatic;
 
 	private Set<T> parents = Collections.emptySet();
 	private Set<T> children = Collections.emptySet();
-	Set<T> hierarchyMembers;
+	MemberHierarchyData<T> hierarchyData;
 
-	String tmpName;
-	int uid = -1;
-
-	String mappedName;
 	String mappedComment;
 
-	String[] auxName;
-
-	private boolean matchable = true;
 	T matchedInstance;
 }

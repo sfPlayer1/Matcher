@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import javafx.collections.FXCollections;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
@@ -14,13 +15,14 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+
 import matcher.NameType;
 import matcher.Util;
 import matcher.gui.Gui.SortKey;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
-import matcher.type.Matchable;
 import matcher.type.MatchType;
+import matcher.type.Matchable;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
@@ -204,7 +206,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 				return String.format("-fx-text-fill: #%02x%02x%02x", (int) (red * 255), (int) (green * 255), (int) (blue * 255));
 			}
 		} else {
-			if (!item.isMatchable()) {
+			if (!item.hasPotentialMatch()) {
 				return "-fx-text-fill: dimgray;";
 			} else if (item.getMatch() == null) {
 				return "-fx-text-fill: darkred;";
@@ -571,9 +573,12 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private static final Comparator<? extends Matchable<?>> matchStatusComparator = (a, b) -> {
 		// sort order: unmatched partially-matched fully-matched-shallow fully-matched-recursive unmatchable
 
-		if (a.isMatchable() != b.isMatchable()) {
-			return a.isMatchable() ? -1 : 1;
-		} else if (!a.isMatchable()) {
+		boolean aMatchable = a.hasPotentialMatch();
+		boolean bMatchable = b.hasPotentialMatch();
+
+		if (aMatchable != bMatchable) {
+			return aMatchable ? -1 : 1;
+		} else if (!aMatchable) {
 			return 0;
 		} else if (a.hasMatch() != b.hasMatch()) {
 			return a.hasMatch() ? 1 : -1;

@@ -122,9 +122,9 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		 * 0            1                 1                0              1                   1                 0           1                0             0          unmatchable   var
 		 * 0            1                 1                0              1                   1                 0           1                1             1          unmatchable   -
 		 */
-		matchableButton.setDisable(clsA == null || clsA.isMatchable() && clsA.hasMatch()
-				&& (memberA == null || memberA.isMatchable() && memberA.hasMatch()
-				&& (varA == null || varA.isMatchable() && varA.hasMatch())));
+		matchableButton.setDisable(clsA == null || clsA.isMatchable() && (clsA.hasMatch() || !clsA.hasPotentialMatch())
+				&& (memberA == null || memberA.isMatchable() && (memberA.hasMatch() || !memberA.hasPotentialMatch())
+				&& (varA == null || varA.isMatchable() && (varA.hasMatch() || !varA.hasPotentialMatch()))));
 		matchableButton.setText(clsA != null && (!clsA.isMatchable()
 				|| memberA != null && (!memberA.isMatchable()
 						|| varA != null && !varA.isMatchable())) ? "matchable" : "unmatchable");
@@ -313,7 +313,10 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		if (cls == null) return;
 
 		if (!cls.isMatchable() || !cls.hasMatch()) {
-			cls.setMatchable(!cls.isMatchable());
+			boolean newValue = !cls.isMatchable();
+			if (!newValue && !cls.hasPotentialMatch()) return;
+
+			cls.setMatchable(newValue);
 			gui.onMatchChange(EnumSet.allOf(MatchType.class));
 			return;
 		}
@@ -323,23 +326,21 @@ public class BottomPane extends StackPane implements IGuiComponent {
 
 		if (!member.isMatchable() || !member.hasMatch()) {
 			boolean newValue = !member.isMatchable();
+			if (!newValue && !member.hasPotentialMatch()) return;
 
-			if (member instanceof MethodInstance) {
-				for (MemberInstance<?> m : member.getAllHierarchyMembers()) {
-					boolean res = m.setMatchable(newValue);
-					assert res;
-				}
-			} else {
-				member.setMatchable(newValue);
+			if (member.setMatchable(newValue)) {
+				gui.onMatchChange(member instanceof MethodInstance ? EnumSet.of(MatchType.Method, MatchType.MethodVar) : EnumSet.of(MatchType.Field));
 			}
 
-			gui.onMatchChange(member instanceof MethodInstance ? EnumSet.of(MatchType.Method, MatchType.MethodVar) : EnumSet.of(MatchType.Field));
 			return;
 		}
 
 		MethodVarInstance var = srcPane.getSelectedMethodVar();
 
 		if (!var.isMatchable() || !var.hasMatch()) {
+			boolean newValue = !var.isMatchable();
+			if (!newValue && !var.hasPotentialMatch()) return;
+
 			var.setMatchable(!var.isMatchable());
 			gui.onMatchChange(EnumSet.of(MatchType.MethodVar));
 			return;

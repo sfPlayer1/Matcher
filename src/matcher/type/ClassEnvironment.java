@@ -41,7 +41,7 @@ import matcher.config.ProjectConfig;
 import matcher.srcprocess.Decompiler;
 import matcher.type.Signature.ClassSignature;
 
-public class ClassEnvironment implements ClassEnv {
+public final class ClassEnvironment implements ClassEnv {
 	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
 		final double cpInitCost = 0.05;
 		final double classReadCost = 0.2;
@@ -548,6 +548,11 @@ public class ClassEnvironment implements ClassEnv {
 
 	@Override
 	public ClassEnvironment getGlobal() {
+		return this;
+	}
+
+	@Override
+	public ClassEnv getOther() {
 		return this;
 	}
 

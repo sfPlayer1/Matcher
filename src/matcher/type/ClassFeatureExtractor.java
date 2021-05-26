@@ -298,26 +298,25 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				MethodInstance prev;
 
 				if (isHierarchyBarrier(method)) {
-					if (method.hierarchyMembers == null) {
-						method.hierarchyMembers = Collections.singleton(method);
+					if (method.hierarchyData == null) {
+						method.hierarchyData = new MemberHierarchyData<>(Collections.singleton(method), method.nameObfuscatedLocal);
 					}
 				} else if ((prev = methods.get(method.id)) != null) {
-					if (method.hierarchyMembers == null) {
-						method.hierarchyMembers = prev.hierarchyMembers;
-						method.hierarchyMembers.add(method);
-					} else if (method.hierarchyMembers != prev.hierarchyMembers) {
-						method.hierarchyMembers.addAll(prev.hierarchyMembers);
-
-						for (MethodInstance m : prev.hierarchyMembers) {
-							m.hierarchyMembers = method.hierarchyMembers;
+					if (method.hierarchyData == null) {
+						method.hierarchyData = prev.hierarchyData;
+						method.hierarchyData.addMember(method);
+					} else if (method.hierarchyData != prev.hierarchyData) {
+						for (MethodInstance m : prev.hierarchyData.getMembers()) {
+							method.hierarchyData.addMember(m);
+							m.hierarchyData = method.hierarchyData;
 						}
 					}
 				} else {
 					methods.put(method.id, method);
 
-					if (method.hierarchyMembers == null) {
-						method.hierarchyMembers = Util.newIdentityHashSet();
-						method.hierarchyMembers.add(method);
+					if (method.hierarchyData == null) {
+						method.hierarchyData = new MemberHierarchyData<>(Util.newIdentityHashSet(), method.nameObfuscatedLocal);
+						method.hierarchyData.addMember(method);
 					}
 				}
 			}
@@ -337,26 +336,18 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	private void processClassD(ClassInstance cls, CommonClasses common) {
 		Queue<ClassInstance> toCheck = new ArrayDeque<>();
 		Set<ClassInstance> checked = Util.newIdentityHashSet();
-		Set<Set<MethodInstance>> nameObfChecked = Util.newIdentityHashSet();
+		Set<MemberHierarchyData<MethodInstance>> nameObfChecked = Util.newIdentityHashSet();
 
 		for (MethodInstance method : cls.getMethods()) {
-			if (method.hierarchyMembers.size() > 1) { // may have parent/child methods
+			if (method.hierarchyData.hasMultipleMembers()) { // may have parent/child methods
 				determineMethodRelations(method, toCheck, checked);
 
 				// update name obfuscated state if not done yet, the name is only obfuscated if it is for all hierarchy members
-				if (nameObfChecked.add(method.hierarchyMembers)) {
-					boolean nameObf = true;
-
-					for (MethodInstance m : method.hierarchyMembers) {
-						if (!m.nameObfuscated) {
-							nameObf = false;
+				if (nameObfChecked.add(method.hierarchyData) && method.hierarchyData.nameObfuscated) {
+					for (MethodInstance m : method.hierarchyData.getMembers()) {
+						if (!m.nameObfuscatedLocal) {
+							method.hierarchyData.nameObfuscated = false;
 							break;
-						}
-					}
-
-					if (!nameObf) {
-						for (MethodInstance m : method.hierarchyMembers) {
-							m.nameObfuscated = false;
 						}
 					}
 				}
@@ -366,7 +357,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		}
 
 		for (FieldInstance field : cls.getFields()) {
-			field.hierarchyMembers = Collections.singleton(field);
+			field.hierarchyData = new MemberHierarchyData<>(Collections.singleton(field), field.nameObfuscatedLocal);
 
 			if (field.writeRefs.size() == 1) {
 				Analysis.checkInitializer(field, this);
@@ -430,10 +421,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				memberIndex++;
 			} else if (!method.hasLocalTmpName()) {
 				String name = "vm"+envName+vmIdx.getAndIncrement();
-
-				for (MethodInstance m : method.getAllHierarchyMembers()) {
-					m.setTmpName(name);
-				}
+				method.setTmpName(name);
 			}
 		}
 
@@ -571,6 +559,11 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	@Override
 	public ClassEnvironment getGlobal() {
 		return env;
+	}
+
+	@Override
+	public ClassEnv getOther() {
+		return this == env.getEnvA() ? env.getEnvB() : env.getEnvA();
 	}
 
 	final ClassEnvironment env;

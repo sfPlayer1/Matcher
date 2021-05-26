@@ -34,4 +34,5 @@ public interface ClassEnv {
 	ClassInstance getClsById(String id, NameType nameType);
 
 	ClassEnvironment getGlobal();
+	ClassEnv getOther();
 }

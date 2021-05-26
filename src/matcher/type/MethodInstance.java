@@ -104,7 +104,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 			MethodVarInstance arg = new MethodVarInstance(method, true, i, lvIdx, asmIndex,
 					type, startInsn, endInsn, 0,
 					name,
-					name == null || method.nameObfuscated || method.cls.nameObfuscated || !Util.isValidJavaIdentifier(name));
+					name == null || method.nameObfuscatedLocal || method.cls.nameObfuscated || !Util.isValidJavaIdentifier(name));
 			args[i] = arg;
 
 			method.classRefs.add(type);
@@ -168,7 +168,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 			ret[i] = new MethodVarInstance(method, false, i, var.index, asmNode.localVariables.indexOf(var),
 					method.getEnv().getCreateClassInstance(var.desc), startInsn, endInsn, startOpIdx,
 					var.name,
-					var.name == null || method.nameObfuscated || method.cls.nameObfuscated || !Util.isValidJavaIdentifier(var.name));
+					var.name == null || method.nameObfuscatedLocal || method.cls.nameObfuscated || !Util.isValidJavaIdentifier(var.name));
 		}
 
 		return ret;
@@ -347,6 +347,18 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		if (uid < 0) return null;
 
 		return cls.env.getGlobal().methodUidPrefix+uid;
+	}
+
+	@Override
+	public boolean hasPotentialMatch() {
+		if (matchedInstance != null) return true;
+		if (!cls.hasMatch() || !isMatchable()) return false;
+
+		for (MethodInstance o : cls.getMatch().getMethods()) {
+			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+		}
+
+		return false;
 	}
 
 	@Override

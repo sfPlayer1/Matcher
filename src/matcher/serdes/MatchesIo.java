@@ -217,14 +217,8 @@ public class MatchesIo {
 									System.err.println("Unmatchable a/b method "+idA+"/"+idB);
 									currentMethod = null;
 								} else {
-									for (MemberInstance<?> m : a.getAllHierarchyMembers()) {
-										m.setMatchable(true);
-									}
-
-									for (MemberInstance<?> m : b.getAllHierarchyMembers()) {
-										m.setMatchable(true);
-									}
-
+									a.setMatchable(true);
+									b.setMatchable(true);
 									matcher.match(a, b);
 								}
 							} else {
@@ -261,14 +255,8 @@ public class MatchesIo {
 							} else {
 								if (member.hasMatch()) matcher.unmatch(member);
 
-								if (member instanceof MethodInstance) {
-									for (MemberInstance<?> m : member.getAllHierarchyMembers()) {
-										if (!m.setMatchable(false)) {
-											System.err.printf("can't mark %s as unmatchable, already matched?%n", m);
-										}
-									}
-								} else {
-									member.setMatchable(false);
+								if (!member.setMatchable(false)) {
+									System.err.printf("can't mark %s as unmatchable, already matched?%n", member);
 								}
 							}
 						}
