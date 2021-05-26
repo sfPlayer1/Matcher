@@ -51,25 +51,16 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		boolean locTmp = type == NameType.MAPPED_LOCTMP_PLAIN || type == NameType.LOCTMP_PLAIN;
 		String ret;
 
-		if (type.mapped && hierarchyData != null && hierarchyData.mappedName != null) {
-			// MAPPED_*, local name available
-			ret = hierarchyData.mappedName;
-		} else if (type.mapped && cls.isInput() && (ret = getMappedName()) != null) {
-			// MAPPED_*, remote name available
+		if (type.mapped && cls.isInput() && (ret = getMappedName()) != null) {
+			// MAPPED_*, mapped name available
 		} else if (type.mapped && !isNameObfuscated()) {
 			// MAPPED_*, local deobf
 			ret = origName;
 		} else if (type.mapped && matchedInstance != null && !matchedInstance.isNameObfuscated()) {
 			// MAPPED_*, remote deobf
 			ret = matchedInstance.origName;
-		} else if (type.isAux()
-				&& hierarchyData != null
-				&& hierarchyData.auxName != null
-				&& hierarchyData.auxName.length > type.getAuxIndex()
-				&& hierarchyData.auxName[type.getAuxIndex()] != null) {
-			ret = hierarchyData.auxName[type.getAuxIndex()];
 		} else if (type.isAux() && cls.isInput() && (ret = getAuxName(type.getAuxIndex())) != null) {
-			// *_AUX*, remote aux available
+			// *_AUX*, aux available
 		} else if (type.tmp && cls.isInput() && (ret = getTmpName()) != null) {
 			// MAPPED_TMP_* with obf name or TMP_*, remote name available
 		} else if ((type.tmp || locTmp) && hierarchyData != null && hierarchyData.tmpName != null) {
