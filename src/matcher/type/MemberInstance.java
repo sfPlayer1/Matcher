@@ -130,6 +130,10 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		return (getAccess() & Opcodes.ACC_FINAL) != 0;
 	}
 
+	public boolean isSynthetic() {
+		return (getAccess() & Opcodes.ACC_SYNTHETIC) != 0;
+	}
+
 	void addParent(T parent) {
 		assert parent.getCls() != getCls();
 		assert parent != this;

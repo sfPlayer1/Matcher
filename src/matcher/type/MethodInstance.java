@@ -321,6 +321,14 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		return signature;
 	}
 
+	public boolean isBridge() {
+		return (getAccess() & Opcodes.ACC_BRIDGE) != 0;
+	}
+
+	public MethodType getType() {
+		return type;
+	}
+
 	public Set<MethodInstance> getRefsIn() {
 		return refsIn;
 	}
@@ -424,6 +432,8 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 	MethodVarInstance[] vars;
 	final MethodSignature signature;
 	private final MethodNode asmNode;
+
+	MethodType type = MethodType.UNKNOWN;
 
 	final Set<MethodInstance> refsIn = Util.newIdentityHashSet();
 	final Set<MethodInstance> refsOut = Util.newIdentityHashSet();

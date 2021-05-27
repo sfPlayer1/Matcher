@@ -258,20 +258,38 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	private void handleMethodInvocation(MethodInstance method, String rawOwner, String name, String desc, boolean toInterface, boolean isStatic) {
-		ClassInstance owner = getCreateClassInstance(ClassInstance.getId(rawOwner));
-		MethodInstance dst = owner.resolveMethod(name, desc, toInterface);
-
-		if (dst == null) { // presumably a method in (super)type missing from the configured class path
-			System.out.println("creating synthetic method "+rawOwner+"/"+name+desc);
-
-			dst = new MethodInstance(owner, name, desc, isStatic);
-			owner.addMethod(dst);
-		}
+		MethodInstance dst = resolveMethod(rawOwner, name, desc, toInterface, isStatic, true);
 
 		dst.refsIn.add(method);
 		method.refsOut.add(dst);
 		dst.cls.methodTypeRefs.add(method);
 		method.classRefs.add(dst.cls);
+	}
+
+	private MethodInstance resolveMethod(String owner, String name, String desc, boolean toInterface, boolean isStatic, boolean create) {
+		ClassInstance cls = getCreateClassInstance(ClassInstance.getId(owner), create);
+		if (cls == null) return null;
+
+		MethodInstance ret = cls.resolveMethod(name, desc, toInterface);
+
+		if (ret == null && create) {
+			System.out.printf("creating synthetic method %s/%s%s%n", owner, name, desc);
+
+			ret = new MethodInstance(cls, name, desc, isStatic);
+			cls.addMethod(ret);
+		}
+
+		return ret;
+	}
+
+	private MethodInstance resolveMethod(MethodInsnNode in) {
+		return resolveMethod(in.owner, in.name, in.desc,
+				Util.isCallToInterface(in), in.getOpcode() == Opcodes.INVOKESTATIC, false);
+	}
+
+	private MethodInstance resolveMethod(Handle handle) {
+		return resolveMethod(handle.getOwner(), handle.getName(), handle.getDesc(),
+				Util.isCallToInterface(handle), handle.getTag() == Opcodes.H_INVOKESTATIC, false);
 	}
 
 	/**
@@ -353,6 +371,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				}
 			}
 
+			determineMethodType(method);
 			//Analysis.analyzeMethod(method, common);
 		}
 
@@ -388,6 +407,55 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		}
 
 		checked.clear();
+	}
+
+	private void determineMethodType(MethodInstance method) {
+		MethodType type;
+
+		if (isLambdaMethod(method)) {
+			type = MethodType.LAMBDA_IMPL;
+		} else {
+			type = MethodType.OTHER;
+		}
+
+		method.type = type;
+	}
+
+	private boolean isLambdaMethod(MethodInstance method) {
+		if (!method.isSynthetic() || !method.isPrivate() || method.refsIn.isEmpty()) return false;
+
+		for (MethodInstance m : method.refsIn) {
+			boolean found = false;
+
+			for (Iterator<AbstractInsnNode> it = m.getAsmNode().instructions.iterator(); it.hasNext(); ) {
+				AbstractInsnNode ain = it.next();
+
+				switch (ain.getType()) {
+				case AbstractInsnNode.METHOD_INSN:
+					if (resolveMethod((MethodInsnNode) ain) == method) return false;
+					break;
+				case AbstractInsnNode.INVOKE_DYNAMIC_INSN: {
+					InvokeDynamicInsnNode in = (InvokeDynamicInsnNode) ain;
+					Handle impl = Util.getTargetHandle(in.bsm, in.bsmArgs);
+					if (impl == null) break;
+
+					if (resolveMethod(impl) == method) {
+						if (Util.isJavaLambdaMetafactory(in.bsm)) {
+							found = true;
+						} else {
+							return false;
+						}
+					}
+
+					break;
+				}
+				}
+			}
+
+			if (!found) return false;
+		}
+
+		return true;
 	}
 
 	/**

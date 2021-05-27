@@ -44,6 +44,7 @@ import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.Matchable;
 import matcher.type.MethodInstance;
+import matcher.type.MethodType;
 import matcher.type.MethodVarInstance;
 
 public class ClassifierUtil {
@@ -79,9 +80,25 @@ public class ClassifierUtil {
 		if (!a.isMatchable() || !b.isMatchable()) return false;
 		if (!checkPotentialEquality(a.getCls(), b.getCls())) return false;
 		if (!checkNameObfMatch(a, b)) return false;
+		if ((a.getId().startsWith("<") || b.getId().startsWith("<")) && !a.getName().equals(b.getName())) return false; // require <clinit> and <init> to match
 
 		MethodInstance hierarchyMatch = a.getHierarchyMatch();
 		if (hierarchyMatch != null && !hierarchyMatch.getAllHierarchyMembers().contains(b)) return false;
+
+		if (a.getType() == MethodType.LAMBDA_IMPL && b.getType() == MethodType.LAMBDA_IMPL) { // require same "outer method" for lambdas
+			boolean found = false;
+
+			maLoop: for (MethodInstance ma : a.getRefsIn()) {
+				for (MethodInstance mb : b.getRefsIn()) {
+					if (checkPotentialEquality(ma, mb)) {
+						found = true;
+						break maLoop;
+					}
+				}
+			}
+
+			if (!found) return false;
+		}
 
 		return true;
 	}
