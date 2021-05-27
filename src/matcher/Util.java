@@ -206,7 +206,8 @@ public class Util {
 	}
 
 	public static boolean isIrrelevantBsm(Handle bsm) {
-		return bsm.getOwner().equals("java/lang/invoke/StringConcatFactory");
+		return bsm.getOwner().equals("java/lang/invoke/StringConcatFactory")
+				|| bsm.getOwner().equals("java/lang/runtime/ObjectMethods");
 	}
 
 	public static boolean isValidJavaIdentifier(String s) {
