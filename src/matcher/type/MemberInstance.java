@@ -25,12 +25,12 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		}
 	}
 
-	public ClassInstance getCls() {
+	public final ClassInstance getCls() {
 		return cls;
 	}
 
 	@Override
-	public String getId() {
+	public final String getId() {
 		return id;
 	}
 

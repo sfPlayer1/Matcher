@@ -297,11 +297,13 @@ public class Matcher {
 					if (m.hasMatch()) {
 						unmatchArgsVars(m);
 						m.getMatch().setMatch(null);
+						m.setMatch(null);
 					}
 				}
 			} else {
 				unmatchArgsVars(a);
 				a.getMatch().setMatch(null);
+				a.setMatch(null);
 			}
 		}
 
@@ -311,11 +313,13 @@ public class Matcher {
 					if (m.hasMatch()) {
 						unmatchArgsVars(m);
 						m.getMatch().setMatch(null);
+						m.setMatch(null);
 					}
 				}
 			} else {
 				unmatchArgsVars(b);
 				b.getMatch().setMatch(null);
+				b.setMatch(null);
 			}
 		}
 

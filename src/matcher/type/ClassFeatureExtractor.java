@@ -412,7 +412,11 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	private void determineMethodType(MethodInstance method) {
 		MethodType type;
 
-		if (isLambdaMethod(method)) {
+		if (method.getId().startsWith("<clinit>")) {
+			type = MethodType.CLASS_INIT;
+		} else if (method.getId().startsWith("<init>")) {
+			type = MethodType.CONSTRUCTOR;
+		} else if (isLambdaMethod(method)) {
 			type = MethodType.LAMBDA_IMPL;
 		} else {
 			type = MethodType.OTHER;
@@ -592,9 +596,18 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 			}
 		} else {
 			if ((ret = classes.get(id)) != null) return ret;
-			if ((ret = env.getSharedClsById(id)) != null) return ret;
+
+			// try shared non-artificial class
+			ClassInstance sharedRet = env.getSharedClsById(id);
+			if (sharedRet != null && sharedRet.getUri() != null) return sharedRet;
+
+			// try reading class from class path
 			if ((ret = createClassPathClass(id)) != null) return ret;
 
+			// try shared artificial class
+			if (sharedRet != null) return sharedRet;
+
+			// create local artificial class
 			ret = env.getMissingCls(id, createUnknown);
 		}
 

@@ -1,5 +1,5 @@
 package matcher.type;
 
 public enum MethodType {
-	UNKNOWN, OTHER, LAMBDA_IMPL;
+	UNKNOWN, OTHER, CLASS_INIT, CONSTRUCTOR, LAMBDA_IMPL;
 }
