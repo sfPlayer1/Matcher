@@ -1,5 +1,6 @@
 package matcher.type;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -41,9 +42,10 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 
 		for (Path archive : uniqueInputs) {
 			inputFiles.add(new InputFile(archive));
+			URI origin = archive.toUri();
 
 			Util.iterateJar(archive, true, file -> {
-				ClassInstance cls = readClass(file, obfuscatedCheck);
+				ClassInstance cls = readClass(file, origin, obfuscatedCheck);
 				String id = cls.getId();
 				String name = cls.getName();
 
@@ -85,16 +87,16 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		return pattern == null || !pattern.matcher(cn.name).matches();
 	}
 
-	private ClassInstance readClass(Path path, Predicate<ClassNode> nameObfuscated) {
+	private ClassInstance readClass(Path path, URI origin, Predicate<ClassNode> nameObfuscated) {
 		ClassNode cn = ClassEnvironment.readClass(path, false);
 
-		return new ClassInstance(ClassInstance.getId(cn.name), path.toUri(), this, cn, nameObfuscated.test(cn));
+		return new ClassInstance(ClassInstance.getId(cn.name), origin, this, cn, nameObfuscated.test(cn));
 	}
 
 	private static void mergeClasses(ClassInstance from, ClassInstance to) {
 		assert from.getAsmNodes().length == 1;
 
-		to.addAsmNode(from.getAsmNodes()[0]);
+		to.addAsmNode(from.getAsmNodes()[0], from.getOrigin());
 	}
 
 	public void process(Pattern nonObfuscatedMemberPattern) {
@@ -141,7 +143,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		AtomicInteger vmIdx = new AtomicInteger();
 
 		for (ClassInstance cls : initialClasses) {
-			if (cls.getUri() == null || !cls.isInput()) continue;
+			if (!cls.isReal() || !cls.isInput()) continue;
 
 			int curClsIdx = cls.nameObfuscated ? clsIdx++ : -1;
 
@@ -599,7 +601,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 
 			// try shared non-artificial class
 			ClassInstance sharedRet = env.getSharedClsById(id);
-			if (sharedRet != null && sharedRet.getUri() != null) return sharedRet;
+			if (sharedRet != null && sharedRet.isReal()) return sharedRet;
 
 			// try reading class from class path
 			if ((ret = createClassPathClass(id)) != null) return ret;
@@ -623,7 +625,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		if (file == null) return null;
 
 		ClassNode cn = ClassEnvironment.readClass(file, false);
-		ClassInstance cls = new ClassInstance(ClassInstance.getId(cn.name), file.toUri(), this, cn);
+		ClassInstance cls = new ClassInstance(ClassInstance.getId(cn.name), ClassEnvironment.getContainingUri(file.toUri(), cn.name), this, cn);
 		if (!cls.getId().equals(id)) throw new RuntimeException("mismatched cls id "+id+" for "+file+", expected "+name);
 
 		ClassInstance prev = classes.putIfAbsent(cls.getId(), cls);

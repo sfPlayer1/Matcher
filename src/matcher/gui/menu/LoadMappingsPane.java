@@ -1,5 +1,7 @@
 package matcher.gui.menu;
 
+import java.util.List;
+
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -11,15 +13,16 @@ import javafx.scene.control.RadioButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+
 import matcher.gui.GuiConstants;
 import matcher.mapping.MappingField;
 
 class LoadMappingsPane extends GridPane {
-	LoadMappingsPane(String[] namespaces) {
+	LoadMappingsPane(List<String> namespaces) {
 		init(namespaces);
 	}
 
-	private void init(String[] namespaces) {
+	private void init(List<String> namespaces) {
 		setHgap(GuiConstants.padding);
 		setVgap(GuiConstants.padding);
 

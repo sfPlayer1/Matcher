@@ -1,25 +1,22 @@
 package matcher.mapping;
 
-import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
 import java.io.Writer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
-import java.util.zip.GZIPOutputStream;
 
-import matcher.mapping.MappingState.ArgMappingState;
-import matcher.mapping.MappingState.VarMappingState;
+import net.fabricmc.mappingio.FlatMappingVisitor;
+import net.fabricmc.mappingio.MappingFlag;
+import net.fabricmc.mappingio.format.MappingFormat;
 
-public class MappingWriter implements FlatMappingVisitor, Closeable {
-	public MappingWriter(Path file, MappingFormat format) throws IOException {
+public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
+	public MappingWriterImpl(Path file, MappingFormat format) throws IOException {
 		this.file = file;
 		this.format = format;
 
@@ -27,16 +24,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 		case TINY:
 		case SRG:
 			writer = Files.newBufferedWriter(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-			state = null;
-			break;
-		case TINY_GZIP:
-			writer = new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(Files.newOutputStream(file)), StandardCharsets.UTF_8));
-			state = null;
-			break;
-		case ENIGMA:
-		case TINY_2:
-			writer = null;
-			state = new MappingState();
 			break;
 		default:
 			throw new IllegalArgumentException("invalid  mapping format: "+format.name());
@@ -63,7 +50,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 		try {
 			switch (format) {
 			case TINY:
-			case TINY_GZIP:
 				writer.write("v1\t");
 				writer.write(srcNamespace);
 
@@ -78,10 +64,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			default:
-				state.srcNamespace = srcNamespace;
-				state.dstNamespaces.clear();
-				state.dstNamespaces.addAll(dstNamespaces);
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -93,7 +75,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 		try {
 			switch (format) {
 			case TINY:
-			case TINY_GZIP:
 				switch (key) {
 				case Mappings.metaUidNextClass:
 				case Mappings.metaUidNextMethod:
@@ -112,8 +93,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			case SRG:
 				// not supported
 				break;
-			default:
-				state.metaMap.put(key, value);
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -125,7 +104,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 		try {
 			switch (format) {
 			case TINY:
-			case TINY_GZIP:
 				if (isAnyPresent(dstNames)) {
 					writer.write("CLASS\t");
 					writer.write(srcName);
@@ -150,8 +128,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 					writer.write('\n');
 				}
 				break;
-			default:
-				if (isFirstPresent(dstNames)) state.getClass(srcName).mappedName = dstNames[0];
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -164,12 +140,9 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 	public void visitClassComment(String srcName, String[] dstNames, String comment) {
 		switch (format) {
 		case TINY:
-		case TINY_GZIP:
 		case SRG:
 			// not supported
 			break;
-		default:
-			state.getClass(srcName).comment = comment;
 		}
 	}
 
@@ -178,7 +151,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 		try {
 			switch (format) {
 			case TINY:
-			case TINY_GZIP:
 				if (isAnyPresent(dstNames)) {
 					writer.write("METHOD\t");
 					writer.write(srcClsName);
@@ -212,8 +184,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 					writer.write('\n');
 				}
 				break;
-			default:
-				if (isFirstPresent(dstNames)) state.getClass(srcClsName).getMethod(srcName, srcDesc).mappedName = dstNames[0];
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -228,12 +198,9 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			String comment) {
 		switch (format) {
 		case TINY:
-		case TINY_GZIP:
 		case SRG:
 			// not supported
 			break;
-		default:
-			state.getClass(srcClsName).getMethod(srcName, srcDesc).comment = comment;
 		}
 	}
 
@@ -242,16 +209,9 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			String[] dstClsNames, String[] dstMethodNames, String[] dstMethodDescs, String[] dstArgNames) {
 		switch (format) {
 		case TINY:
-		case TINY_GZIP:
 		case SRG:
 			// not supported
 			return false;
-		default:
-			if (srcArgName != null || isFirstPresent(dstArgNames)) {
-				ArgMappingState argState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getArg(argPosition, lvIndex);
-				argState.name = srcArgName;
-				argState.mappedName = dstArgNames[0];
-			}
 		}
 
 		return true;
@@ -263,12 +223,9 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			String comment) {
 		switch (format) {
 		case TINY:
-		case TINY_GZIP:
 		case SRG:
 			// not supported
 			break;
-		default:
-			state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getArg(argIndex, lvIndex).comment = comment;
 		}
 	}
 
@@ -278,16 +235,9 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			String[] dstClsNames, String[] dstMethodNames, String[] dstMethodDescs, String[] dstVarNames) {
 		switch (format) {
 		case TINY:
-		case TINY_GZIP:
 		case SRG:
 			// not supported
 			return false;
-		default:
-			if (srcVarName != null || isFirstPresent(dstVarNames)) {
-				VarMappingState varState = state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getVar(asmIndex, lvIndex, startOpIdx);
-				varState.name = srcVarName;
-				varState.mappedName = dstVarNames[0];
-			}
 		}
 
 		return true;
@@ -300,12 +250,9 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			String comment) {
 		switch (format) {
 		case TINY:
-		case TINY_GZIP:
 		case SRG:
 			// not supported
 			break;
-		default:
-			state.getClass(srcClsName).getMethod(srcMethodName, srcMethodDesc).getVar(asmIndex, lvIndex, startOpIdx).comment = comment;
 		}
 	}
 
@@ -314,7 +261,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 		try {
 			switch (format) {
 			case TINY:
-			case TINY_GZIP:
 				if (isAnyPresent(dstNames)) {
 					writer.write("FIELD\t");
 					writer.write(srcClsName);
@@ -344,8 +290,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 					writer.write('\n');
 				}
 				break;
-			default:
-				if (isFirstPresent(dstNames)) state.getClass(srcClsName).getField(srcName, srcDesc).mappedName = dstNames[0];
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -360,12 +304,9 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 			String comment) {
 		switch (format) {
 		case TINY:
-		case TINY_GZIP:
 		case SRG:
 			// not supported
 			break;
-		default:
-			state.getClass(srcClsName).getField(srcName, srcDesc).comment = comment;
 		}
 	}
 
@@ -376,19 +317,6 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 	@Override
 	public void close() throws IOException {
 		if (writer != null) writer.close();
-
-		if (state != null) {
-			switch (format) {
-			case ENIGMA:
-				EnigmaImpl.write(file, state);
-				break;
-			case TINY_2:
-				Tiny2Impl.write(file, state);
-				break;
-			default:
-				throw new UnsupportedOperationException();
-			}
-		}
 	}
 
 	private static boolean isAnyPresent(String[] strs) {
@@ -408,5 +336,4 @@ public class MappingWriter implements FlatMappingVisitor, Closeable {
 	private final Path file;
 	private final MappingFormat format;
 	private final Writer writer;
-	private final MappingState state;
 }

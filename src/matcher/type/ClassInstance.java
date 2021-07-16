@@ -40,8 +40,8 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	/**
 	 * Create a known class (class path).
 	 */
-	public ClassInstance(String id, URI uri, ClassEnv env, ClassNode asmNode) {
-		this(id, uri, env, asmNode, false, false, null);
+	public ClassInstance(String id, URI origin, ClassEnv env, ClassNode asmNode) {
+		this(id, origin, env, asmNode, false, false, null);
 
 		assert id.indexOf('[') == -1 : id;
 	}
@@ -62,20 +62,20 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	/**
 	 * Create a non-array class.
 	 */
-	ClassInstance(String id, URI uri, ClassEnv env, ClassNode asmNode, boolean nameObfuscated) {
-		this(id, uri, env, asmNode, nameObfuscated, true, null);
+	ClassInstance(String id, URI origin, ClassEnv env, ClassNode asmNode, boolean nameObfuscated) {
+		this(id, origin, env, asmNode, nameObfuscated, true, null);
 
 		assert id.startsWith("L") : id;
 		assert id.indexOf('[') == -1 : id;
 		assert asmNode != null;
 	}
 
-	private ClassInstance(String id, URI uri, ClassEnv env, ClassNode asmNode, boolean nameObfuscated, boolean input, ClassInstance elementClass) {
+	private ClassInstance(String id, URI origin, ClassEnv env, ClassNode asmNode, boolean nameObfuscated, boolean input, ClassInstance elementClass) {
 		if (id.isEmpty()) throw new IllegalArgumentException("empty id");
 		if (env == null) throw new NullPointerException("null env");
 
 		this.id = id;
-		this.uri = uri;
+		this.origin = origin;
 		this.env = env;
 		this.asmNodes = asmNode == null ? null : new ClassNode[] { asmNode };
 		this.nameObfuscated = nameObfuscated;
@@ -241,8 +241,12 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		return full ? ret : ret.substring(ret.lastIndexOf('.') + 1);
 	}
 
-	public URI getUri() {
-		return uri;
+	public boolean isReal() {
+		return origin != null;
+	}
+
+	public URI getOrigin() {
+		return origin;
 	}
 
 	@Override
@@ -259,6 +263,12 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		return asmNodes;
 	}
 
+	public URI getAsmNodeOrigin(int index) {
+		if (index < 0 || index > 0 && (asmNodeOrigins == null || index >= asmNodeOrigins.length)) throw new IndexOutOfBoundsException(index);
+
+		return index == 0 ? origin : asmNodeOrigins[index];
+	}
+
 	public ClassNode getMergedAsmNode() {
 		if (asmNodes == null) return null;
 		if (asmNodes.length == 1) return asmNodes[0];
@@ -266,11 +276,20 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		return asmNodes[0]; // TODO: actually merge
 	}
 
-	void addAsmNode(ClassNode node) {
+	void addAsmNode(ClassNode node, URI origin) {
 		if (!input) throw new IllegalStateException("not mergeable");
 
 		asmNodes = Arrays.copyOf(asmNodes, asmNodes.length + 1);
 		asmNodes[asmNodes.length - 1] = node;
+
+		if (asmNodeOrigins == null) {
+			asmNodeOrigins = new URI[2];
+			asmNodeOrigins[0] = this.origin;
+		} else {
+			asmNodeOrigins = Arrays.copyOf(asmNodeOrigins, asmNodeOrigins.length + 1);
+		}
+
+		asmNodeOrigins[asmNodeOrigins.length - 1] = origin;
 	}
 
 	@Override
@@ -1095,9 +1114,10 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	private static final FieldInstance[] noFields = new FieldInstance[0];
 
 	final String id;
-	final URI uri;
+	private final URI origin;
 	final ClassEnv env;
 	private ClassNode[] asmNodes;
+	private URI[] asmNodeOrigins;
 	final boolean nameObfuscated;
 	private final boolean input;
 	final ClassInstance elementClass; // 0-dim class TODO: improve handling of array classes (references etc.)

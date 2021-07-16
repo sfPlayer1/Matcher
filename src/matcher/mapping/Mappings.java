@@ -1,12 +1,26 @@
 package matcher.mapping;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.objectweb.asm.tree.MethodNode;
+
+import net.fabricmc.mappingio.FlatMappingVisitor;
+import net.fabricmc.mappingio.MappedElementKind;
+import net.fabricmc.mappingio.MappingReader;
+import net.fabricmc.mappingio.MappingVisitor;
+import net.fabricmc.mappingio.MappingWriter;
+import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
+import net.fabricmc.mappingio.adapter.RegularAsFlatMappingVisitor;
+import net.fabricmc.mappingio.format.MappingFormat;
 
 import matcher.NameType;
 import matcher.Util;
@@ -31,7 +45,7 @@ public class Mappings {
 		Set<String> warnedClasses = new HashSet<>();
 
 		try {
-			MappingReader.read(path, format, nsSource, nsTarget, new MappingVisitor() {
+			MappingReader.read(path, format, new MappingSourceNsSwitch(new MappingVisitor() {
 				@Override
 				public void visitNamespaces(String srcNamespace, List<String> dstNamespaces) {
 					dstNs = dstNamespaces.indexOf(nsTarget);
@@ -395,7 +409,7 @@ public class Mappings {
 				private MethodVarInstance var;
 
 				private Matchable<?> cur;
-			});
+			}, nsSource));
 		} catch (Throwable t) {
 			clear(env);
 			throw t;
@@ -452,7 +466,7 @@ public class Mappings {
 
 	public static boolean save(Path file, MappingFormat format, LocalClassEnv env,
 			List<NameType> nsTypes, List<String> nsNames,
-			MappingsExportVerbosity verbosity, boolean fieldsFirst) throws IOException {
+			MappingsExportVerbosity verbosity, boolean forAnyInput, boolean fieldsFirst) throws IOException {
 		if (nsTypes.size() < 2 || nsTypes.size() > 2 && !format.hasNamespaces) throw new IllegalArgumentException("invalid namespace count");
 		if (nsNames != null && nsNames.size() != nsTypes.size()) throw new IllegalArgumentException("namespace types and names don't have the same number of entries");
 
@@ -489,7 +503,9 @@ public class Mappings {
 		List<MethodVarInstance> vars = new ArrayList<>();
 		Set<Set<MethodInstance>> exportedHierarchies = verbosity == MappingsExportVerbosity.MINIMAL ? Util.newIdentityHashSet() : null;
 
-		try (MappingWriter writer = new MappingWriter(file, format)) {
+		try (Closeable closable = format == MappingFormat.TINY_2 || format == MappingFormat.ENIGMA ? MappingWriter.create(file, format) : new MappingWriterImpl(file, format)) {
+			FlatMappingVisitor writer = closable instanceof FlatMappingVisitor ? (FlatMappingVisitor) closable : new RegularAsFlatMappingVisitor((MappingVisitor) closable);
+
 			writer.visitNamespaces(nsNames.get(0), nsNames.subList(1, nsNames.size()));
 
 			for (ClassInstance cls : classes) {
@@ -512,7 +528,7 @@ public class Mappings {
 
 				if (!hasAnyDstName
 						&& (!format.supportsComments || cls.getMappedComment() == null)
-						&& !shouldExportAny(cls.getMethods(), format, nsTypes, verbosity, exportedHierarchies)
+						&& !shouldExportAny(cls.getMethods(), format, nsTypes, verbosity, forAnyInput, exportedHierarchies)
 						&& !shouldExportAny(cls.getFields(), format, nsTypes)) {
 					continue; // no data for the class, skip
 				}
@@ -529,7 +545,7 @@ public class Mappings {
 				}
 
 				exportMethods(cls, srcClsName, dstClassNames,
-						format, nsTypes, verbosity,
+						format, nsTypes, verbosity, forAnyInput,
 						dstMemberNames, dstMemberDescs, dstVarNames,
 						methods, vars, exportedHierarchies,
 						writer);
@@ -549,12 +565,12 @@ public class Mappings {
 	}
 
 	private static void exportMethods(ClassInstance cls, String srcClsName, String[] dstClassNames,
-			MappingFormat format, List<NameType> nsTypes, MappingsExportVerbosity verbosity,
+			MappingFormat format, List<NameType> nsTypes, MappingsExportVerbosity verbosity, boolean forAnyInput,
 			String[] dstMemberNames, String[] dstMemberDescs, String[] dstVarNames,
 			List<MethodInstance> methods, List<MethodVarInstance> vars, Set<Set<MethodInstance>> exportedHierarchies,
-			MappingWriter writer) {
+			FlatMappingVisitor writer) throws IOException {
 		for (MethodInstance m : cls.getMethods()) {
-			if (shouldExport(m, format, nsTypes, verbosity, exportedHierarchies)) methods.add(m);
+			if (shouldExport(m, format, nsTypes, verbosity, forAnyInput, exportedHierarchies)) methods.add(m);
 		}
 
 		methods.sort(MemberInstance.nameComparator);
@@ -581,7 +597,7 @@ public class Mappings {
 
 			String[] dstMethodNames;
 
-			if (hasAnyDstName && shouldExportName(m, verbosity, exportedHierarchies)) {
+			if (hasAnyDstName && shouldExportName(m, verbosity, forAnyInput, exportedHierarchies)) {
 				if (verbosity == MappingsExportVerbosity.MINIMAL) exportedHierarchies.add(m.getAllHierarchyMembers());
 				dstMethodNames = dstMemberNames;
 			} else {
@@ -676,7 +692,7 @@ public class Mappings {
 			MappingFormat format, List<NameType> nsTypes,
 			String[] dstMemberNames, String[] dstMemberDescs,
 			List<FieldInstance> fields,
-			MappingWriter writer) {
+			FlatMappingVisitor writer) throws IOException {
 		for (FieldInstance f : cls.getFields()) {
 			if (shouldExport(f, format, nsTypes)) fields.add(f);
 		}
@@ -739,14 +755,15 @@ public class Mappings {
 		}
 	}
 
-	private static boolean shouldExport(MethodInstance method, MappingFormat format, List<NameType> nsTypes, MappingsExportVerbosity verbosity, Set<Set<MethodInstance>> exportedHierarchies) {
+	private static boolean shouldExport(MethodInstance method, MappingFormat format, List<NameType> nsTypes,
+			MappingsExportVerbosity verbosity, boolean forAnyInput, Set<Set<MethodInstance>> exportedHierarchies) {
 		String srcName = method.getName(nsTypes.get(0));
 		if (srcName == null) return false;
 
 		return format.supportsComments && method.getMappedComment() != null
 				|| format.supportsArgs && shouldExportAny(method.getArgs(), format, nsTypes)
 				|| format.supportsLocals && shouldExportAny(method.getVars(), format, nsTypes)
-				|| hasAnyNames(method, srcName, nsTypes) && shouldExportName(method, verbosity, exportedHierarchies);
+				|| hasAnyNames(method, srcName, nsTypes) && shouldExportName(method, verbosity, forAnyInput, exportedHierarchies);
 	}
 
 	private static boolean shouldExport(MethodVarInstance var, MappingFormat format, List<NameType> nsTypes) {
@@ -772,9 +789,9 @@ public class Mappings {
 		return false;
 	}
 
-	private static boolean shouldExportAny(MethodInstance[] methods, MappingFormat format, List<NameType> nsTypes, MappingsExportVerbosity verbosity, Set<Set<MethodInstance>> exportedHierarchies) {
+	private static boolean shouldExportAny(MethodInstance[] methods, MappingFormat format, List<NameType> nsTypes, MappingsExportVerbosity verbosity, boolean forAnyInput, Set<Set<MethodInstance>> exportedHierarchies) {
 		for (MethodInstance m : methods) {
-			if (shouldExport(m, format, nsTypes, verbosity, exportedHierarchies)) return true;
+			if (shouldExport(m, format, nsTypes, verbosity, forAnyInput, exportedHierarchies)) return true;
 		}
 
 		return false;
@@ -796,10 +813,61 @@ public class Mappings {
 		return false;
 	}
 
-	private static boolean shouldExportName(MethodInstance method, MappingsExportVerbosity verbosity, Set<Set<MethodInstance>> exportedHierarchies) {
+	private static boolean shouldExportName(MethodInstance method, MappingsExportVerbosity verbosity, boolean forAnyInput, Set<Set<MethodInstance>> exportedHierarchies) {
 		return verbosity == MappingsExportVerbosity.FULL
 				|| method.getAllHierarchyMembers().size() == 1
-				|| method.getParents().isEmpty() && (verbosity == MappingsExportVerbosity.ROOTS || !exportedHierarchies.contains(method.getAllHierarchyMembers()));
+				|| (method.getParents().isEmpty() || forAnyInput && isAnyInputRoot(method))
+				&& (verbosity == MappingsExportVerbosity.ROOTS || !exportedHierarchies.contains(method.getAllHierarchyMembers())); // FIXME: forAnyInput + minimal needs to use an exportedHierarchies set per origin
+	}
+
+	private static boolean isAnyInputRoot(MethodInstance method)  {
+		ClassInstance cls = method.getCls();
+
+		// check if each origin that supplies this method has a parent within the same origin
+
+		for (int i = 0; i < cls.getAsmNodes().length; i++) {
+			for (MethodNode m : cls.getAsmNodes()[i].methods) {
+				if (m.name.equals(method.getName())
+						&& m.desc.equals(method.getDesc())) {
+					if (!hasParentMethod(method, method.getParents(), cls.getAsmNodeOrigin(i))) {
+						return true;
+					} else {
+						break;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
+	private static boolean hasParentMethod(MethodInstance method, Collection<MethodInstance> parents, URI reqOrigin)  {
+		// check direct parents (must supply the method from the required origin)
+
+		for (MethodInstance parent : parents) {
+			ClassInstance parentCls = parent.getCls();
+
+			for (int i = 0; i < parentCls.getAsmNodes().length; i++) {
+				if (parentCls.getAsmNodeOrigin(i).equals(reqOrigin)) {
+					for (MethodNode m : parentCls.getAsmNodes()[i].methods) {
+						if (m.name.equals(method.getName())
+								&& m.desc.equals(method.getDesc())) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+
+		// check indirect parents recursively
+
+		for (MethodInstance parent : parents) {
+			if (!parent.getParents().isEmpty() && hasParentMethod(method, parent.getParents(), reqOrigin)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private static String getDesc(MethodInstance member, NameType type) {

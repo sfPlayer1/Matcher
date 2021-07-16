@@ -68,23 +68,28 @@ class SaveMappingsPane extends GridPane {
 		cbVerbosity.getSelectionModel().select(MappingsExportVerbosity.FULL);
 		add(cbVerbosity, 1, 3, col23Span, 1);
 
+		cbForAnyInput = new CheckBox("compatible with any input");
+		cbForAnyInput.setSelected(true);
+		add(cbForAnyInput, 0, 4, 1 + col23Span, 1);
+
 		cbFieldsFirst = new CheckBox("emit fields first");
-		add(cbFieldsFirst, 0, 4, 1 + col23Span, 1);
+		add(cbFieldsFirst, 0, 5, 1 + col23Span, 1);
 	}
 
 	public MappingsSaveSettings getSettings() {
 		return new MappingsSaveSettings(rbA.isSelected(),
 				List.of(cbSrc.getValue(), cbDst.getValue()), (tfSrc != null ? List.of(tfSrc.getText(), tfDst.getText()) : null),
-				cbVerbosity.getValue(), cbFieldsFirst.isSelected());
+				cbVerbosity.getValue(), cbForAnyInput.isSelected(), cbFieldsFirst.isSelected());
 	}
 
 	public static class MappingsSaveSettings {
 		public MappingsSaveSettings(boolean a, List<NameType> nsTypes, List<String> nsNames,
-				MappingsExportVerbosity verbosity, boolean fieldsFirst) {
+				MappingsExportVerbosity verbosity, boolean forAnyInput, boolean fieldsFirst) {
 			this.a = a;
 			this.nsTypes = nsTypes;
 			this.nsNames = nsNames;
 			this.verbosity = verbosity;
+			this.forAnyInput = forAnyInput;
 			this.fieldsFirst = fieldsFirst;
 		}
 
@@ -92,6 +97,7 @@ class SaveMappingsPane extends GridPane {
 		public final List<NameType> nsTypes;
 		public final List<String> nsNames;
 		public final MappingsExportVerbosity verbosity;
+		public final boolean forAnyInput;
 		public final boolean fieldsFirst;
 	}
 
@@ -102,5 +108,6 @@ class SaveMappingsPane extends GridPane {
 	private ComboBox<NameType> cbDst;
 	private TextField tfDst;
 	private ComboBox<MappingsExportVerbosity> cbVerbosity;
+	private CheckBox cbForAnyInput;
 	private CheckBox cbFieldsFirst;
 }

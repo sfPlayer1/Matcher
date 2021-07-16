@@ -277,7 +277,7 @@ public final class ClassEnvironment implements ClassEnv {
 		List<ClassInstance> ret = new ArrayList<>();
 
 		for (ClassInstance cls : extractor.getClasses()) {
-			if (cls.getUri() == null || inputsOnly && !cls.isInput()) continue;
+			if (!cls.isReal()|| inputsOnly && !cls.isInput()) continue;
 
 			ret.add(cls);
 		}
@@ -368,7 +368,7 @@ public final class ClassEnvironment implements ClassEnv {
 
 			if (file != null) {
 				ClassNode cn = readClass(file, true);
-				ClassInstance cls = new ClassInstance(ClassInstance.getId(cn.name), file.toUri(), this, cn);
+				ClassInstance cls = new ClassInstance(ClassInstance.getId(cn.name), getContainingUri(file.toUri(), cn.name), this, cn);
 				if (!cls.getId().equals(id)) throw new RuntimeException("mismatched cls id "+id+" for "+file+", expected "+name);
 
 				ClassInstance ret = addSharedCls(cls);
@@ -414,6 +414,45 @@ public final class ClassEnvironment implements ClassEnv {
 			} catch (IOException e2) {
 				throw new UncheckedIOException(e2);
 			}
+		}
+	}
+
+	static URI getContainingUri(URI uri, String clsName) {
+		String path;
+
+		if (uri.getScheme().equals("jar")) {
+			path = uri.getSchemeSpecificPart();
+			int pos = path.lastIndexOf("!/");
+
+			if (pos > 0) {
+				try {
+					return new URI(path.substring(0, pos));
+				} catch (URISyntaxException e) {
+					throw new RuntimeException(e);
+				}
+			} else {
+				throw new UnsupportedOperationException("jar uri without !/: "+uri);
+			}
+		} else {
+			path = uri.getPath();
+		}
+
+		if (path == null) {
+			throw new UnsupportedOperationException("uri without path: "+uri);
+		}
+
+		int rootPos = path.length() - ".class".length() - clsName.length();
+
+		if (rootPos <= 0 || !path.endsWith(".class") || !path.startsWith(clsName, rootPos)) {
+			throw new UnsupportedOperationException("unknown path format: "+uri);
+		}
+
+		path = path.substring(0, rootPos - 1);
+
+		try {
+			return new URI(uri.getScheme(), uri.getUserInfo(), uri.getHost(), uri.getPort(), path, uri.getQuery(), uri.getFragment());
+		} catch (URISyntaxException e) {
+			throw new RuntimeException(e);
 		}
 	}
 

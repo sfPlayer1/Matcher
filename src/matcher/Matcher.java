@@ -490,7 +490,7 @@ public class Matcher {
 
 	public boolean autoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		boolean assumeBothOrNoneObfuscated = env.assumeBothOrNoneObfuscated;
-		Predicate<ClassInstance> filter = cls -> cls.getUri() != null && (!assumeBothOrNoneObfuscated || cls.isNameObfuscated()) && !cls.hasMatch() && cls.isMatchable();
+		Predicate<ClassInstance> filter = cls -> cls.isReal() && (!assumeBothOrNoneObfuscated || cls.isNameObfuscated()) && !cls.hasMatch() && cls.isMatchable();
 
 		List<ClassInstance> classes = env.getClassesA().stream()
 				.filter(filter)
@@ -596,7 +596,7 @@ public class Matcher {
 			Function<ClassInstance, T[]> memberGetter, IRanker<T> ranker, double maxScore,
 			DoubleConsumer progressReceiver, AtomicInteger totalUnmatched) {
 		List<ClassInstance> classes = env.getClassesA().stream()
-				.filter(cls -> cls.getUri() != null && cls.hasMatch() && memberGetter.apply(cls).length > 0)
+				.filter(cls -> cls.isReal() && cls.hasMatch() && memberGetter.apply(cls).length > 0)
 				.filter(cls -> {
 					for (T member : memberGetter.apply(cls)) {
 						if (!member.hasMatch() && member.isMatchable()) return true;
@@ -654,7 +654,7 @@ public class Matcher {
 	private boolean autoMatchMethodVars(boolean isArg, Function<MethodInstance, MethodVarInstance[]> supplier,
 			ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
 		List<MethodInstance> methods = env.getClassesA().stream()
-				.filter(cls -> cls.getUri() != null && cls.hasMatch() && cls.getMethods().length > 0)
+				.filter(cls -> cls.isReal() && cls.hasMatch() && cls.getMethods().length > 0)
 				.flatMap(cls -> Stream.<MethodInstance>of(cls.getMethods()))
 				.filter(m -> m.hasMatch() && supplier.apply(m).length > 0)
 				.filter(m -> {
