@@ -106,24 +106,30 @@ public class FileMenu extends Menu {
 	}
 
 	private void newProject() {
-		newProject(Config.getProjectConfig());
+		newProject(Config.getProjectConfig(), true);
 	}
 
-	public CompletableFuture<Boolean> newProject(ProjectConfig config) {
-		Dialog<ProjectConfig> dialog = new Dialog<>();
-		//dialog.initModality(Modality.APPLICATION_MODAL);
-		dialog.setResizable(true);
-		dialog.setTitle("Project configuration");
-		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+	public CompletableFuture<Boolean> newProject(ProjectConfig config, boolean showConfigDialog) {
+		ProjectConfig newConfig;
 
-		Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
-		NewProjectPane content = new NewProjectPane(config, dialog.getOwner(), okButton);
+		if (showConfigDialog) {
+			Dialog<ProjectConfig> dialog = new Dialog<>();
+			//dialog.initModality(Modality.APPLICATION_MODAL);
+			dialog.setResizable(true);
+			dialog.setTitle("Project configuration");
+			dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-		dialog.getDialogPane().setContent(content);
-		dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
+			Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
+			NewProjectPane content = new NewProjectPane(config, dialog.getOwner(), okButton);
 
-		ProjectConfig newConfig = dialog.showAndWait().orElse(null);
-		if (newConfig == null || !newConfig.isValid()) return CompletableFuture.completedFuture(false);
+			dialog.getDialogPane().setContent(content);
+			dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
+
+			newConfig = dialog.showAndWait().orElse(null);
+			if (newConfig == null || !newConfig.isValid()) return CompletableFuture.completedFuture(false);
+		} else {
+			newConfig = config;
+		}
 
 		Config.setProjectConfig(newConfig);
 		Config.saveAsLast();

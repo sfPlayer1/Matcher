@@ -87,6 +87,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 	}
 
 	public abstract String getDesc();
+	public abstract String getDesc(NameType type);
 	public abstract boolean isReal();
 
 	@Override
@@ -343,7 +344,7 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		return getDisplayName(NameType.PLAIN, true);
 	}
 
-	public static final Comparator<MemberInstance<?>> nameComparator = Comparator.<MemberInstance<?>, String>comparing(MemberInstance::getName).thenComparing(MemberInstance::getDesc);
+	public static final Comparator<MemberInstance<?>> nameComparator = Comparator.<MemberInstance<?>, String>comparing(MemberInstance::getName).thenComparing(m -> m.getDesc());
 
 	final ClassInstance cls;
 	final String id;

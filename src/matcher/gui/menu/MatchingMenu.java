@@ -6,6 +6,7 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+
 import matcher.Matcher.MatchingStatus;
 import matcher.gui.Gui;
 import matcher.type.MatchType;
@@ -22,53 +23,29 @@ public class MatchingMenu extends Menu {
 	private void init() {
 		MenuItem menuItem = new MenuItem("Auto match all");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.runProgressTask(
-				"Auto matching...",
-				gui.getMatcher()::autoMatchAll,
-				() -> gui.onMatchChange(EnumSet.allOf(MatchType.class)),
-				Throwable::printStackTrace));
+		menuItem.setOnAction(event -> autoMatchAll());
 
 		getItems().add(new SeparatorMenuItem());
 
 		menuItem = new MenuItem("Auto class match");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.runProgressTask(
-				"Auto matching classes...",
-				gui.getMatcher()::autoMatchClasses,
-				() -> gui.onMatchChange(EnumSet.allOf(MatchType.class)),
-				Throwable::printStackTrace));
+		menuItem.setOnAction(event -> autoMatchClasses());
 
 		menuItem = new MenuItem("Auto method match");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.runProgressTask(
-				"Auto matching methods...",
-				gui.getMatcher()::autoMatchMethods,
-				() -> gui.onMatchChange(EnumSet.of(MatchType.Method)),
-				Throwable::printStackTrace));
+		menuItem.setOnAction(event -> autoMatchMethods());
 
 		menuItem = new MenuItem("Auto field match");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.runProgressTask(
-				"Auto matching fields...",
-				gui.getMatcher()::autoMatchFields,
-				() -> gui.onMatchChange(EnumSet.of(MatchType.Field)),
-				Throwable::printStackTrace));
+		menuItem.setOnAction(event -> autoMatchFields());
 
 		menuItem = new MenuItem("Auto method arg match");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.runProgressTask(
-				"Auto matching method args...",
-				gui.getMatcher()::autoMatchMethodArgs,
-				() -> gui.onMatchChange(EnumSet.of(MatchType.MethodVar)),
-				Throwable::printStackTrace));
+		menuItem.setOnAction(event -> autoMatchArgs());
 
 		menuItem = new MenuItem("Auto method var match");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.runProgressTask(
-				"Auto matching method vars...",
-				gui.getMatcher()::autoMatchMethodVars,
-				() -> gui.onMatchChange(EnumSet.of(MatchType.MethodVar)),
-				Throwable::printStackTrace));
+		menuItem.setOnAction(event -> autoMatchVars());
 
 		getItems().add(new SeparatorMenuItem());
 
@@ -77,7 +54,55 @@ public class MatchingMenu extends Menu {
 		menuItem.setOnAction(event -> showMatchingStatus());
 	}
 
-	private void showMatchingStatus() {
+	public void autoMatchAll() {
+		gui.runProgressTask(
+				"Auto matching...",
+				gui.getMatcher()::autoMatchAll,
+				() -> gui.onMatchChange(EnumSet.allOf(MatchType.class)),
+				Throwable::printStackTrace);
+	}
+
+	public void autoMatchClasses() {
+		gui.runProgressTask(
+				"Auto matching classes...",
+				gui.getMatcher()::autoMatchClasses,
+				() -> gui.onMatchChange(EnumSet.allOf(MatchType.class)),
+				Throwable::printStackTrace);
+	}
+
+	public void autoMatchMethods() {
+		gui.runProgressTask(
+				"Auto matching methods...",
+				gui.getMatcher()::autoMatchMethods,
+				() -> gui.onMatchChange(EnumSet.of(MatchType.Method)),
+				Throwable::printStackTrace);
+	}
+
+	public void autoMatchFields() {
+		gui.runProgressTask(
+				"Auto matching fields...",
+				gui.getMatcher()::autoMatchFields,
+				() -> gui.onMatchChange(EnumSet.of(MatchType.Field)),
+				Throwable::printStackTrace);
+	}
+
+	public void autoMatchArgs() {
+		gui.runProgressTask(
+				"Auto matching method args...",
+				gui.getMatcher()::autoMatchMethodArgs,
+				() -> gui.onMatchChange(EnumSet.of(MatchType.MethodVar)),
+				Throwable::printStackTrace);
+	}
+
+	public void autoMatchVars() {
+		gui.runProgressTask(
+				"Auto matching method vars...",
+				gui.getMatcher()::autoMatchMethodVars,
+				() -> gui.onMatchChange(EnumSet.of(MatchType.MethodVar)),
+				Throwable::printStackTrace);
+	}
+
+	public void showMatchingStatus() {
 		MatchingStatus status = gui.getMatcher().getStatus(true);
 
 		gui.showAlert(AlertType.INFORMATION, "Matching status", "Current matching status",

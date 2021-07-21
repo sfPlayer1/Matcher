@@ -204,15 +204,44 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 
 	@Override
 	public String getDesc() {
-		String ret = "(";
+		return getDesc(NameType.PLAIN);
+	}
+
+	@Override
+	public String getDesc(NameType type) {
+		int descStart = id.indexOf('(');
+		if (type == NameType.PLAIN || id.indexOf('L', descStart + 1) < 0) return id.substring(descStart);
+
+		StringBuilder ret = new StringBuilder(id.length());
+		ret.append('(');
 
 		for (MethodVarInstance arg : args) {
-			ret += arg.getType().id;
+			if (!appendId(arg.getType(), type, ret)) return null;
 		}
 
-		ret += ")" + retType.getId();
+		ret.append(')');
+		if (!appendId(retType, type, ret)) return null;
 
-		return ret;
+		return ret.toString();
+	}
+
+	private static boolean appendId(ClassInstance cls, NameType type, StringBuilder out) {
+		if (type == NameType.PLAIN || cls.isPrimitive()) {
+			out.append(cls.id);
+		} else {
+			String name = cls.getName(type);
+			if (name == null) return false;
+
+			if (cls.isArray()) {
+				out.append(name);
+			} else {
+				out.append('L');
+				out.append(name);
+				out.append(';');
+			}
+		}
+
+		return true;
 	}
 
 	@Override

@@ -59,6 +59,17 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 	}
 
 	@Override
+	public String getDesc(NameType type) {
+		if (type == NameType.PLAIN || this.type.isPrimitive()) {
+			return this.type.id;
+		} else {
+			String typeName = this.type.getName(type);
+
+			return typeName != null ? ClassInstance.getId(typeName) : null;
+		}
+	}
+
+	@Override
 	public boolean isReal() {
 		return asmNode != null;
 	}
