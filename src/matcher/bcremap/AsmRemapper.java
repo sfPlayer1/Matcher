@@ -36,6 +36,10 @@ public class AsmRemapper extends Remapper {
 
 	@Override
 	public String mapMethodName(String owner, String name, String desc) {
+		if (!desc.startsWith("(")) { // workaround for Remapper.mapValue calling mapMethodName even if the Handle is a field one
+			return mapFieldName(owner, name, desc);
+		}
+
 		ClassInstance cls = env.getClsByName(owner);
 		if (cls == null) return name;
 

@@ -113,6 +113,30 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 	}
 
 	@Override
+	public boolean canBeRecordComponent() {
+		return cls.isRecord() && !isStatic() && isPrivate() && isFinal();
+	}
+
+	@Override
+	public MethodInstance getLinkedRecordComponent(NameType nameType) {
+		if (!canBeRecordComponent()) return null;
+
+		String name = nameType != null ? getName(nameType) : null;
+		MethodInstance ret = null;
+
+		for (MethodInstance method : cls.getMethods()) {
+			if (method.canBeRecordComponent()
+					&& method.getRetType().equals(type)
+					&& (name == null || name.equals(method.getName(nameType)))
+					&& (ret == null || !readRefs.contains(ret) && readRefs.contains(method))) {
+				ret = method;
+			}
+		}
+
+		return ret;
+	}
+
+	@Override
 	protected String getUidString() {
 		int uid = getUid();
 		if (uid < 0) return null;

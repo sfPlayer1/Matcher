@@ -428,22 +428,31 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public int getAccess() {
+		int ret;
+
 		if (asmNodes != null) {
-			return asmNodes[0].access;
+			ret = asmNodes[0].access;
+
+			if (superClass != null && superClass.id.equals("Ljava/lang/Record;")) { // ACC_RECORD is added by ASM through Record component attribute presence, don't trust the flag to handle stripping of the attribute
+				ret |= Opcodes.ACC_RECORD;
+			}
 		} else {
-			int ret = Opcodes.ACC_PUBLIC;
+			ret = Opcodes.ACC_PUBLIC;
 
 			if (!implementers.isEmpty()) {
 				ret |= Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT;
 			} else if (superClass != null && superClass.id.equals("Ljava/lang/Enum;")) {
 				ret |= Opcodes.ACC_ENUM;
 				if (childClasses.isEmpty()) ret |= Opcodes.ACC_FINAL;
+			} else if (superClass != null && superClass.id.equals("Ljava/lang/Record;")) {
+				ret |= Opcodes.ACC_RECORD;
+				if (childClasses.isEmpty()) ret |= Opcodes.ACC_FINAL;
 			} else if (interfaces.size() == 1 && interfaces.iterator().next().id.equals("Ljava/lang/annotation/Annotation;")) {
 				ret |= Opcodes.ACC_ANNOTATION | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT;
 			}
-
-			return ret;
 		}
+
+		return ret;
 	}
 
 	public boolean isInterface() {
@@ -459,7 +468,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public boolean isRecord() {
-		return (getAccess() & Opcodes.ACC_RECORD) != 0;
+		return (getAccess() & Opcodes.ACC_RECORD) != 0 || superClass != null && superClass.id.equals("Ljava/lang/Record;");
 	}
 
 	public MethodInstance getMethod(String id) {

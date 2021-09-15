@@ -135,6 +135,9 @@ public abstract class MemberInstance<T extends MemberInstance<T>> implements Mat
 		return (getAccess() & Opcodes.ACC_SYNTHETIC) != 0;
 	}
 
+	public abstract boolean canBeRecordComponent();
+	public abstract MemberInstance<?> getLinkedRecordComponent(NameType nameType);
+
 	void addParent(T parent) {
 		assert parent.getCls() != getCls();
 		assert parent != this;

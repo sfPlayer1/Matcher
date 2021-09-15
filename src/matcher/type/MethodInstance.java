@@ -350,6 +350,30 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		return signature;
 	}
 
+	@Override
+	public boolean canBeRecordComponent() {
+		return cls.isRecord() && !isStatic() && isPublic() && args.length == 0 && !retType.id.equals("V");
+	}
+
+	@Override
+	public FieldInstance getLinkedRecordComponent(NameType nameType) {
+		if (!canBeRecordComponent()) return null;
+
+		String name = nameType != null ? getName(nameType) : null;
+		FieldInstance ret = null;
+
+		for (FieldInstance field : cls.getFields()) {
+			if (field.canBeRecordComponent()
+					&& field.getType().equals(retType)
+					&& (name == null || name.equals(field.getName(nameType)))
+					&& (ret == null || !fieldReadRefs.contains(ret) && fieldReadRefs.contains(field))) {
+				ret = field;
+			}
+		}
+
+		return ret;
+	}
+
 	public boolean isBridge() {
 		return (getAccess() & Opcodes.ACC_BRIDGE) != 0;
 	}
