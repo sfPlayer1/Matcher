@@ -5,28 +5,21 @@ import java.io.StringWriter;
 
 import org.objectweb.asm.util.TraceClassVisitor;
 
-import javafx.scene.control.Tab;
-import javafx.scene.control.TextArea;
+import matcher.NameType;
 import matcher.gui.Gui;
-import matcher.gui.IGuiComponent;
 import matcher.gui.ISelectionProvider;
+import matcher.srcprocess.HtmlUtil;
 import matcher.type.ClassInstance;
+import matcher.type.FieldInstance;
+import matcher.type.MethodInstance;
 
-public class BytecodeTab extends Tab implements IGuiComponent {
+public class BytecodeTab extends WebViewTab {
 	public BytecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
-		super("bytecode");
+		super("bytecode", "ui/ByteCodeTemplate.htm");
 
 		this.gui = gui;
 		this.selectionProvider = selectionProvider;
 		this.unmatchedTmp = unmatchedTmp;
-
-		init();
-	}
-
-	private void init() {
-		text.setEditable(false);
-
-		setContent(text);
 	}
 
 	@Override
@@ -45,20 +38,36 @@ public class BytecodeTab extends Tab implements IGuiComponent {
 
 	private void update(ClassInstance cls, boolean isRefresh) {
 		if (cls == null) {
-			text.setText("");
+			displayText("no class selected");
 		} else {
 			StringWriter writer = new StringWriter();
 
 			try (PrintWriter pw = new PrintWriter(writer)) {
-				cls.accept(new TraceClassVisitor(pw), gui.getNameType().withUnmatchedTmp(unmatchedTmp));
+				NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
+				cls.accept(new TraceClassVisitor(null, new HtmlTextifier(cls, nameType), pw), nameType);
 			}
 
-			text.setText(writer.toString());
+			double prevScroll = isRefresh ? getScrollTop() : 0;
+
+			displayHtml(writer.toString());
+
+			if (isRefresh && prevScroll > 0) {
+				setScrollTop(prevScroll);
+			}
 		}
+	}
+
+	@Override
+	public void onMethodSelect(MethodInstance method) {
+		if (method != null) select(HtmlUtil.getId(method));
+	}
+
+	@Override
+	public void onFieldSelect(FieldInstance field) {
+		if (field != null) select(HtmlUtil.getId(field));
 	}
 
 	private final Gui gui;
 	private final ISelectionProvider selectionProvider;
 	private final boolean unmatchedTmp;
-	private final TextArea text = new TextArea();
 }
