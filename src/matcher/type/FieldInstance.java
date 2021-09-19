@@ -114,7 +114,7 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 
 	@Override
 	public boolean canBeRecordComponent() {
-		return cls.isRecord() && !isStatic() && isPrivate() && isFinal();
+		return cls.isRecord() && !isStatic() && !isProtected() && !isPublic() && isFinal(); // jls requires private, but proguard(?) uses package-private too
 	}
 
 	@Override
