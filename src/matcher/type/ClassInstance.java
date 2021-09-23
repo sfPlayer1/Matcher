@@ -102,8 +102,12 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 	@Override
 	public String getName(NameType type) {
+		return getName(type, true);
+	}
+
+	public String getName(NameType type, boolean includeOuter) {
 		if (type == NameType.PLAIN) {
-			return getName();
+			return includeOuter ? getName() : getInnerName0(getName());
 		} else if (elementClass != null) {
 			boolean isPrimitive = elementClass.isPrimitive();
 			StringBuilder ret = new StringBuilder();
@@ -111,7 +115,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			ret.append(id, 0, getArrayDimensions());
 
 			if (!isPrimitive) ret.append('L');
-			ret.append(elementClass.getName(type));
+			ret.append(elementClass.getName(type, includeOuter));
 			if (!isPrimitive) ret.append(';');
 
 			return ret.toString();
@@ -163,6 +167,8 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 		assert ret == null || !hasOuterName(ret);
 
+		if (!includeOuter) return ret;
+
 		/*
 		 * ret-outer: whether ret's source has an outer class
 		 * this-outer: whether this has an outer class
@@ -180,7 +186,11 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		} else if (outerClass != null) { // ret is normal name, strip package from ret before concatenating
 			return getNestedName(outerClass.getName(type), ret.substring(ret.lastIndexOf('/') + 1));
 		} else { // ret is an outer name, restore pkg
-			return getNestedName(matchedClass.outerClass.getName(type), ret);
+			String matchedOuterName = matchedClass.outerClass.getName(type);
+			int pkgEnd = matchedOuterName.lastIndexOf('/');
+			if (pkgEnd > 0) ret = matchedOuterName.substring(0, pkgEnd + 1).concat(ret);
+
+			return ret;
 		}
 	}
 

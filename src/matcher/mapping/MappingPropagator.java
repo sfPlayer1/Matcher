@@ -125,7 +125,7 @@ public final class MappingPropagator {
 			}
 		}
 
-		System.out.printf("Fixed %d names.", modified);
+		System.out.printf("Fixed %d names.%n", modified);
 
 		return modified > 0;
 	}
