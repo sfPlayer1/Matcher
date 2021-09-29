@@ -95,7 +95,7 @@ public final class MappingPropagator {
 	/**
 	 * Ensure that fields and methods representing the same record component share the same mapped name.
 	 */
-	public static boolean fixRecordNames(ClassEnvironment env, NameType nameType, NameType linkingNameType) {
+	public static boolean fixRecordMemberNames(ClassEnvironment env, NameType nameType, NameType linkingNameType) {
 		if (!nameType.mapped) throw new IllegalArgumentException("non-mapped nameType: "+nameType);
 
 		int modified = 0;

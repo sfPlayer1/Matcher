@@ -29,12 +29,12 @@ public class MappingMenu extends Menu {
 				() -> {},
 				Throwable::printStackTrace));
 
-		menuItem = new MenuItem("Fix record names");
+		menuItem = new MenuItem("Fix record member names");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> fixRecordNames());
+		menuItem.setOnAction(event -> fixRecordMemberNames());
 	}
 
-	private void fixRecordNames() {
+	private void fixRecordMemberNames() {
 		Dialog<NamespaceSettings> dialog = new Dialog<>();
 		//dialog.initModality(Modality.APPLICATION_MODAL);
 		dialog.setResizable(true);
@@ -50,7 +50,7 @@ public class MappingMenu extends Menu {
 
 		NamespaceSettings settings = result.get();
 
-		if (MappingPropagator.fixRecordNames(gui.getEnv(), settings.ns, settings.linkNs)) {
+		if (MappingPropagator.fixRecordMemberNames(gui.getEnv(), settings.ns, settings.linkNs)) {
 			gui.onMappingChange();
 		}
 	}

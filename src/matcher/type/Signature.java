@@ -7,8 +7,8 @@ import java.util.List;
 import matcher.NameType;
 import matcher.classifier.ClassifierUtil;
 
-public class Signature {
-	public static class ClassSignature implements PotentialComparable<ClassSignature> {
+public final class Signature {
+	public static final class ClassSignature implements PotentialComparable<ClassSignature> {
 		public static ClassSignature parse(String sig, ClassEnv env) {
 			// [<TypeParameter+>] ClassTypeSignature ClassTypeSignature*
 			ClassSignature ret = new ClassSignature();
@@ -83,7 +83,7 @@ public class Signature {
 		List<ClassTypeSignature> superInterfaceSignatures;
 	}
 
-	public static class TypeParameter implements PotentialComparable<TypeParameter> {
+	public static final class TypeParameter implements PotentialComparable<TypeParameter> {
 		static TypeParameter parse(String sig, MutableInt pos, ClassEnv env) {
 			// Identifier ':' ReferenceTypeSignature ( ':' ReferenceTypeSignature )*
 			TypeParameter ret = new TypeParameter();
@@ -108,6 +108,18 @@ public class Signature {
 			}
 
 			return ret;
+		}
+
+		public String getIdentifier() {
+			return identifier;
+		}
+
+		public ReferenceTypeSignature getClassBound() {
+			return classBound;
+		}
+
+		public List<ReferenceTypeSignature> getInterfaceBounds() {
+			return interfaceBounds;
 		}
 
 		public String toString(NameType nameType) {
@@ -146,7 +158,7 @@ public class Signature {
 		// ]
 	}
 
-	public static class ReferenceTypeSignature implements PotentialComparable<ReferenceTypeSignature> {
+	public static final class ReferenceTypeSignature implements PotentialComparable<ReferenceTypeSignature> {
 		static ReferenceTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// ClassTypeSignature | TypeVariableSignature | ( '[' JavaTypeSignature )
 			ReferenceTypeSignature ret = new ReferenceTypeSignature();
@@ -167,6 +179,18 @@ public class Signature {
 			}
 
 			return ret;
+		}
+
+		public ClassTypeSignature getCls() {
+			return cls;
+		}
+
+		public String getVar() {
+			return var;
+		}
+
+		public JavaTypeSignature getArrayElemCls() {
+			return arrayElemCls;
 		}
 
 		public String toString(NameType nameType) {
@@ -204,7 +228,7 @@ public class Signature {
 		// )
 	}
 
-	public static class ClassTypeSignature implements PotentialComparable<ClassTypeSignature> {
+	public static final class ClassTypeSignature implements PotentialComparable<ClassTypeSignature> {
 		static ClassTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// 'L' [PackageSpecifier] SimpleClassTypeSignature ( '.' SimpleClassTypeSignature )* ';'
 			// [PackageSpecifier] SimpleClassTypeSignature -> cls + typeArguments
@@ -238,6 +262,18 @@ public class Signature {
 			pos.val++;
 
 			return ret;
+		}
+
+		public ClassInstance getCls() {
+			return cls;
+		}
+
+		public List<TypeArgument> getTypeArguments() {
+			return typeArguments;
+		}
+
+		public List<SimpleClassTypeSignature> getSuffixes() {
+			return suffixes;
 		}
 
 		public String toString(NameType nameType) {
@@ -275,7 +311,7 @@ public class Signature {
 		List<SimpleClassTypeSignature> suffixes;
 	}
 
-	public static class JavaTypeSignature implements PotentialComparable<JavaTypeSignature> {
+	public static final class JavaTypeSignature implements PotentialComparable<JavaTypeSignature> {
 		static JavaTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// ReferenceTypeSignature | 'B' | 'C' | 'D' | 'F' | 'I' | 'J' | 'S' | 'Z'
 			JavaTypeSignature ret = new JavaTypeSignature();
@@ -289,6 +325,14 @@ public class Signature {
 			}
 
 			return ret;
+		}
+
+		public ReferenceTypeSignature getCls() {
+			return cls;
+		}
+
+		public char getBaseType() {
+			return baseType;
 		}
 
 		public String toString(NameType nameType) {
@@ -318,7 +362,7 @@ public class Signature {
 		char baseType; // B C D F I J S Z
 	}
 
-	public static class SimpleClassTypeSignature implements PotentialComparable<SimpleClassTypeSignature> {
+	public static final class SimpleClassTypeSignature implements PotentialComparable<SimpleClassTypeSignature> {
 		static SimpleClassTypeSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// Identifier [<TypeArgument+>]
 			SimpleClassTypeSignature ret = new SimpleClassTypeSignature();
@@ -353,6 +397,14 @@ public class Signature {
 			} else {
 				return null;
 			}
+		}
+
+		public String getIdentifier() {
+			return identifier;
+		}
+
+		public List<TypeArgument> getTypeArguments() {
+			return typeArguments;
 		}
 
 		public String toString(NameType nameType) {
@@ -396,7 +448,7 @@ public class Signature {
 		// >]
 	}
 
-	public static class TypeArgument implements PotentialComparable<TypeArgument> {
+	public static final class TypeArgument implements PotentialComparable<TypeArgument> {
 		static TypeArgument parse(String sig, MutableInt pos, ClassEnv env) {
 			// ( ['+'|'-'] ReferenceTypeSignature ) | '*'
 			TypeArgument ret = new TypeArgument();
@@ -414,6 +466,14 @@ public class Signature {
 			}
 
 			return ret;
+		}
+
+		public char getWildcardIndicator() {
+			return wildcardIndicator;
+		}
+
+		public ReferenceTypeSignature getCls() {
+			return cls;
 		}
 
 		public String toString(NameType nameType) {
@@ -443,7 +503,7 @@ public class Signature {
 		ReferenceTypeSignature cls; // null if TypeArgument = "*" (unbounded)
 	}
 
-	public static class MethodSignature implements PotentialComparable<MethodSignature> {
+	public static final class MethodSignature implements PotentialComparable<MethodSignature> {
 		public static MethodSignature parse(String sig, ClassEnv env) {
 			// [<TypeParameter+>] '(' JavaTypeSignature* ')' ( 'V' | JavaTypeSignature ) ThrowsSignature*
 			MethodSignature ret = new MethodSignature();
@@ -491,10 +551,26 @@ public class Signature {
 			return ret;
 		}
 
+		public List<TypeParameter> getTypeParameters() {
+			return typeParameters;
+		}
+
+		public List<JavaTypeSignature> getArgs() {
+			return args;
+		}
+
+		public JavaTypeSignature getResult() {
+			return result;
+		}
+
+		public List<ThrowsSignature> getThrowsSignatures() {
+			return throwsSignatures;
+		}
+
 		public String toString(NameType nameType) {
 			StringBuilder ret = new StringBuilder();
 
-			if (typeParameters != null) {
+			if (typeParameters != null && !typeParameters.isEmpty()) {
 				ret.append('<');
 
 				for (TypeParameter tp : typeParameters) {
@@ -551,7 +627,7 @@ public class Signature {
 		// ]
 	}
 
-	public static class ThrowsSignature implements PotentialComparable<ThrowsSignature> {
+	public static final class ThrowsSignature implements PotentialComparable<ThrowsSignature> {
 		static ThrowsSignature parse(String sig, MutableInt pos, ClassEnv env) {
 			// '^' ( ClassTypeSignature | TypeVariableSignature )
 			ThrowsSignature ret = new ThrowsSignature();
@@ -573,6 +649,14 @@ public class Signature {
 			}
 
 			return ret;
+		}
+
+		public ClassTypeSignature getCls() {
+			return cls;
+		}
+
+		public String getVar() {
+			return var;
 		}
 
 		public String toString(NameType nameType) {
@@ -604,7 +688,7 @@ public class Signature {
 		// ;))
 	}
 
-	public static class FieldSignature implements PotentialComparable<FieldSignature> {
+	public static final class FieldSignature implements PotentialComparable<FieldSignature> {
 		public static FieldSignature parse(String sig, ClassEnv env) {
 			// ReferenceTypeSignature
 			FieldSignature ret = new FieldSignature();
@@ -616,6 +700,10 @@ public class Signature {
 			assert ret.toString().equals(sig);
 
 			return ret;
+		}
+
+		public ReferenceTypeSignature getCls() {
+			return cls;
 		}
 
 		public String toString(NameType nameType) {
