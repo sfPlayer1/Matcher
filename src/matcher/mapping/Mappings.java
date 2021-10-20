@@ -496,6 +496,7 @@ public class Mappings {
 		Comparator<MethodVarInstance> methodVarCmp = MappedElementComparators.byLvIndex();
 
 		List<ClassInstance> classes = new ArrayList<>(env.getClasses());
+		classes.removeIf(cls -> !cls.isInput() || !cls.isReal());
 		if (classes.isEmpty()) return false;
 
 		classes.sort(clsCmp);
@@ -890,6 +891,8 @@ public class Mappings {
 
 	public static void clear(ClassEnv env) {
 		for (ClassInstance cls : env.getClasses()) {
+			if (!cls.isReal()) continue;
+
 			cls.setMappedName(null);
 			cls.setMappedComment(null);
 

@@ -89,7 +89,7 @@ public class Util {
 
 		if (autoClose) closeSilently(fs);
 
-		return existing ? null : fs;
+		return autoClose || existing ? null : fs;
 	}
 
 	public static boolean clearDir(Path path, Predicate<Path> disallowed) throws IOException {

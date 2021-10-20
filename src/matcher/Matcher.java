@@ -69,7 +69,7 @@ public class Matcher {
 
 	private void matchUnobfuscated() {
 		for (ClassInstance cls : env.getClassesA()) {
-			if (cls.isNameObfuscated()) continue;
+			if (cls.isNameObfuscated() || !cls.isReal()) continue;
 
 			ClassInstance match = env.getLocalClsByIdB(cls.getId());
 

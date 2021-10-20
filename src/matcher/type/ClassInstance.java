@@ -35,6 +35,8 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		this(id, null, env, null, false, false, null);
 
 		assert id.indexOf('[') == -1 : id;
+
+		matchable = false;
 	}
 
 	/**
@@ -308,7 +310,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		if (!isMatchable()) return false;
 
 		for (ClassInstance o : env.getOther().getClasses()) {
-			if (ClassifierUtil.checkPotentialEquality(this, o)) return true;
+			if (o.isReal() && ClassifierUtil.checkPotentialEquality(this, o)) return true;
 		}
 
 		return false;

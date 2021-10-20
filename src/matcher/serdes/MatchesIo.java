@@ -14,8 +14,6 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.DoubleConsumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import matcher.Matcher;
 import matcher.type.ClassEnvironment;
@@ -337,14 +335,32 @@ public class MatchesIo {
 
 	public static boolean write(Matcher matcher, Path path) throws IOException {
 		ClassEnvironment env = matcher.getEnv();
-		List<ClassInstance> classes = Stream.concat(env.getClassesA().stream()
-				.filter(cls -> cls.hasMatch() || !cls.isMatchable())
-				.sorted(Comparator.comparing(cls -> cls.getId())),
-				env.getClassesB().stream()
-				.filter(cls -> !cls.isMatchable())
-				.sorted(Comparator.comparing(cls -> cls.getId())))
-				.collect(Collectors.toList());
+		List<ClassInstance> classes = new ArrayList<>();
+
+		for (ClassInstance cls : env.getClassesA()) {
+			if (cls.isReal() && (cls.hasMatch() || !cls.isMatchable())) {
+				classes.add(cls);
+			}
+		}
+
+		for (ClassInstance cls : env.getClassesB()) {
+			if (cls.isReal() && !cls.isMatchable()) {
+				classes.add(cls);
+			}
+		}
+
 		if (classes.isEmpty()) return false;
+
+		classes.sort(new Comparator<ClassInstance>() {
+			@Override
+			public int compare(ClassInstance a, ClassInstance b) {
+				if (a.getEnv() != b.getEnv()) {
+					return a.getEnv() == env.getEnvA() ? -1 : 1;
+				}
+
+				return a.getId().compareTo(b.getId());
+			}
+		});
 
 		try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
 			writer.write("Matches saved ");

@@ -110,7 +110,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		List<ClassInstance> initialClasses = new ArrayList<>(classes.values());
 
 		for (ClassInstance cls : initialClasses) {
-			ClassEnvironment.processClassA(cls, nonObfuscatedMemberPattern);
+			if (cls.isReal()) ClassEnvironment.processClassA(cls, nonObfuscatedMemberPattern);
 		}
 
 		initStep++;
@@ -119,7 +119,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		assert initialClasses.size() == new HashSet<>(initialClasses).size();
 
 		for (ClassInstance cls : initialClasses) {
-			processClassB(cls);
+			if (cls.isReal()) processClassB(cls);
 		}
 
 		initStep++;
@@ -127,7 +127,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		initialClasses.addAll(classes.values());
 
 		for (ClassInstance cls : initialClasses) {
-			processClassC(cls);
+			if (cls.isReal()) processClassC(cls);
 		}
 
 		initStep++;
@@ -137,7 +137,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		CommonClasses common = new CommonClasses(this);
 
 		for (ClassInstance cls : initialClasses) {
-			processClassD(cls, common);
+			if (cls.isReal()) processClassD(cls, common);
 		}
 
 		initStep++;

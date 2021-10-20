@@ -279,7 +279,7 @@ public final class ClassEnvironment implements ClassEnv {
 		List<ClassInstance> ret = new ArrayList<>();
 
 		for (ClassInstance cls : extractor.getClasses()) {
-			if (!cls.isReal()|| inputsOnly && !cls.isInput()) continue;
+			if (!cls.isReal() || inputsOnly && !cls.isInput()) continue;
 
 			ret.add(cls);
 		}
