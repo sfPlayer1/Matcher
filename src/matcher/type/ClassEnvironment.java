@@ -94,7 +94,7 @@ public final class ClassEnvironment implements ClassEnv {
 		for (Path archive : sharedClassPath) {
 			cpFiles.add(new InputFile(archive));
 
-			openFileSystems.add(Util.iterateJar(archive, false, file -> {
+			FileSystem fs = Util.iterateJar(archive, false, file -> {
 				String name = file.toAbsolutePath().toString();
 				if (!name.startsWith("/") || !name.endsWith(".class") || name.startsWith("//")) throw new RuntimeException("invalid path: "+archive+" ("+name+")");
 				name = name.substring(1, name.length() - ".class".length());
@@ -105,7 +105,9 @@ public final class ClassEnvironment implements ClassEnv {
 					/*ClassNode cn = readClass(file);
 					addSharedCls(new ClassInstance(ClassInstance.getId(cn.name), file.toUri(), cn));*/
 				}
-			}));
+			});
+
+			if (fs != null) openFileSystems.add(fs);
 		}
 	}
 
@@ -355,6 +357,13 @@ public final class ClassEnvironment implements ClassEnv {
 
 	ClassInstance getMissingCls(String id, boolean createUnknown) {
 		if (id.length() > 1) {
+			ClassInstance a = extractorA.getLocalClsById(id);
+			ClassInstance b = extractorB.getLocalClsById(id);
+
+			if (a != null && a.isReal() || b != null && b.isReal()) {
+				throw new InvalidSharedEnvQueryException(a, b);
+			}
+
 			String name = ClassInstance.getName(id);
 			Path file = getSharedClassLocation(name);
 

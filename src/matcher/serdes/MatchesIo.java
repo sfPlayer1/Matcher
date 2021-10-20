@@ -198,134 +198,132 @@ public class MatchesIo {
 						}
 					} else if (line.startsWith("\tm\t") || line.startsWith("\tf\t")) { // method or field
 						currentMethod = null;
+						if (currentClass == null) continue;
 
-						if (currentClass != null) {
-							int pos = line.indexOf('\t', 3);
-							if (pos == -1 || pos == 3 || pos + 1 == line.length()) throw new IOException("invalid matches file");
-							String idA = line.substring(3, pos);
-							String idB = line.substring(pos + 1);
+						int pos = line.indexOf('\t', 3);
+						if (pos == -1 || pos == 3 || pos + 1 == line.length()) throw new IOException("invalid matches file");
+						String idA = line.substring(3, pos);
+						String idB = line.substring(pos + 1);
 
-							if (line.charAt(1) == 'm') {
-								MethodInstance a = currentMethod = currentClass.getMethod(idA);
-								MethodInstance b;
+						if (line.charAt(1) == 'm') { // method
+							MethodInstance a = currentMethod = currentClass.getMethod(idA);
+							MethodInstance b;
 
-								if (a == null) {
-									System.err.println("Unknown a method "+idA+" in class "+currentClass);
-								} else if ((b = currentClass.getMatch().getMethod(idB)) == null) {
-									System.err.println("Unknown b method "+idB+" in class "+currentClass.getMatch());
-								} else if (!a.isMatchable() || !b.isMatchable()) {
-									System.err.println("Unmatchable a/b method "+idA+"/"+idB);
-									currentMethod = null;
-								} else {
-									a.setMatchable(true);
-									b.setMatchable(true);
-									matcher.match(a, b);
-								}
+							if (a == null) {
+								System.err.println("Unknown a method "+idA+" in class "+currentClass);
+							} else if ((b = currentClass.getMatch().getMethod(idB)) == null) {
+								System.err.println("Unknown b method "+idB+" in class "+currentClass.getMatch());
+							} else if (!a.isMatchable() || !b.isMatchable()) {
+								System.err.println("Unmatchable a/b method "+idA+"/"+idB);
+								currentMethod = null;
 							} else {
-								FieldInstance a = currentClass.getField(idA);
-								FieldInstance b;
+								a.setMatchable(true);
+								b.setMatchable(true);
+								matcher.match(a, b);
+							}
+						} else { // field
+							FieldInstance a = currentClass.getField(idA);
+							FieldInstance b;
 
-								if (a == null) {
-									System.err.println("Unknown a field "+idA+" in class "+currentClass);
-								} else if ((b = currentClass.getMatch().getField(idB)) == null) {
-									System.err.println("Unknown b field "+idB+" in class "+currentClass.getMatch());
-								} else if (!a.isMatchable() || !b.isMatchable()) {
-									System.err.println("Unmatchable a/b field "+idA+"/"+idB);
-								} else {
-									a.setMatchable(true);
-									b.setMatchable(true);
-									matcher.match(a, b);
-								}
+							if (a == null) {
+								System.err.println("Unknown a field "+idA+" in class "+currentClass);
+							} else if ((b = currentClass.getMatch().getField(idB)) == null) {
+								System.err.println("Unknown b field "+idB+" in class "+currentClass.getMatch());
+							} else if (!a.isMatchable() || !b.isMatchable()) {
+								System.err.println("Unmatchable a/b field "+idA+"/"+idB);
+							} else {
+								a.setMatchable(true);
+								b.setMatchable(true);
+								matcher.match(a, b);
 							}
 						}
 					} else if (line.startsWith("\tmu\t") || line.startsWith("\tfu\t")) { // method or field unmatchable
 						currentMethod = null;
+						if (currentClass == null) continue;
 
-						if (currentClass != null) {
-							char side;
-							if (line.length() < 7 || (side = line.charAt(4)) != 'a' && side != 'b' || line.charAt(5) != '\t') throw new IOException("invalid matches file");
+						char side;
+						if (line.length() < 7 || (side = line.charAt(4)) != 'a' && side != 'b' || line.charAt(5) != '\t') throw new IOException("invalid matches file");
 
-							String id = line.substring(6);
-							ClassInstance cls = side == 'a' ? currentClass : currentClass.getMatch();
-							assert cls != null; // currentClass must have been matched before, so shouldn't be null
-							MemberInstance<?> member = line.charAt(1) == 'm' ? cls.getMethod(id) : cls.getField(id);
+						String id = line.substring(6);
+						ClassInstance cls = side == 'a' ? currentClass : currentClass.getMatch();
+						assert cls != null; // currentClass must have been matched before, so shouldn't be null
+						MemberInstance<?> member = line.charAt(1) == 'm' ? cls.getMethod(id) : cls.getField(id);
 
-							if (member == null) {
-								System.err.println("Unknown member "+id+" in class "+cls);
-							} else {
-								if (member.hasMatch()) matcher.unmatch(member);
+						if (member == null) {
+							System.err.println("Unknown member "+id+" in class "+cls);
+						} else {
+							if (member.hasMatch()) matcher.unmatch(member);
 
-								if (!member.setMatchable(false)) {
-									System.err.printf("can't mark %s as unmatchable, already matched?%n", member);
-								}
+							if (!member.setMatchable(false)) {
+								System.err.printf("can't mark %s as unmatchable, already matched?%n", member);
 							}
 						}
 					} else if (line.startsWith("\t\tma\t") || line.startsWith("\t\tmv\t")) { // method arg or method var
-						if (currentMethod != null) {
-							int pos = line.indexOf('\t', 5);
-							if (pos == -1 || pos == 5 || pos + 1 == line.length()) throw new IOException("invalid matches file");
+						if (currentMethod == null || !currentMethod.hasMatch()) continue;
 
-							int idxA = Integer.parseInt(line.substring(5, pos));
-							int idxB = Integer.parseInt(line.substring(pos + 1));
-							MethodInstance matchedMethod = currentMethod.getMatch();
-							assert matchedMethod != null; // matchedMethod must have been matched before, so shouldn't be null
+						int pos = line.indexOf('\t', 5);
+						if (pos == -1 || pos == 5 || pos + 1 == line.length()) throw new IOException("invalid matches file");
 
-							MethodVarInstance[] varsA, varsB;
-							String type;
+						int idxA = Integer.parseInt(line.substring(5, pos));
+						int idxB = Integer.parseInt(line.substring(pos + 1));
+						MethodInstance matchedMethod = currentMethod.getMatch();
 
-							if (line.charAt(3) == 'a') {
-								type = "arg";
-								varsA = currentMethod.getArgs();
-								varsB = matchedMethod.getArgs();
-							} else {
-								type = "var";
-								varsA = currentMethod.getVars();
-								varsB = matchedMethod.getVars();
-							}
+						MethodVarInstance[] varsA, varsB;
+						String type;
 
-							if (idxA < 0 || idxA >= varsA.length) {
-								System.err.println("Unknown a method "+type+" "+idxA+" in method "+currentMethod);
-							} else if (idxB < 0 || idxB >= varsB.length) {
-								System.err.println("Unknown b method "+type+" "+idxB+" in method "+matchedMethod);
-							} else if (!varsA[idxA].isMatchable() || !varsB[idxB].isMatchable()) {
-								System.err.println("Unmatchable a/b method "+type+" "+idxA+"/"+idxB+" in method "+currentMethod+"/"+matchedMethod);
-								currentMethod = null;
-							} else {
-								varsA[idxA].setMatchable(true);
-								varsB[idxB].setMatchable(true);
-								matcher.match(varsA[idxA], varsB[idxB]);
-							}
+						if (line.charAt(3) == 'a') {
+							type = "arg";
+							varsA = currentMethod.getArgs();
+							varsB = matchedMethod.getArgs();
+						} else {
+							type = "var";
+							varsA = currentMethod.getVars();
+							varsB = matchedMethod.getVars();
+						}
+
+						if (idxA < 0 || idxA >= varsA.length) {
+							System.err.println("Unknown a method "+type+" "+idxA+" in method "+currentMethod);
+						} else if (idxB < 0 || idxB >= varsB.length) {
+							System.err.println("Unknown b method "+type+" "+idxB+" in method "+matchedMethod);
+						} else if (!varsA[idxA].isMatchable() || !varsB[idxB].isMatchable()) {
+							System.err.println("Unmatchable a/b method "+type+" "+idxA+"/"+idxB+" in method "+currentMethod+"/"+matchedMethod);
+							currentMethod = null;
+						} else {
+							varsA[idxA].setMatchable(true);
+							varsB[idxB].setMatchable(true);
+							matcher.match(varsA[idxA], varsB[idxB]);
 						}
 					} else if (line.startsWith("\t\tmau\t") || line.startsWith("\t\tmvu\t")) { // method arg or method var unmatchable
-						if (currentMethod != null) {
-							char side;
-							if (line.length() < 9 || (side = line.charAt(6)) != 'a' && side != 'b' || line.charAt(7) != '\t') throw new IOException("invalid matches file");
+						if (currentMethod == null) continue;
 
-							MethodInstance method = side == 'a' ? currentMethod : currentMethod.getMatch();
-							assert method != null; // currentMethod must have been matched before, so shouldn't be null
+						char side;
+						if (line.length() < 9 || (side = line.charAt(6)) != 'a' && side != 'b' || line.charAt(7) != '\t') throw new IOException("invalid matches file");
 
-							int idx = Integer.parseInt(line.substring(8));
+						MethodInstance method = side == 'a' ? currentMethod : currentMethod.getMatch();
+						if (method == null) continue;
 
-							MethodVarInstance[] vars;
-							String type;
+						int idx = Integer.parseInt(line.substring(8));
 
-							if (line.charAt(3) == 'a') {
-								type = "arg";
-								vars = method.getArgs();
-							} else {
-								type = "var";
-								vars = method.getVars();
-							}
+						MethodVarInstance[] vars;
+						String type;
 
-							if (idx < 0 || idx >= vars.length) {
-								System.err.println("Unknown a method "+type+" "+idx+" in method "+method);
-							} else {
-								MethodVarInstance var = vars[idx];
+						if (line.charAt(3) == 'a') {
+							type = "arg";
+							vars = method.getArgs();
+						} else {
+							type = "var";
+							vars = method.getVars();
+						}
 
-								if (var.hasMatch()) matcher.unmatch(var);
+						if (idx < 0 || idx >= vars.length) {
+							System.err.println("Unknown a method "+type+" "+idx+" in method "+method);
+							continue;
+						} else {
+							MethodVarInstance var = vars[idx];
 
-								var.setMatchable(false);
-							}
+							if (var.hasMatch()) matcher.unmatch(var);
+
+							var.setMatchable(false);
 						}
 					}
 				}
@@ -336,7 +334,6 @@ public class MatchesIo {
 			throw new UncheckedIOException(e);
 		}
 	}
-
 
 	public static boolean write(Matcher matcher, Path path) throws IOException {
 		ClassEnvironment env = matcher.getEnv();

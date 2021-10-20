@@ -30,9 +30,13 @@ public final class FieldInstance extends MemberInstance<FieldInstance> {
 	private FieldInstance(ClassInstance cls, String origName, String desc, FieldNode asmNode, boolean nameObfuscated, int position, boolean isStatic) {
 		super(cls, getId(origName, desc), origName, nameObfuscated, position, isStatic);
 
-		this.type = cls.getEnv().getCreateClassInstance(desc);
-		this.asmNode = asmNode;
-		this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : FieldSignature.parse(asmNode.signature, cls.getEnv());
+		try {
+			this.type = cls.getEnv().getCreateClassInstance(desc);
+			this.asmNode = asmNode;
+			this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : FieldSignature.parse(asmNode.signature, cls.getEnv());
+		} catch (InvalidSharedEnvQueryException e) {
+			throw e.checkOrigin(cls);
+		}
 
 		type.fieldTypeRefs.add(this);
 	}

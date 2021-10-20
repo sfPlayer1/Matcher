@@ -147,7 +147,7 @@ public class FileMenu extends Menu {
 				() -> gui.onProjectChange(),
 				exc -> {
 					exc.printStackTrace();
-					ret.complete(false);
+					ret.completeExceptionally(exc);
 				});
 
 		return ret;

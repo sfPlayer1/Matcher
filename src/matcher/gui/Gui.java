@@ -297,13 +297,13 @@ public class Gui extends Application {
 		};
 
 		jfxTask.setOnSucceeded(event -> {
-			onSuccess.run();
 			stage.hide();
+			onSuccess.run();
 		});
 
 		jfxTask.setOnFailed(event -> {
-			onError.accept(jfxTask.getException());
 			stage.hide();
+			onError.accept(jfxTask.getException());
 		});
 
 		threadPool.execute(jfxTask);

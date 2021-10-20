@@ -1,6 +1,7 @@
 package matcher.type;
 
 import java.net.URI;
+import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -68,7 +69,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		for (Path archive : classPath) {
 			cpFiles.add(new InputFile(archive));
 
-			env.addOpenFileSystem(Util.iterateJar(archive, false, file -> {
+			FileSystem fs = Util.iterateJar(archive, false, file -> {
 				String name = file.toAbsolutePath().toString();
 				if (!name.startsWith("/") || !name.endsWith(".class") || name.startsWith("//")) throw new RuntimeException("invalid path: "+archive+" ("+name+")");
 				name = name.substring(1, name.length() - ".class".length());
@@ -79,7 +80,9 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 					/*ClassNode cn = readClass(file);
 					addSharedCls(new ClassInstance(ClassInstance.getId(cn.name), file.toUri(), cn));*/
 				}
-			}));
+			});
+
+			if (fs != null) env.addOpenFileSystem(fs);
 		}
 	}
 
@@ -609,8 +612,15 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 			// try shared artificial class
 			if (sharedRet != null) return sharedRet;
 
+			// create shared missing class
+			//ret = env.getMissingCls(id, createUnknown);
+
+			// try shared jvm-cp class
+			if ((ret = env.getMissingCls(id, false)) != null || !createUnknown) return ret;
+
 			// create local artificial class
-			ret = env.getMissingCls(id, createUnknown);
+			ret = new ClassInstance(id, this);
+			classes.put(id, ret);
 		}
 
 		return ret;

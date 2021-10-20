@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
@@ -48,10 +49,22 @@ public class Util {
 	}
 
 	public static FileSystem iterateJar(Path archive, boolean autoClose, Consumer<Path> handler) {
+		boolean existing = false;
 		FileSystem fs = null;
 
 		try {
-			fs = FileSystems.newFileSystem(new URI("jar:"+archive.toUri().toString()), Collections.emptyMap());
+			URI uri = new URI("jar:"+archive.toUri().toString());
+
+			synchronized (Util.class) {
+				try {
+					fs = FileSystems.getFileSystem(uri);
+					existing = true;
+					autoClose = false;
+				} catch (FileSystemNotFoundException e) {
+					fs = FileSystems.newFileSystem(uri, Collections.emptyMap());
+					existing = false;
+				}
+			}
 
 			Files.walkFileTree(fs.getPath("/"), new SimpleFileVisitor<Path>() {
 				@Override
@@ -76,7 +89,7 @@ public class Util {
 
 		if (autoClose) closeSilently(fs);
 
-		return fs;
+		return existing ? null : fs;
 	}
 
 	public static boolean clearDir(Path path, Predicate<Path> disallowed) throws IOException {

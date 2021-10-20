@@ -36,13 +36,17 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 	private MethodInstance(ClassInstance cls, String origName, String desc, MethodNode asmNode, boolean nameObfuscated, int position, boolean isStatic) {
 		super(cls, getId(origName, desc), origName, nameObfuscated, position, isStatic);
 
-		this.real = asmNode != null;
-		this.access = asmNode != null ? asmNode.access : approximateAccess(isStatic);
-		this.args = gatherArgs(this, desc, asmNode);
-		this.vars = cls.isInput() ? gatherVars(this, asmNode) : emptyVars;
-		this.retType = cls.getEnv().getCreateClassInstance(Type.getReturnType(desc).getDescriptor());
-		this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : MethodSignature.parse(asmNode.signature, cls.getEnv());
-		this.asmNode = !cls.getEnv().isShared() ? asmNode : null;
+		try {
+			this.real = asmNode != null;
+			this.access = asmNode != null ? asmNode.access : approximateAccess(isStatic);
+			this.args = gatherArgs(this, desc, asmNode);
+			this.vars = cls.isInput() ? gatherVars(this, asmNode) : emptyVars;
+			this.retType = cls.getEnv().getCreateClassInstance(Type.getReturnType(desc).getDescriptor());
+			this.signature = asmNode == null || asmNode.signature == null || !cls.isInput() ? null : MethodSignature.parse(asmNode.signature, cls.getEnv());
+			this.asmNode = !cls.getEnv().isShared() ? asmNode : null;
+		} catch (InvalidSharedEnvQueryException e) {
+			throw e.checkOrigin(cls);
+		}
 
 		classRefs.add(retType);
 		retType.methodTypeRefs.add(this);

@@ -143,7 +143,7 @@ public class NewProjectPane extends GridPane {
 
 		footer.setAlignment(Pos.CENTER_RIGHT);
 
-		final Button moveToAButton, moveToBButton;
+		final Button moveToAButton, moveToBButton, splitButton;
 
 		if (isClassPath) {
 			if (isShared) {
@@ -170,23 +170,40 @@ public class NewProjectPane extends GridPane {
 						classPathB.add(path);
 					}
 				});
+
+				splitButton = new Button("split");
+				footer.getChildren().add(splitButton);
+				splitButton.setOnAction(event -> {
+					MultipleSelectionModel<Path> selection = list.getSelectionModel();
+					List<Path> selected = new ArrayList<>(selection.getSelectedItems());
+
+					for (Path path : selected) {
+						list.getItems().remove(path);
+						classPathA.add(path);
+						classPathB.add(path);
+					}
+				});
 			} else {
 				moveToAButton = new Button("to shared");
 				footer.getChildren().add(moveToAButton);
 				moveToAButton.setOnAction(event -> {
 					MultipleSelectionModel<Path> selection = list.getSelectionModel();
 					List<Path> selected = new ArrayList<>(selection.getSelectedItems());
+					ObservableList<Path> localList = list.getItems();
+					ObservableList<Path> otherList = localList == classPathA ? classPathB : classPathA;
 
 					for (Path path : selected) {
-						list.getItems().remove(path);
+						localList.remove(path);
+						otherList.remove(path);
 						sharedClassPath.add(path);
 					}
 				});
 
 				moveToBButton = null;
+				splitButton = null;
 			}
 		} else {
-			moveToAButton = moveToBButton = null;
+			moveToAButton = moveToBButton = splitButton = null;
 		}
 
 		Button button = new Button("add");

@@ -86,7 +86,7 @@ public class ProjectConfig {
 				&& Collections.disjoint(pathsA, pathsB)
 				&& Collections.disjoint(pathsA, sharedClassPath)
 				&& Collections.disjoint(pathsB, sharedClassPath)
-				&& Collections.disjoint(classPathA, classPathB)
+				//&& Collections.disjoint(classPathA, classPathB)
 				&& Collections.disjoint(classPathA, pathsA)
 				&& Collections.disjoint(classPathB, pathsA)
 				&& Collections.disjoint(classPathA, pathsB)
