@@ -81,7 +81,8 @@ public class SourcecodeTab extends WebViewTab {
 					exc.printStackTrace(new PrintWriter(sw));
 
 					if (exc instanceof SrcParseException) {
-						displayText("parse error: "+sw.toString()+"decompiled source:\n"+((SrcParseException) exc).source);
+						SrcParseException parseExc = (SrcParseException) exc;
+						displayText("parse error: "+parseExc.problems+"\ndecompiled source:\n"+parseExc.source);
 					} else {
 						displayText("decompile error: "+sw.toString());
 					}

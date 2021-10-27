@@ -2,10 +2,13 @@ package matcher.srcprocess;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.github.javaparser.JavaParser;
-import com.github.javaparser.ParseProblemException;
+import com.github.javaparser.ParseResult;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ParserConfiguration.LanguageLevel;
+import com.github.javaparser.Problem;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -26,10 +29,6 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class SrcDecorator {
-	private static void setup() {
-		JavaParser.getStaticConfiguration().setLanguageLevel(LanguageLevel.RAW);
-	}
-
 	public static String decorate(String src, ClassInstance cls, NameType nameType) {
 		if (cls.getOuterClass() != null) {
 			// replace <outer>.<inner> with <outer>$<inner> since . is not a legal identifier within class names and thus gets rejected by JavaParser
@@ -57,13 +56,16 @@ public class SrcDecorator {
 			}
 		}
 
-		CompilationUnit cu;
+		JavaParser parser = new JavaParser(new ParserConfiguration()
+				.setLanguageLevel(LanguageLevel.RAW));
 
-		try {
-			cu = JavaParser.parse(src);
-		} catch (ParseProblemException e) {
-			throw new SrcParseException(src, e);
+		ParseResult<CompilationUnit> result = parser.parse(src);
+
+		if (!result.isSuccessful()) {
+			throw new SrcParseException(result.getProblems(), src);
 		}
+
+		CompilationUnit cu = result.getResult().orElseThrow();
 
 		TypeResolver resolver = new TypeResolver();
 		resolver.setup(cls, nameType, cu);
@@ -77,14 +79,16 @@ public class SrcDecorator {
 	}
 
 	public static class SrcParseException extends RuntimeException {
-		public SrcParseException(String source, Exception cause) {
-			super("Parsing failed", cause);
+		SrcParseException(List<Problem> problems, String source) {
+			super("Parsing failed: "+problems);
 
+			this.problems = problems.stream().map(Problem::toString).collect(Collectors.joining(System.lineSeparator()));
 			this.source = source;
 		}
 
 		private static final long serialVersionUID = 6164216517595646716L;
 
+		public final String problems;
 		public final String source;
 	}
 
@@ -226,8 +230,4 @@ public class SrcDecorator {
 			n.getAnnotations().forEach(p -> p.accept(this, arg));*/
 		}
 	};
-
-	static {
-		setup();
-	}
 }
