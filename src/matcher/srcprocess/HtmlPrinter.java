@@ -1470,8 +1470,8 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		printSwitchNode(n, arg);
 	}
 
-	private <T extends Node & SwitchNode> void printSwitchNode(T n, Void arg) {
-		if (canAddNewLine(n)) printer.println();
+	private void printSwitchNode(SwitchNode n, Void arg) {
+		if (canAddNewLine((Node) n)) printer.println();
 		printComment(n.getComment(), arg);
 		printer.print("<span class=\"keyword\">switch</span> (");
 		n.getSelector().accept(this, arg);
@@ -1483,7 +1483,7 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		}
 		printer.print("}");
 
-		if (getNext(n) != null) printer.println();
+		if (getNext((Node) n) != null) printer.println();
 	}
 
 	@Override
