@@ -841,6 +841,8 @@ public class Mappings {
 
 	private static boolean isAnyInputRoot(MethodInstance method)  {
 		ClassInstance cls = method.getCls();
+		String name = method.getName();
+		String desc = method.getDesc();
 
 		// check if each origin that supplies this method has a parent within the same origin
 
@@ -848,7 +850,7 @@ public class Mappings {
 			for (MethodNode m : cls.getAsmNodes()[i].methods) {
 				if (m.name.equals(method.getName())
 						&& m.desc.equals(method.getDesc())) {
-					if (!hasParentMethod(method, method.getParents(), cls.getAsmNodeOrigin(i))) {
+					if (!hasParentMethod(name, desc, method.getParents(), cls.getAsmNodeOrigin(i))) {
 						return true;
 					} else {
 						break;
@@ -860,7 +862,7 @@ public class Mappings {
 		return false;
 	}
 
-	private static boolean hasParentMethod(MethodInstance method, Collection<MethodInstance> parents, URI reqOrigin)  {
+	private static boolean hasParentMethod(String name, String desc, Collection<MethodInstance> parents, URI reqOrigin)  {
 		// check direct parents (must supply the method from the required origin)
 
 		for (MethodInstance parent : parents) {
@@ -869,8 +871,8 @@ public class Mappings {
 			for (int i = 0; i < parentCls.getAsmNodes().length; i++) {
 				if (parentCls.getAsmNodeOrigin(i).equals(reqOrigin)) {
 					for (MethodNode m : parentCls.getAsmNodes()[i].methods) {
-						if (m.name.equals(method.getName())
-								&& m.desc.equals(method.getDesc())) {
+						if (m.name.equals(name)
+								&& m.desc.equals(desc)) {
 							return true;
 						}
 					}
@@ -881,7 +883,7 @@ public class Mappings {
 		// check indirect parents recursively
 
 		for (MethodInstance parent : parents) {
-			if (!parent.getParents().isEmpty() && hasParentMethod(method, parent.getParents(), reqOrigin)) {
+			if (!parent.getParents().isEmpty() && hasParentMethod(name, desc, parent.getParents(), reqOrigin)) {
 				return true;
 			}
 		}

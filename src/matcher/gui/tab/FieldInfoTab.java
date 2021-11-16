@@ -4,8 +4,6 @@ import static matcher.gui.tab.ClassInfoTab.format;
 import static matcher.gui.tab.ClassInfoTab.getName;
 import static matcher.gui.tab.MethodInfoTab.formatClass;
 
-import org.objectweb.asm.tree.FieldNode;
-
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
@@ -13,6 +11,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
+import org.objectweb.asm.tree.FieldNode;
+
 import matcher.NameType;
 import matcher.Util;
 import matcher.Util.AFElementType;
@@ -55,6 +55,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 
 		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
+		row = addRow("Inputs", inputLabel, grid, row);
 		row = addRow("Type", typeLabel, grid, row);
 		row = addRow("Access", accessLabel, grid, row);
 		row = addRow("Signature", sigLabel, grid, row);
@@ -107,6 +108,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 
 			uidLabel.setText("-");
 			nameObfLabel.setText("-");
+			inputLabel.setText("-");
 			typeLabel.setText("-");
 			accessLabel.setText("-");
 			sigLabel.setText("-");
@@ -129,6 +131,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 
 			uidLabel.setText(field.getUid() >= 0 ? Integer.toString(field.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(field.isNameObfuscated()));
+			inputLabel.setText(ClassInfoTab.getInputPaths(field.getCls(), node -> node.fields.stream().anyMatch(m -> m.name.equals(field.getName()) && m.desc.equals(field.getDesc()))));
 			typeLabel.setText(getName(field.getType(), nameType));
 			accessLabel.setText(Util.formatAccessFlags(field.getAccess(), AFElementType.Method));
 
@@ -155,6 +158,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 	private final Label[] auxNameLabels = new Label[NameType.AUX_COUNT];
 	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
+	private final Label inputLabel = new Label();
 	private final Label typeLabel = new Label();
 	private final Label accessLabel = new Label();
 	private final Label sigLabel = new Label();

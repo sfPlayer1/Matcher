@@ -2,6 +2,7 @@ package matcher.gui.tab;
 
 import java.util.Collection;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -12,6 +13,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
+import org.objectweb.asm.tree.ClassNode;
+
 import matcher.NameType;
 import matcher.Util;
 import matcher.Util.AFElementType;
@@ -54,6 +57,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 
 		row = addRow("UID", uidLabel, grid, row);
 		row = addRow("Name obf.", nameObfLabel, grid, row);
+		row = addRow("Inputs", inputLabel, grid, row);
 		row = addRow("Access", accessLabel, grid, row);
 		row = addRow("Signature", sigLabel, grid, row);
 		row = addRow("Outer class", outerLabel, grid, row);
@@ -107,6 +111,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 
 			uidLabel.setText("-");
 			nameObfLabel.setText("-");
+			inputLabel.setText("-");
 			accessLabel.setText("-");
 			sigLabel.setText("-");
 			outerLabel.setText("-");
@@ -130,6 +135,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 
 			uidLabel.setText(cls.getUid() >= 0 ? Integer.toString(cls.getUid()) : "-");
 			nameObfLabel.setText(Boolean.toString(cls.isNameObfuscated()));
+			inputLabel.setText(getInputPaths(cls, node -> true));
 			accessLabel.setText(Util.formatAccessFlags(cls.getAccess(), AFElementType.Class));
 
 			if (cls.getSignature() == null) {
@@ -170,6 +176,20 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		}
 	}
 
+	static String getInputPaths(ClassInstance cls, Predicate<ClassNode> filter) {
+		StringBuilder ret = new StringBuilder();
+
+		for (int i = 0; i < cls.getAsmNodes().length; i++) {
+			if (!filter.test(cls.getAsmNodes()[i])) continue;
+			if (ret.length() > 0) ret.append(", ");
+
+			String path = cls.getAsmNodeOrigin(i).getPath();
+			ret.append(path, path.lastIndexOf('/') + 1, path.length());
+		}
+
+		return ret.toString();
+	}
+
 	static String nullToMissing(String s) {
 		return s != null ? s : "-";
 	}
@@ -184,6 +204,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 	private final Label[] auxNameLabels = new Label[NameType.AUX_COUNT];
 	private final Label uidLabel = new Label();
 	private final Label nameObfLabel = new Label();
+	private final Label inputLabel = new Label();
 	private final Label accessLabel = new Label();
 	private final Label sigLabel = new Label();
 	private final Label outerLabel = new Label();
