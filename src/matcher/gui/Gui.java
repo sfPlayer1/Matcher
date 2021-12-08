@@ -266,6 +266,10 @@ public class Gui extends Application {
 		return ret;
 	}
 
+	public void runProgressTask(String labelText, Consumer<DoubleConsumer> task) {
+		runProgressTask(labelText, task, null, null);
+	}
+
 	public void runProgressTask(String labelText, Consumer<DoubleConsumer> task, Runnable onSuccess, Consumer<Throwable> onError) {
 		Stage stage = new Stage(StageStyle.UTILITY);
 		stage.initOwner(this.scene.getWindow());
@@ -298,12 +302,12 @@ public class Gui extends Application {
 
 		jfxTask.setOnSucceeded(event -> {
 			stage.hide();
-			onSuccess.run();
+			if (onSuccess != null) onSuccess.run();
 		});
 
 		jfxTask.setOnFailed(event -> {
 			stage.hide();
-			onError.accept(jfxTask.getException());
+			if (onError != null) onError.accept(jfxTask.getException());
 		});
 
 		threadPool.execute(jfxTask);
