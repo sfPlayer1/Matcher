@@ -35,8 +35,6 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		this(id, null, env, null, false, false, null);
 
 		assert id.indexOf('[') == -1 : id;
-
-		matchable = false;
 	}
 
 	/**
