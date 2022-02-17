@@ -165,7 +165,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			return null;
 		}
 
-		assert ret == null || !hasOuterName(ret);
+		assert ret == null || !hasOuterName(ret) : ret;
 
 		if (!includeOuter) return ret;
 
@@ -195,7 +195,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	private String getInnerName0(String name) {
-		if (outerClass == null) {
+		if (outerClass == null && (isReal() || !hasOuterName(name))) {
 			return name;
 		} else {
 			return getInnerName(name);
