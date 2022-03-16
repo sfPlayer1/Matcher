@@ -21,7 +21,7 @@ public final class MappingPropagator {
 		int propagatedArgNames = 0;
 
 		for (ClassInstance cls : env.getClassesB()) {
-			if (cls.getMethods().length > 0) {
+			if (cls.isInput() && cls.getMethods().length > 0) {
 				for (MethodInstance method : cls.getMethods()) {
 					if (method.getAllHierarchyMembers().size() <= 1) continue;
 					if (checked.contains(method)) continue;

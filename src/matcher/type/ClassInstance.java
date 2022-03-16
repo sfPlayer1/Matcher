@@ -1111,9 +1111,17 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	}
 
 	public static boolean hasOuterName(String name) {
-		int pos = name.indexOf('$');
+		return hasOuterName(name, name.indexOf('$'));
+	}
 
-		return pos > 0 && name.charAt(pos - 1) != '/'; // ignore names starting with $
+	private static boolean hasOuterName(String name, int sepPos) {
+		return sepPos > 0 && name.charAt(sepPos - 1) != '/'; // ignore names starting with $
+	}
+
+	public static String getOuterName(String name) {
+		int pos = name.lastIndexOf('$');
+
+		return hasOuterName(name, pos) ? name.substring(0, pos) : null;
 	}
 
 	public static String getInnerName(String name) {
