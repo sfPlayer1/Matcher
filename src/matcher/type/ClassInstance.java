@@ -1136,6 +1136,16 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		}
 	}
 
+	public static String getPackageName(String name) {
+		int pos = name.lastIndexOf('/');
+
+		return pos > 0 ? name.substring(0, pos) : null;
+	}
+
+	public static String getClassName(String name) {
+		return name.substring(name.lastIndexOf('/') + 1);
+	}
+
 	public static final Comparator<ClassInstance> nameComparator = Comparator.comparing(ClassInstance::getName);
 
 	private static final ClassInstance[] noArrays = new ClassInstance[0];

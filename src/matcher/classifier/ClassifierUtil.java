@@ -82,8 +82,9 @@ public class ClassifierUtil {
 		if (!checkNameObfMatch(a, b)) return false;
 		if ((a.getId().startsWith("<") || b.getId().startsWith("<")) && !a.getName().equals(b.getName())) return false; // require <clinit> and <init> to match
 
-		MethodInstance hierarchyMatch = a.getHierarchyMatch();
-		if (hierarchyMatch != null && !hierarchyMatch.getAllHierarchyMembers().contains(b)) return false;
+		//MethodInstance hierarchyMatch = a.getHierarchyMatch();
+		//if (hierarchyMatch != null && !hierarchyMatch.getAllHierarchyMembers().contains(b)) return false;
+		if ((a.hasHierarchyMatch() || b.hasHierarchyMatch()) && !a.hasMatchedHierarchy(b)) return false;
 
 		if (a.getType() == MethodType.LAMBDA_IMPL && b.getType() == MethodType.LAMBDA_IMPL) { // require same "outer method" for lambdas
 			boolean found = false;
