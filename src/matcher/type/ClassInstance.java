@@ -132,7 +132,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 			// MAPPED_*, local name available
 			ret = mappedName;
 			fromMatched = false;
-		} else if (type.mapped && matchedClass != null && matchedClass.mappedName != null) {
+		} else if (type.mapped && matchedClass != null && canTransferMatchedName(matchedClass.mappedName)) {
 			// MAPPED_*, remote name available
 			ret = matchedClass.mappedName;
 			fromMatched = true;
@@ -147,7 +147,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		} else if (type.isAux() && auxName != null && auxName.length > type.getAuxIndex() && auxName[type.getAuxIndex()] != null) {
 			ret = auxName[type.getAuxIndex()];
 			fromMatched = false;
-		} else if (type.isAux() && matchedClass != null && matchedClass.auxName != null && matchedClass.auxName.length > type.getAuxIndex() && matchedClass.auxName[type.getAuxIndex()] != null) {
+		} else if (type.isAux() && matchedClass != null && matchedClass.auxName != null && matchedClass.auxName.length > type.getAuxIndex() && canTransferMatchedName(matchedClass.auxName[type.getAuxIndex()])) {
 			ret = matchedClass.auxName[type.getAuxIndex()];
 			fromMatched = true;
 		} else if (type.tmp && matchedClass != null && matchedClass.tmpName != null) {
@@ -192,6 +192,14 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 			return ret;
 		}
+	}
+
+	private boolean canTransferMatchedName(String name) {
+		if (name == null || name.isEmpty()) return false;
+
+		return !matchedClass.nameObfuscated
+				|| outerClass != null || matchedClass.outerClass == null // no outer -> inner transfer
+				|| Character.isJavaIdentifierStart(name.charAt(0));
 	}
 
 	private String getInnerName0(String name) {
