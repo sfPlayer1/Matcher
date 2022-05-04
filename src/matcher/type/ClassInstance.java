@@ -1088,7 +1088,9 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	void addMethod(MethodInstance method) {
 		if (method == null) throw new NullPointerException("null method");
 
-		methodIdx.put(method.id, method);
+		MethodInstance prev = methodIdx.putIfAbsent(method.id, method);
+		if (prev != null) throw new IllegalStateException("duplicate method "+method.id);
+
 		methods = Arrays.copyOf(methods, methods.length + 1);
 		methods[methods.length - 1] = method;
 	}
@@ -1096,7 +1098,9 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 	void addField(FieldInstance field) {
 		if (field == null) throw new NullPointerException("null field");
 
-		fieldIdx.put(field.id, field);
+		FieldInstance prev = fieldIdx.putIfAbsent(field.id, field);
+		if (prev != null) throw new IllegalStateException("duplicate field "+field.id);
+
 		fields = Arrays.copyOf(fields, fields.length + 1);
 		fields[fields.length - 1] = field;
 	}

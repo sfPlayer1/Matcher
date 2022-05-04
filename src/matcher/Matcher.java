@@ -321,6 +321,7 @@ public class Matcher {
 
 				for (MethodInstance cb : cls.getMatch().getMethods()) {
 					if (membersB.contains(cb)) {
+						assert !ca.hasMatch() && !cb.hasMatch();
 						ca.setMatch(cb);
 						cb.setMatch(ca);
 						break;

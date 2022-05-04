@@ -122,6 +122,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 			if (cls.isReal()) processClassB(cls);
 		}
 
+		processPending(null);
+
 		initStep++;
 		initialClasses.clear();
 		initialClasses.addAll(classes.values());
@@ -129,6 +131,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		for (ClassInstance cls : initialClasses) {
 			if (cls.isReal()) processClassC(cls);
 		}
+
+		processPending(null);
 
 		initStep++;
 		initialClasses.clear();
@@ -139,6 +143,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		for (ClassInstance cls : initialClasses) {
 			if (cls.isReal()) processClassD(cls, common);
 		}
+
+		processPending(common);
 
 		initStep++;
 
@@ -154,6 +160,42 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		}
 
 		initStep++;
+	}
+
+	private void processPending(CommonClasses commonClasses) {
+		if (pendingInit.isEmpty()) return;
+
+		List<List<ClassInstance>> steps = new ArrayList<>(initStep - 1);
+
+		for (int i = 1; i < initStep; i++) {
+			steps.add(new ArrayList<>());
+		}
+
+		pendingInitLoop: do {
+			steps.get(0).addAll(pendingInit);
+			pendingInit.clear();
+
+			for (int i = 1; i < initStep; i++) {
+				for (ClassInstance cls : steps.get(i - 1)) {
+					assert cls.isReal();
+
+					switch (i) {
+					case 1: processClassB(cls); break;
+					case 2: processClassC(cls); break;
+					case 3: processClassD(cls, commonClasses); break;
+					default: throw new IllegalStateException();
+					}
+				}
+
+				if (i + 1 < initStep) {
+					steps.get(i).addAll(steps.get(i - 1));
+				}
+
+				steps.get(i - 1).clear();
+
+				if (!pendingInit.isEmpty()) continue pendingInitLoop;
+			}
+		} while (!pendingInit.isEmpty());
 	}
 
 	public void reset() {
@@ -642,9 +684,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		assert prev == null;
 
 		if (initStep > 0) ClassEnvironment.processClassA(cls, null);
-		if (initStep > 1) processClassB(cls);
-		if (initStep > 2) processClassC(cls);
-		if (initStep > 3) processClassD(cls, new CommonClasses(this));
+		if (initStep > 1) pendingInit.add(cls);
 
 		return cls;
 	}
@@ -668,4 +708,5 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	private final Map<String, ClassInstance> arrayClasses = new HashMap<>();
 
 	private int initStep;
+	private final List<ClassInstance> pendingInit = new ArrayList<>();
 }
