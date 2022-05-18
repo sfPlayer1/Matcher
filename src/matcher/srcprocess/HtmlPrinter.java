@@ -224,7 +224,7 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 
 		if (decl.isEnumConstantDeclaration()) {
 			return 0;
-		} else if (decl.isAnnotationMemberDeclaration() || decl.isCallableDeclaration()) {
+		} else if (decl.isAnnotationMemberDeclaration() || decl.isCallableDeclaration() || decl.isCompactConstructorDeclaration()) {
 			return 1;
 		} else if (decl.isFieldDeclaration()) {
 			return ((FieldDeclaration) decl).hasModifier(Keyword.STATIC) ? 2 : 3;

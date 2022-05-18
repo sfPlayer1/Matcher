@@ -523,7 +523,7 @@ public class Mappings {
 
 				for (int i = 1; i < nsTypes.size(); i++) {
 					NameType dstType = nsTypes.get(i);
-					String dstName = cls.getName(dstType);
+					String dstName = cls.getName(dstType); // FIXME: this may actually not be unique, record exported and suffix conflicting?
 
 					if (dstName != null && (dstName.equals(srcClsName) || dstType != dstType.withMapped(false) && cls.hasNoFullyMappedName())) {
 						// don't save no-op or partial mappings (partial = only outer class is mapped)
