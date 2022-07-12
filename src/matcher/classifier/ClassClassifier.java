@@ -234,7 +234,7 @@ public class ClassClassifier {
 						}
 
 						MethodNode asmNodeA = methodA.getAsmNode();
-						MethodNode asmNodeB = methodA.getAsmNode();
+						MethodNode asmNodeB = methodB.getAsmNode();
 						double score;
 
 						if (asmNodeA == null || asmNodeB == null) {
