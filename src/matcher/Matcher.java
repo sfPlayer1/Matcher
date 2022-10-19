@@ -279,6 +279,14 @@ public class Matcher {
 		}
 	}
 
+	public void match(MemberInstance<?> a, MemberInstance<?> b) {
+		if (a instanceof MethodInstance) {
+			match((MethodInstance) a, (MethodInstance) b);
+		} else {
+			match((FieldInstance) a, (FieldInstance) b);
+		}
+	}
+
 	public void match(MethodInstance a, MethodInstance b) {
 		if (a == null) throw new NullPointerException("null method A");
 		if (b == null) throw new NullPointerException("null method B");

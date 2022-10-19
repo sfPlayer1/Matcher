@@ -43,6 +43,7 @@ import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.Matchable;
+import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodType;
 import matcher.type.MethodVarInstance;
@@ -70,6 +71,14 @@ public class ClassifierUtil {
 			return !a.getEnv().getGlobal().assumeBothOrNoneObfuscated;
 		} else { // neither obf
 			return a.getName().equals(b.getName());
+		}
+	}
+
+	public static boolean checkPotentialEquality(MemberInstance<?> a, MemberInstance<?> b) {
+		if (a instanceof MethodInstance) {
+			return checkPotentialEquality((MethodInstance) a, (MethodInstance) b);
+		} else {
+			return checkPotentialEquality((FieldInstance) a, (FieldInstance) b);
 		}
 	}
 
