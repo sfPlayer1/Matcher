@@ -22,7 +22,9 @@ public class Config {
 				setVerifyInputFiles(prefs.getBoolean(lastVerifyInputFilesKey, true));
 				setUidConfig(new UidConfig(prefs));
 			}
-		} catch (BackingStoreException e) { }
+		} catch (BackingStoreException e) {
+			// ignored
+		}
 	}
 
 	private Config() { }

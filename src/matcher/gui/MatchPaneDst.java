@@ -433,7 +433,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			case "startswith":
 			case "endswith":
 			case "contains":
-				opTypeA =  opTypeB = OP_TYPE_STRING;
+				opTypeA = opTypeB = OP_TYPE_STRING;
 				break;
 			case "class":
 			case "package":
@@ -698,8 +698,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			final int cTaskId = ++taskId;
 
 			// update matches list
-			Gui.runAsyncTask(ranker)
-			.whenComplete((res, exc) -> {
+			Gui.runAsyncTask(ranker).whenComplete((res, exc) -> {
 				if (exc != null) {
 					exc.printStackTrace();
 				} else if (taskId == cTaskId) {

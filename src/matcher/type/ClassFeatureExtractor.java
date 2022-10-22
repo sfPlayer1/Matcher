@@ -221,7 +221,6 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 
 	/**
 	 * 2nd class processing pass, inter-member initialization.
-	 *
 	 * All (known) classes and members are fully available at this point.
 	 */
 	private void processClassB(ClassInstance cls) {
@@ -340,7 +339,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	/**
-	 * 3rd processing pass, determine same hierarchy methods
+	 * 3rd processing pass, determine same hierarchy methods.
 	 */
 	private static void processClassC(ClassInstance cls) {
 		/* Determine which methods share the same hierarchy by grouping all methods within a

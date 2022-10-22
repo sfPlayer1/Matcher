@@ -70,35 +70,34 @@ public class SourcecodeTab extends WebViewTab {
 		NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
 
 		//Gui.runAsyncTask(() -> gui.getEnv().decompile(cls, true))
-		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), cls, nameType),
-				cls, nameType))
-		.whenComplete((res, exc) -> {
-			if (cDecompId == decompId) {
-				if (exc != null) {
-					exc.printStackTrace();
+		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), cls, nameType), cls, nameType))
+				.whenComplete((res, exc) -> {
+					if (cDecompId == decompId) {
+						if (exc != null) {
+							exc.printStackTrace();
 
-					StringWriter sw = new StringWriter();
-					exc.printStackTrace(new PrintWriter(sw));
+							StringWriter sw = new StringWriter();
+							exc.printStackTrace(new PrintWriter(sw));
 
-					if (exc instanceof SrcParseException) {
-						SrcParseException parseExc = (SrcParseException) exc;
-						displayText("parse error: "+parseExc.problems+"\ndecompiled source:\n"+parseExc.source);
-					} else {
-						displayText("decompile error: "+sw.toString());
+							if (exc instanceof SrcParseException) {
+								SrcParseException parseExc = (SrcParseException) exc;
+								displayText("parse error: "+parseExc.problems+"\ndecompiled source:\n"+parseExc.source);
+							} else {
+								displayText("decompile error: "+sw.toString());
+							}
+						} else {
+							double prevScroll = isRefresh ? getScrollTop() : 0;
+
+							displayHtml(res);
+
+							if (isRefresh && prevScroll > 0) {
+								setScrollTop(prevScroll);
+							}
+						}
+					} else if (exc != null) {
+						exc.printStackTrace();
 					}
-				} else {
-					double prevScroll = isRefresh ? getScrollTop() : 0;
-
-					displayHtml(res);
-
-					if (isRefresh && prevScroll > 0) {
-						setScrollTop(prevScroll);
-					}
-				}
-			} else if (exc != null) {
-				exc.printStackTrace();
-			}
-		});
+				});
 	}
 
 	@Override

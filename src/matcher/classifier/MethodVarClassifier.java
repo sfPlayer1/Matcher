@@ -114,7 +114,7 @@ public class MethodVarClassifier {
 		}
 	};
 
-	private static abstract class AbstractClassifier implements IClassifier<MethodVarInstance> {
+	private abstract static class AbstractClassifier implements IClassifier<MethodVarInstance> {
 		AbstractClassifier(String name) {
 			this.name = name;
 		}

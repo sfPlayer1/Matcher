@@ -2,6 +2,7 @@ package matcher.gui.tab;
 
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableView;
+
 import matcher.classifier.ClassifierResult;
 import matcher.classifier.RankResult;
 import matcher.gui.IGuiComponent;

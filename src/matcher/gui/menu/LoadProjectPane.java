@@ -69,11 +69,11 @@ public class LoadProjectPane extends VBox {
 
 		Button upButton = new Button("up");
 		footer.getChildren().add(upButton);
-		upButton.setOnAction(event ->  GuiUtil.moveSelectionUp(list));
+		upButton.setOnAction(event -> GuiUtil.moveSelectionUp(list));
 
 		Button downButton = new Button("down");
 		footer.getChildren().add(downButton);
-		downButton.setOnAction(event ->  GuiUtil.moveSelectionDown(list));
+		downButton.setOnAction(event -> GuiUtil.moveSelectionDown(list));
 
 		ListChangeListener<Path> itemChangeListener = change -> {
 			okButton.setDisable(paths.isEmpty());

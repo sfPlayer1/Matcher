@@ -1050,6 +1050,7 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 							}
 						}
 					}
+
 					// TODO: multiple options..
 				}
 

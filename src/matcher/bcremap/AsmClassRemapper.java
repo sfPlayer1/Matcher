@@ -44,7 +44,7 @@ public class AsmClassRemapper extends ClassRemapper {
 	}
 
 	private class AsmMethodRemapper extends MethodRemapper {
-		public AsmMethodRemapper(MethodVisitor mv, AsmRemapper remapper) {
+		AsmMethodRemapper(MethodVisitor mv, AsmRemapper remapper) {
 			super(mv, remapper);
 
 			this.remapper = remapper;

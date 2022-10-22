@@ -124,7 +124,6 @@ public class ClassClassifier {
 		}
 	};
 
-
 	private static AbstractClassifier hierarchySiblings = new AbstractClassifier("hierarchy siblings") {
 		@Override
 		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
@@ -533,7 +532,7 @@ public class ClassClassifier {
 		}
 	}
 
-	public static abstract class AbstractClassifier implements IClassifier<ClassInstance> {
+	public abstract static class AbstractClassifier implements IClassifier<ClassInstance> {
 		public AbstractClassifier(String name) {
 			this.name = name;
 		}

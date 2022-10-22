@@ -8,6 +8,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Window;
+
 import matcher.config.UidConfig;
 import matcher.gui.GuiConstants;
 

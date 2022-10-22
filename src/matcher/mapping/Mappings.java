@@ -839,7 +839,7 @@ public class Mappings {
 				&& (verbosity == MappingsExportVerbosity.ROOTS || !exportedHierarchies.contains(method.getAllHierarchyMembers())); // FIXME: forAnyInput + minimal needs to use an exportedHierarchies set per origin
 	}
 
-	private static boolean isAnyInputRoot(MethodInstance method)  {
+	private static boolean isAnyInputRoot(MethodInstance method) {
 		ClassInstance cls = method.getCls();
 		String name = method.getName();
 		String desc = method.getDesc();
@@ -862,7 +862,7 @@ public class Mappings {
 		return false;
 	}
 
-	private static boolean hasParentMethod(String name, String desc, Collection<MethodInstance> parents, URI reqOrigin)  {
+	private static boolean hasParentMethod(String name, String desc, Collection<MethodInstance> parents, URI reqOrigin) {
 		// check direct parents (must supply the method from the required origin)
 
 		for (MethodInstance parent : parents) {

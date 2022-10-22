@@ -1,6 +1,7 @@
 package matcher;
 
 import javafx.application.Application;
+
 import matcher.config.Config;
 import matcher.gui.Gui;
 

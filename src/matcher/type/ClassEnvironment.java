@@ -479,7 +479,6 @@ public final class ClassEnvironment implements ClassEnv {
 
 	/**
 	 * 1st class processing pass, member+class hierarchy and signature initialization.
-	 *
 	 * Only the (known) classes are fully available at this point.
 	 */
 	static void processClassA(ClassInstance cls, Pattern nonObfuscatedMemberPattern) {

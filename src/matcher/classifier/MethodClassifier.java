@@ -364,8 +364,8 @@ public class MethodClassifier {
 		return a.getAsmNode() == null && b.getAsmNode() == null ? 1 : 0;
 	}
 
-	public static abstract class AbstractClassifier implements IClassifier<MethodInstance> {
-		public AbstractClassifier(String name) {
+	public abstract static class AbstractClassifier implements IClassifier<MethodInstance> {
+		AbstractClassifier(String name) {
 			this.name = name;
 		}
 

@@ -389,7 +389,7 @@ public class FileMenu extends Menu {
 		SelectedFile res = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (res == null) return;
 
-		MatchesIo.read(res.path, null, false, gui.getMatcher(), progress -> {});
+		MatchesIo.read(res.path, null, false, gui.getMatcher(), progress -> { });
 		gui.onMatchChange(EnumSet.allOf(MatchType.class));
 	}
 

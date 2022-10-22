@@ -73,7 +73,7 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 			il = asmNode.instructions;
 			firstInsn = il.getFirst();
 		} else {
-			locals =  null;
+			locals = null;
 			il = null;
 			firstInsn = null;
 		}
