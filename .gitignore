@@ -1,13 +1,35 @@
-/bin/
-/build/
+# Gradle
+.gradle/
+build/
+bin/
+out/
+classes/
+
+# Eclipse
+.eclipse
+*.launch
+
+# Intellij Idea
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+.settings/
+.classpath
+.project
+
+# MacOS
+*.DS_Store
+
+
+# Player's personal exclusions
 /build_state/
 /tmp/
 /run/
 /lib/
 /extbin/
-/.gradle/
-/.settings/
-/.classpath
-/.project
 /*.jar
 /TODO.txt
