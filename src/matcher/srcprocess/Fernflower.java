@@ -225,7 +225,7 @@ public class Fernflower implements Decompiler {
 		@Override
 		public void closeArchive(String path, String archiveName) { }
 		@Override
-		public void saveClassEntry(String path, String archiveName, String qualifiedName, String entryName, String content, int[] mapping) { }
+		public void saveClassEntry(String path, String archiveName, String qualifiedName, String entryName, String content) { }
 
 		@Override
 		public void saveClassFile(String path, String qualifiedName, String entryName, String content, int[] mapping) {

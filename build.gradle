@@ -1,0 +1,119 @@
+plugins {
+	id 'java'
+	id 'application'
+	id 'maven-publish'
+	id 'org.openjfx.javafxplugin' version '0.0.13'
+	id 'com.github.johnrengelman.shadow' version '7.1.2'
+	id 'de.jjohannes.extra-java-module-info' version '0.16'
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		name "Fabric"
+		url 'https://maven.fabricmc.net/'
+	}
+}
+
+archivesBaseName = 'matcher'
+group = 'net.fabricmc'
+
+def ENV = System.getenv()
+
+sourceSets {
+    main {
+        java.srcDirs = ['src']
+		resources.srcDirs = ['res']
+    }
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_11
+	targetCompatibility = JavaVersion.VERSION_11
+
+	if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11)) {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(11)
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = "UTF-8"
+	it.options.release = 11
+}
+
+javafx {
+	version = javafx_version
+	modules = [ 'javafx.controls', 'javafx.web' ]
+
+	// Don't include native binaries via the plugin,
+	// since it will only include those for the current OS.
+	// The full set of native libraries gets shadowed a few lines beneath.
+	configuration = 'compileOnly'
+}
+
+dependencies {
+	implementation "com.github.javaparser:javaparser-core:${javaparser_version}"
+	implementation "net.fabricmc:cfr:${fabric_cfr_version}"
+	implementation "net.fabricmc:fabric-fernflower:${fabric_fernflower_version}"
+	implementation "net.fabricmc:mapping-io:${mappingio_version}"
+	implementation "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
+	implementation "org.ow2.asm:asm:${asm_version}"
+	implementation "org.ow2.asm:asm-commons:${asm_version}"
+	implementation "org.ow2.asm:asm-tree:${asm_version}"
+	implementation "org.ow2.asm:asm-util:${asm_version}"
+
+	// JavaFX for all platforms (needed for cross-platform fat jar)
+	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:linux"
+}
+
+extraJavaModuleInfo {
+	automaticModule("cfr-${fabric_cfr_version}.jar", "cfr")
+	automaticModule("procyon-core-${procyon_version}.jar", "procyon.core")
+	automaticModule("procyon-compilertools-${procyon_version}.jar", "procyon.compilertools")
+	automaticModule("fabric-fernflower-${fabric_fernflower_version}.jar", "intellij.fernflower")
+	automaticModule("mapping-io-${mappingio_version}.jar", "net.fabricmc.mappingio")
+}
+
+application {
+	mainModule = 'matcher'
+	mainClass = 'matcher.Main'
+}
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			from components.java
+		}
+	}
+
+	repositories {
+		mavenLocal()
+
+		if (ENV.MAVEN_URL) {
+			repositories.maven {
+				name "fabric"
+				url ENV.MAVEN_URL
+				credentials {
+					username ENV.MAVEN_USERNAME
+					password ENV.MAVEN_PASSWORD
+				}
+			}
+		}
+	}
+}
