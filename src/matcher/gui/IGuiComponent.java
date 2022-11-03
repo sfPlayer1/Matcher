@@ -11,7 +11,7 @@ import matcher.type.MethodVarInstance;
 public interface IGuiComponent {
 	default void onProjectChange() { }
 
-	default void onViewChange() { }
+	default void onViewChange(ViewChangeCause cause) { }
 
 	default void onMappingChange() { }
 	default void onMatchChange(Set<MatchType> types) { }
@@ -22,4 +22,14 @@ public interface IGuiComponent {
 	default void onMethodVarSelect(MethodVarInstance arg) { }
 
 	default void onMatchListRefresh() { }
+
+	enum ViewChangeCause {
+		SORTING_CHANGED,
+		CLASS_TREE_VIEW_TOGGLED,
+		SHOW_NON_INPUTS_TOGGLED,
+		THEME_CHANGED,
+		DIFF_COLORS_TOGGLED,
+		NAME_TYPE_CHANGED,
+		DECOMPILER_CHANGED
+	}
 }

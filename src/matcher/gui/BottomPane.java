@@ -35,6 +35,7 @@ public class BottomPane extends StackPane implements IGuiComponent {
 	}
 
 	private void init() {
+		setId("bottom-pane");
 		setPadding(new Insets(GuiConstants.padding));
 
 		HBox center = new HBox(GuiConstants.padding);

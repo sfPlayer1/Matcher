@@ -1,0 +1,37 @@
+/* See https://github.com/microsoft/vscode/blob/98f401e8b951868cb4d9830e4c9ea0aa46292a3a/extensions/theme-defaults/themes/light_plus.json */
+
+/*****************************/
+/*          WebView          */
+/*****************************/
+
+.code .keyword {
+	color: #0000ff;
+	font-weight: normal;
+}
+
+.code .import-declaration-package-name,
+.code .annotation,
+.code .class-name {
+	color: #267f99;
+}
+
+.code .field-name,
+.code .variable-name {
+	color: #001080;
+}
+
+.code .method-name {
+	color: #795e26;
+}
+
+.code .string {
+	color: #a31515;
+}
+
+.code .comment {
+	color: #008000;
+}
+
+.code .selected {
+	background-color: #add6ff;
+}

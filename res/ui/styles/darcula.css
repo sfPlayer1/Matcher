@@ -1,0 +1,170 @@
+/* See Intellij Idea Settings -> Editor -> Color Scheme -> Darcula */
+
+@import url(borderless-preset.css);
+
+/*****************************/
+/*          JavaFx           */
+/*****************************/
+
+* {
+	-fx-ui-main-color: #3c3f41;
+	-fx-main-content-color: #2b2b2b;
+	-fx-menu-color: -fx-ui-main-color;
+	-fx-menu-separator-color: #606060;
+	-fx-menu-button-hover-color: #2c2e2f;
+	-fx-menu-item-hover-color: #4b6eaf;
+	-fx-split-pane-divider-color: #323232;
+}
+
+.root {
+	-fx-base: -fx-ui-main-color;
+	-fx-background-color: -fx-ui-main-color;
+	-fx-control-inner-background: -fx-ui-main-color;
+	-fx-selection-bar: -fx-menu-button-hover-color;
+	-fx-selection-bar-non-focused: -fx-main-content-color;
+}
+
+GridPane {
+	-fx-border-width: 0;
+}
+
+
+/* --- Menus --- */
+
+.menu-bar {
+    -fx-background-color: -fx-ui-main-color;
+	-fx-border-width: 0 0 1 0;
+	-fx-border-color: -fx-main-content-color;
+}
+
+.menu:hover {
+	-fx-background-color: -fx-menu-button-hover-color;
+}
+
+.context-menu {
+	-fx-selection-bar: -fx-menu-item-hover-color;
+}
+
+.context-menu .menu-item:hover {
+	-fx-background-color: -fx-menu-item-hover-color;
+}
+
+.context-menu .separator {
+	-fx-padding: 2 0 2 0
+}
+
+.context-menu .separator .line {
+	-fx-border-color: -fx-menu-separator-color;
+	-fx-border-width: 1 0 0 0;
+}
+
+
+/* --- Match panes --- */
+
+#match-pane-src,
+#match-pane-dst {
+	-fx-background-color: -fx-ui-main-color;
+	-fx-background-insets: 0 0 0 0;
+}
+
+#match-pane-dst {
+	-fx-border-width: 0 0 0 3;
+	-fx-border-color: -fx-ui-main-color;
+}
+
+
+/* --- Split panes --- */
+
+.split-pane .split-pane-divider {
+	-fx-background-color: -fx-split-pane-divider-color;
+	-fx-padding: 0 1 0 1;
+}
+
+
+/* --- Tab panes --- */
+
+.tab-pane .tab-header-area {
+	-fx-padding: 0 6 0 0;
+}
+
+.tab-pane .tab-header-area .tab-header-background {
+	-fx-background-color: -fx-ui-main-color;
+}
+
+.tab-pane .tab-header-area .headers-region .tab {
+	-fx-background-color: -fx-ui-main-color;
+	-fx-background-radius: 0;
+	-fx-background-insets: 0 1 0 0; /* gets rid of black line underneath */
+	-fx-border-width: 0;
+	-fx-padding: 2 10 2 10;
+}
+
+.tab-pane .tab-header-area .headers-region .tab:selected {
+	-fx-background-color: -fx-main-content-color;
+	-fx-border-width: 0 0 2 0;
+	-fx-border-color: -fx-menu-item-hover-color;
+}
+
+.tab-pane .tab .focus-indicator {
+	-fx-border-color: null;
+}
+
+.tab-pane .tab-content-area,
+.tab-pane .tab-content-area > * > * {
+	-fx-background-color: -fx-main-content-color;
+}
+
+
+/* --- Bottom pane --- */
+
+#bottom-pane {
+	-fx-background-insets: 0 0 0 0;
+	-fx-border-width: 1 0 0 0;
+	-fx-border-color: -fx-main-content-color;
+}
+
+
+
+/*****************************/
+/*          WebView          */
+/*****************************/
+
+.code body {
+	color: #a9b7c6;
+	background-color: #2b2b2b;
+}
+
+.code .keyword {
+	color: #cc7832;
+	font-weight: normal;
+}
+
+.code .import-declaration-package-name,
+.code .class-name,
+.code .variable-name {
+	color: #a9b7c6;
+}
+
+.code .annotation {
+	color: #bbb529;
+}
+
+.code .field {
+	color: #9876aa;
+}
+
+.code .method-name {
+	color: #ffc66d;
+}
+
+.code .string {
+	color: #6a8759;
+}
+
+.code .comment {
+	color: #629755;
+}
+
+.code .selected {
+	background-color: #214283;
+}

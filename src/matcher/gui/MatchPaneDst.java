@@ -41,6 +41,8 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private void init() {
+		setId("match-pane-dst");
+
 		// content
 
 		ContentPane content = new ContentPane(gui, this, false);
@@ -256,24 +258,27 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	@Override
-	public void onViewChange() {
-		cmpClasses = gui.getEnv().getDisplayClassesB(!gui.isShowNonInputs());
+	public void onViewChange(ViewChangeCause cause) {
+		switch (cause) {
+		case SHOW_NON_INPUTS_TOGGLED:
+			cmpClasses = gui.getEnv().getDisplayClassesB(!gui.isShowNonInputs());
+			break;
 
-		suppressChangeEvents = true;
+		case SORTING_CHANGED:
+			suppressChangeEvents = true;
+			Comparator<RankResult<? extends Matchable<?>>> cmp;
 
-		Comparator<RankResult<? extends Matchable<?>>> cmp;
+			if (gui.isSortMatchesAlphabetically()) {
+				cmp = getNameComparator();
+			} else {
+				cmp = getScoreComparator();
+			}
 
-		if (gui.isSortMatchesAlphabetically()) {
-			cmp = getNameComparator();
-		} else {
-			cmp = getScoreComparator();
+			matchList.getItems().sort(cmp);
+			suppressChangeEvents = false;
 		}
 
-		matchList.getItems().sort(cmp);
-
-		suppressChangeEvents = false;
-
-		IFwdGuiComponent.super.onViewChange();
+		IFwdGuiComponent.super.onViewChange(cause);
 	}
 
 	@Override

@@ -21,6 +21,7 @@ public class Config {
 				setInputDirs(loadList(prefs, lastInputDirsKey, Config::deserializePath));
 				setVerifyInputFiles(prefs.getBoolean(lastVerifyInputFilesKey, true));
 				setUidConfig(new UidConfig(prefs));
+				setTheme(Theme.getById(prefs.get(themeKey, Theme.getDefault().getId())));
 			}
 		} catch (BackingStoreException e) {
 			// ignored
@@ -43,6 +44,10 @@ public class Config {
 
 	public static UidConfig getUidConfig() {
 		return uidConfig;
+	}
+
+	public static Theme getTheme() {
+		return theme != null ? theme : Theme.getDefault();
 	}
 
 	public static boolean setProjectConfig(ProjectConfig config) {
@@ -68,6 +73,24 @@ public class Config {
 		uidConfig = config;
 
 		return true;
+	}
+
+	public static void setTheme(Theme value) {
+		if (value != null) {
+			theme = value;
+			saveTheme();
+		}
+	}
+
+	private static void saveTheme() {
+		Preferences root = Preferences.userRoot().node(userPrefFolder);
+
+		try {
+			root.put(themeKey, getTheme().getId());
+			root.flush();
+		} catch (BackingStoreException e) {
+			// ignored
+		}
 	}
 
 	public static void saveAsLast() {
@@ -115,9 +138,11 @@ public class Config {
 	private static final String lastProjectSetupKey = "last-project-setup";
 	private static final String lastInputDirsKey = "last-input-dirs";
 	private static final String lastVerifyInputFilesKey = "last-verify-input-files";
+	private static final String themeKey = "theme";
 
 	private static ProjectConfig projectConfig = new ProjectConfig();
 	private static final List<Path> inputDirs = new ArrayList<>();
 	private static boolean verifyInputFiles = true;
 	private static UidConfig uidConfig = new UidConfig();
+	private static Theme theme;
 }

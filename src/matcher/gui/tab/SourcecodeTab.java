@@ -17,7 +17,7 @@ import matcher.type.MethodInstance;
 
 public class SourcecodeTab extends WebViewTab {
 	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
-		super("source", "ui/SourceCodeTemplate.htm");
+		super("source", "ui/templates/CodeViewTemplate.htm");
 
 		this.gui = gui;
 		this.selectionProvider = selectionProvider;
@@ -45,10 +45,13 @@ public class SourcecodeTab extends WebViewTab {
 	}
 
 	@Override
-	public void onViewChange() {
+	public void onViewChange(ViewChangeCause cause) {
 		ClassInstance cls = selectionProvider.getSelectedClass();
 
-		if (cls != null) {
+		if ((cls != null
+				&& (cause == ViewChangeCause.NAME_TYPE_CHANGED
+						|| cause == ViewChangeCause.DECOMPILER_CHANGED))
+				|| cause == ViewChangeCause.THEME_CHANGED) {
 			update(cls, true);
 		}
 	}

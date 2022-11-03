@@ -1,0 +1,23 @@
+/*****************************/
+/*          JavaFx           */
+/*****************************/
+
+.tab-pane .tab-content-area,
+.tab-pane .tab-content-area > * > * {
+	-fx-background-color: -fx-control-inner-background;
+}
+
+
+
+/*****************************/
+/*          WebView          */
+/*****************************/
+
+.code body {
+	font-family: monospace;
+	white-space: pre;
+	margin: 0.8em 1em 0em 0.8em;
+	tab-size: 4;
+}
+
+@import url(light.css);

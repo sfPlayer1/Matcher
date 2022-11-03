@@ -1,0 +1,38 @@
+GridPane {
+	-fx-border-width: 0;
+}
+
+
+/* --- Match panes --- */
+
+#match-pane-src,
+#match-pane-dst {
+	-fx-background-insets: -1 0 0 0;
+	-fx-border-width: 0;
+	-fx-padding: 0;
+}
+
+#match-pane-src .list-view,
+#match-pane-dst .list-view {
+	-fx-background-insets: 0, 0;
+}
+
+#match-pane-src .list-view:focused,
+#match-pane-dst .list-view:focused {
+	-fx-background-insets: -1.4, -0.3, 1;
+}
+
+
+/* --- Tab panes --- */
+
+.tab-pane .tab-header-area .headers-region .tab {
+	-fx-background-insets: 0 1 0 0, 1 2 1 1, 2 3 1 2; /* gets rid of black line underneath */
+	-fx-border-width: 0 0 0 1;
+}
+
+
+/* --- Bottom pane --- */
+
+#bottom-pane {
+	-fx-background-insets: -1 0 0 0;
+}

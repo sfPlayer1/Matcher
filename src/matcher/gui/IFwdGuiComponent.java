@@ -24,9 +24,9 @@ public interface IFwdGuiComponent extends IGuiComponent {
 	}
 
 	@Override
-	default void onViewChange() {
+	default void onViewChange(ViewChangeCause cause) {
 		for (IGuiComponent c : getComponents()) {
-			c.onViewChange();
+			c.onViewChange(cause);
 		}
 	}
 
