@@ -40,6 +40,9 @@ import javafx.stage.Window;
 
 import matcher.Matcher;
 import matcher.NameType;
+import matcher.config.Config;
+import matcher.config.Theme;
+import matcher.gui.IGuiComponent.ViewChangeCause;
 import matcher.gui.menu.MainMenuBar;
 import matcher.srcprocess.BuiltinDecompiler;
 import matcher.type.ClassEnvironment;
@@ -87,9 +90,14 @@ public class Gui extends Application {
 			l.accept(this);
 		}
 
+		scene.getStylesheets().add(getClass().getResource("/ui/styles/defaults.css").toExternalForm());
+		updateCss();
+
 		stage.setScene(scene);
 		stage.setTitle("Matcher");
 		stage.show();
+
+		srcPane.requestFocus();
 	}
 
 	@Override
@@ -140,7 +148,7 @@ public class Gui extends Application {
 		this.sortKey = sortKey;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange();
+			c.onViewChange(ViewChangeCause.SORTING_CHANGED);
 		}
 	}
 
@@ -154,7 +162,7 @@ public class Gui extends Application {
 		this.sortMatchesAlphabetically = value;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange();
+			c.onViewChange(ViewChangeCause.SORTING_CHANGED);
 		}
 	}
 
@@ -168,7 +176,7 @@ public class Gui extends Application {
 		this.useClassTreeView = value;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange();
+			c.onViewChange(ViewChangeCause.CLASS_TREE_VIEW_TOGGLED);
 		}
 	}
 
@@ -182,7 +190,20 @@ public class Gui extends Application {
 		this.showNonInputs = showNonInputs;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange();
+			c.onViewChange(ViewChangeCause.SHOW_NON_INPUTS_TOGGLED);
+		}
+	}
+
+	public void updateCss() {
+		if (lastSwitchedToTheme != null) {
+			scene.getStylesheets().removeAll(getClass().getResource("/ui/styles/" + lastSwitchedToTheme.getId() + ".css").toExternalForm());
+		}
+
+		lastSwitchedToTheme = Config.getTheme();
+		scene.getStylesheets().add(getClass().getResource("/ui/styles/" + lastSwitchedToTheme.getId() + ".css").toExternalForm());
+
+		for (IGuiComponent c : components) {
+			c.onViewChange(ViewChangeCause.THEME_CHANGED);
 		}
 	}
 
@@ -196,7 +217,7 @@ public class Gui extends Application {
 		this.useDiffColors = useDiffColors;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange();
+			c.onViewChange(ViewChangeCause.DIFF_COLORS_TOGGLED);
 		}
 	}
 
@@ -210,7 +231,7 @@ public class Gui extends Application {
 		this.nameType = value;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange();
+			c.onViewChange(ViewChangeCause.NAME_TYPE_CHANGED);
 		}
 	}
 
@@ -224,7 +245,7 @@ public class Gui extends Application {
 		this.decompiler = value;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange();
+			c.onViewChange(ViewChangeCause.DECOMPILER_CHANGED);
 		}
 	}
 
@@ -426,6 +447,7 @@ public class Gui extends Application {
 	private boolean useClassTreeView;
 	private boolean showNonInputs;
 	private boolean useDiffColors;
+	private Theme lastSwitchedToTheme;
 
 	private NameType nameType = NameType.MAPPED_PLAIN;
 	private BuiltinDecompiler decompiler = BuiltinDecompiler.CFR;

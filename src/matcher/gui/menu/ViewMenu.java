@@ -8,6 +8,8 @@ import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 
 import matcher.NameType;
+import matcher.config.Config;
+import matcher.config.Theme;
 import matcher.gui.Gui;
 import matcher.gui.Gui.SortKey;
 import matcher.gui.GuiUtil;
@@ -111,10 +113,31 @@ public class ViewMenu extends Menu implements IGuiComponent {
 		});
 
 		getItems().add(menu);
+		getItems().add(new SeparatorMenuItem());
+
+		themeToggleGroup = new ToggleGroup();
+		menu = new Menu("Theme");
+
+		for (Theme theme : Theme.values()) {
+			radioMenuItem = new RadioMenuItem(theme.getName());
+			radioMenuItem.setToggleGroup(themeToggleGroup);
+			menu.getItems().add(radioMenuItem);
+
+			if (theme == Config.getTheme()) {
+				themeToggleGroup.selectToggle(radioMenuItem);
+			}
+
+			radioMenuItem.setOnAction(event -> {
+				Config.setTheme(theme);
+				gui.updateCss();
+			});
+		}
+
+		getItems().add(menu);
 	}
 
 	@Override
-	public void onViewChange() {
+	public void onViewChange(ViewChangeCause cause) {
 		updateSelections();
 	}
 
@@ -144,10 +167,18 @@ public class ViewMenu extends Menu implements IGuiComponent {
 				break;
 			}
 		}
+
+		for (Toggle toggle : themeToggleGroup.getToggles()) {
+			if (toggle.getUserData() == Config.getTheme()) {
+				decompilerToggleGroup.selectToggle(toggle);
+				break;
+			}
+		}
 	}
 
 	private final Gui gui;
 	private ToggleGroup sortSourceToggleGroup;
+	private ToggleGroup themeToggleGroup;
 	private CheckMenuItem sortAlphabeticallyItem;
 	private CheckMenuItem useTreeViewItem;
 	private CheckMenuItem showNonInputsItem;

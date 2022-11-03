@@ -1,0 +1,34 @@
+/* See https://github.com/lorenzobilli/Eclipse-color-theme/blob/7d93ba9d324a80bb60afc03f6f5b0f375a313161/Visual%20Studio%20Code/eclipse-classic-light/themes/Eclipse%20Classic%20Light-color-theme.json */
+
+/*****************************/
+/*          WebView          */
+/*****************************/
+
+.code .annotation {
+	color: #646464;
+}
+
+.code .keyword {
+	color: #7f0055;
+	font-weight: bold;
+}
+
+.code .field-name {
+	color: #0000c0;
+}
+
+.code .variable-name {
+	color: #6a3e3e;
+}
+
+.code .string {
+	color: #2a00ff;
+}
+
+.code .comment {
+	color: #3f7f5f;
+}
+
+.code .selected {
+	background-color: #fbf3d2;
+}

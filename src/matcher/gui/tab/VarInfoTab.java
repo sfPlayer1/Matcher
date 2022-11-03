@@ -84,8 +84,10 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 	}
 
 	@Override
-	public void onViewChange() {
-		update(selectionProvider.getSelectedMethodVar());
+	public void onViewChange(ViewChangeCause cause) {
+		if (cause == ViewChangeCause.NAME_TYPE_CHANGED) {
+			update(selectionProvider.getSelectedMethodVar());
+		}
 	}
 
 	private void update(MethodVarInstance var) {

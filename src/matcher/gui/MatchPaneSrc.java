@@ -35,6 +35,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	private void init() {
+		setId("match-pane-src");
+
 		// lists
 
 		SplitPane verticalPane = new SplitPane();
@@ -307,14 +309,15 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	}
 
 	@Override
-	public void onViewChange() {
-		if (gui.isUseClassTreeView() != useClassTree) {
+	public void onViewChange(ViewChangeCause cause) {
+		switch (cause) {
+		case CLASS_TREE_VIEW_TOGGLED:
 			ClassInstance selected = getSelectedClass();
 			useClassTree = gui.isUseClassTreeView();
 
 			((SplitPane) getItems().get(0)).getItems().set(0, createClassList());
 
-			updateLists(true, true);
+			updateLists(true, false);
 
 			if (selected != null) {
 				if (useClassTree) {
@@ -330,14 +333,27 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 					classList.getSelectionModel().select(selected);
 				}
 			}
-		} else {
-			updateLists(true, true);
+
+			break;
+		case SHOW_NON_INPUTS_TOGGLED:
+			updateLists(true, false);
+			break;
+		case NAME_TYPE_CHANGED:
+			updateLists(false, true);
+			break;
+		case SORTING_CHANGED:
+			updateLists(false, true);
 		}
 
-		IFwdGuiComponent.super.onViewChange();
+		IFwdGuiComponent.super.onViewChange(cause);
 	}
 
-	private void updateLists(boolean updateContents, boolean updateMembers) {
+
+	/**
+	 * @param updateContents if classes got added/removed or the use of the class tree view got toggled
+	 * @param resortMembers whether or not all classes' members should get re-sorted
+	 */
+	private void updateLists(boolean updateContents, boolean resortMembers) {
 		Comparator<ClassInstance> clsComparator = getClassComparator();
 		Comparator<MemberInstance<?>> memberComparator = getMemberComparator();
 
@@ -361,7 +377,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			classList.getSelectionModel().select(selClass);
 		}
 
-		if (updateMembers) {
+		if (resortMembers) {
 			memberList.getItems().sort(memberComparator);
 			memberList.getSelectionModel().select(selMember);
 		}

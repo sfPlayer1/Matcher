@@ -415,7 +415,11 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		printComment(n.getComment(), arg);
 		printMemberAnnotations(n.getAnnotations(), arg);
 		printer.print("<span class=\"keyword\">package</span> ");
+
+		printer.print("<span class=\"package-declaration\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
+
 		printer.println(";");
 		printer.println();
 
@@ -464,7 +468,10 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 			printer.print("<span class=\"keyword\">class</span> ");
 		}
 
+		printer.print("<span class=\"class-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
+
 		printTypeParameters(n.getTypeParameters(), arg);
 
 		if (!n.getExtendedTypes().isEmpty()) {
@@ -514,7 +521,11 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		printModifiers(n.getModifiers());
 
 		printer.print("<span class=\"keyword\">record</span> ");
+
+		printer.print("<span class=\"class-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
+
 		printer.print("(");
 
 		if (!isNullOrEmpty(n.getParameters())) {
@@ -610,12 +621,23 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		printComment(n.getComment(), arg);
 
 		if (n.getScope().isPresent()) {
+			recursionCounter++;
 			n.getScope().get().accept(this, arg);
 			printer.print(".");
+			recursionCounter--;
 		}
 
 		printAnnotations(n.getAnnotations(), false, arg);
+
+		if (recursionCounter == 0 && instantiationAhead) {
+			printer.print("<span class=\"method-name\">");
+			instantiationAhead = false;
+		} else {
+			printer.print("<span class=\"class-name\">");
+		}
+
 		n.getName().accept(this, arg);
+		printer.print("</span>");
 
 		if (n.isUsingDiamondOperator()) {
 			printer.print("<>");
@@ -629,7 +651,10 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		printOrphanCommentsBeforeThisChildNode(n);
 		printComment(n.getComment(), arg);
 		printAnnotations(n.getAnnotations(), false, arg);
+
+		printer.print("<span class=\"class-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
 
 		if (!isNullOrEmpty(n.getTypeBound())) {
 			printer.print(" <span class=\"keyword\">extends</span> ");
@@ -808,7 +833,7 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		boolean isField = n.getParentNode().orElse(null) instanceof FieldDeclaration;
 
 		printer.print("<span class=\"");
-		printer.print(isField ? "field" : "variable");
+		printer.print(isField ? "field-name" : "variable-name");
 		printer.print("\">");
 
 		n.getName().accept(this, arg);
@@ -1204,7 +1229,11 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 		});
 
 		printTypeArgs(n, arg);
+
+		printer.print("<span class=\"method-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
+
 		printer.duplicateIndent();
 		printArguments(n.getArguments(), arg);
 		printer.unindent();
@@ -1232,6 +1261,7 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 			printer.print(" ");
 		}
 
+		instantiationAhead = true;
 		n.getType().accept(this, arg);
 		printArguments(n.getArguments(), arg);
 
@@ -1280,7 +1310,10 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 			printer.print(" ");
 		}
 
+		printer.print("<span class=\"method-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
+
 		printer.print("(");
 
 		if (!n.getParameters().isEmpty()) {
@@ -1337,7 +1370,7 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 
 			for (final Iterator<ReferenceType> i = n.getThrownExceptions().iterator(); i.hasNext(); ) {
 				final ReferenceType name = i.next();
-				printer.print("<span class=\"variable\">");
+				printer.print("<span class=\"variable-name\">");
 				name.accept(this, arg);
 				printer.print("</span>");
 
@@ -1374,7 +1407,10 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 
 		n.getType().accept(this, arg);
 		printer.print(" ");
+
+		printer.print("<span class=\"method-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
 
 		printer.print("(");
 		n.getReceiverParameter().ifPresent(rp -> {
@@ -1440,7 +1476,7 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 			printer.print(" ");
 		}
 
-		printer.print("<span class=\"variable\">");
+		printer.print("<span class=\"variable-name\">");
 		n.getName().accept(this, arg);
 		printer.print("</span>");
 	}
@@ -2246,12 +2282,14 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 			printer.print("<span class=\"keyword\">static</span> ");
 		}
 
+		printer.print("<span class=\"import-declaration-package-name\">");
 		n.getName().accept(this, arg);
 
 		if (n.isAsterisk()) {
 			printer.print(".*");
 		}
 
+		printer.print("</span>");
 		printer.println(";");
 
 		printOrphanCommentsEnding(n);
@@ -2425,4 +2463,6 @@ public class HtmlPrinter implements VoidVisitor<Void> {
 	protected final TypeResolver typeResolver;
 	protected final PrettyPrinterConfiguration configuration;
 	protected final SourcePrinter printer;
+	protected boolean instantiationAhead;
+	protected int recursionCounter;
 }

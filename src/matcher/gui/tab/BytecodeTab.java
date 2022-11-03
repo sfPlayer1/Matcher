@@ -15,7 +15,7 @@ import matcher.type.MethodInstance;
 
 public class BytecodeTab extends WebViewTab {
 	public BytecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
-		super("bytecode", "ui/ByteCodeTemplate.htm");
+		super("bytecode", "ui/templates/CodeViewTemplate.htm");
 
 		this.gui = gui;
 		this.selectionProvider = selectionProvider;
@@ -28,10 +28,13 @@ public class BytecodeTab extends WebViewTab {
 	}
 
 	@Override
-	public void onViewChange() {
+	public void onViewChange(ViewChangeCause cause) {
 		ClassInstance cls = selectionProvider.getSelectedClass();
 
-		if (cls != null) {
+		if ((cls != null
+				&& (cause == ViewChangeCause.NAME_TYPE_CHANGED
+						|| cause == ViewChangeCause.DECOMPILER_CHANGED))
+				|| cause == ViewChangeCause.THEME_CHANGED) {
 			update(cls, true);
 		}
 	}

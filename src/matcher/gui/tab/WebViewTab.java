@@ -15,6 +15,7 @@ import javafx.concurrent.Worker.State;
 import javafx.scene.control.Tab;
 import javafx.scene.web.WebView;
 
+import matcher.config.Config;
 import matcher.gui.IGuiComponent;
 import matcher.srcprocess.HtmlUtil;
 
@@ -42,8 +43,10 @@ abstract class WebViewTab extends Tab implements IGuiComponent {
 	}
 
 	protected void displayHtml(String html) {
-		html = template.replace("%text%", html);
-		//System.out.println(html);
+		html = template.replace("%text%", html)
+				.replace("%styles_path%", getClass().getResource("/ui/styles").toExternalForm())
+				.replace("%theme%", Config.getTheme().getId());
+		// System.out.println(html);
 		webView.getEngine().loadContent(html);
 	}
 

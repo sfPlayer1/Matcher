@@ -91,8 +91,10 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 	}
 
 	@Override
-	public void onViewChange() {
-		update(selectionProvider.getSelectedField());
+	public void onViewChange(ViewChangeCause cause) {
+		if (cause == ViewChangeCause.NAME_TYPE_CHANGED) {
+			update(selectionProvider.getSelectedField());
+		}
 	}
 
 	private void update(FieldInstance field) {

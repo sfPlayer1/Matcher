@@ -1,0 +1,277 @@
+/* See https://github.com/akamud/vscode-theme-onedark/blob/7139d67c9a64462339cd160191e1057fc855cc16/themes/OneDark.json */
+
+@import url(borderless-preset.css);
+
+/*****************************/
+/*          JavaFx           */
+/*****************************/
+
+* {
+	-fx-ui-main-color: #21252b;
+	-fx-main-content-color: #282c34;
+	-fx-menu-color: #353b45;
+	-fx-menu-separator-color: #606060;
+	-fx-menu-button-hover-color: #33373b;
+	-fx-menu-item-hover-color: #2c313a;
+	-fx-split-pane-divider-color: #333842;
+	-fx-tab-border-color: #181a1f;
+	-fx-textbox-color: #1B1D23;
+	-fx-focus-or-hover-color: #528BFF;
+}
+
+.root {
+	-fx-base: -fx-ui-main-color;
+	-fx-background-color: -fx-main-content-color;
+	-fx-control-inner-background: -fx-ui-main-color;
+	-fx-selection-bar: -fx-menu-color;
+	-fx-focused-mark-color: -fx-focused-text-base-color;
+	-fx-selection-bar-non-focused: -fx-menu-button-hover-color;
+}
+
+
+/* --- Menus --- */
+
+.menu-bar {
+	-fx-background-color: -fx-ui-main-color;
+}
+
+.menu {
+	-fx-selection-bar: -fx-menu-button-hover-color;
+}
+
+.menu:hover {
+	-fx-background-color: -fx-menu-button-hover-color;
+}
+
+.context-menu {
+	-fx-selection-bar: -fx-menu-item-hover-color;
+	-fx-background-color: -fx-menu-color;
+	-fx-border-color: -fx-menu-color;
+	-fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.36), 12, 0.2, 1, 1);
+}
+
+.context-menu {
+	-fx-padding: 2 0 2 0
+}
+
+.context-menu .separator {
+	-fx-padding: 2 0 2 0
+}
+
+.context-menu .separator .line {
+	-fx-border-color: -fx-menu-separator-color;
+	-fx-border-width: 1 0 0 0;
+}
+
+.context-menu .menu-item:hover {
+	-fx-background-color: -fx-menu-item-hover-color;
+}
+
+
+/* --- Match panes --- */
+
+#match-pane-src,
+#match-pane-dst {
+	-fx-background-color: -fx-ui-main-color;
+}
+
+#match-pane-dst {
+	-fx-border-width: 0 0 0 4;
+	-fx-border-color: -fx-ui-main-color;
+}
+
+#match-pane-src .list-view,
+#match-pane-dst .list-view {
+	-fx-focus-color: -fx-focus-or-hover-color;
+}
+
+
+/* --- Split panes --- */
+
+.split-pane .split-pane-divider {
+	-fx-background-color: -fx-split-pane-divider-color;
+}
+
+.split-pane .split-pane-divider:hover,
+.split-pane .split-pane-divider:pressed {
+	-fx-background-color: -fx-focus-or-hover-color;
+}
+
+.split-pane:vertical .split-pane-divider {
+	-fx-padding: 0 2 0 2;
+}
+
+.split-pane:horizontal .split-pane-divider {
+	-fx-padding: 0;
+}
+
+.split-pane:horizontal .split-pane-divider:hover,
+.split-pane:horizontal .split-pane-divider:pressed {
+	-fx-padding: 2;
+}
+
+
+/* --- Tab panes --- */
+
+.tab-pane .tab-header-area {
+	-fx-padding: 0 6 0 0;
+}
+
+.tab-pane .tab-header-area .tab-header-background {
+	-fx-background-color: -fx-ui-main-color;
+}
+
+.tab-pane .tab-header-area .headers-region .tab {
+	-fx-background-color: -fx-ui-main-color;
+	-fx-background-radius: 0;
+	-fx-border-color: -fx-tab-border-color;
+	-fx-padding: 2 10 2 10;
+}
+
+.tab-pane .tab-header-area .headers-region .tab:selected {
+	-fx-background-color: -fx-main-content-color;
+}
+
+.tab-pane .tab .focus-indicator {
+	-fx-border-color: null;
+}
+
+.tab-pane .tab-content-area,
+.tab-pane .tab-content-area > * > *  {
+	-fx-background-color: -fx-main-content-color;
+}
+
+
+/* --- Scrollbars --- */
+
+.scroll-bar .track {
+	-fx-background-color: transparent;
+	-fx-background-radius: 0;
+	-fx-border-color: transparent;
+	-fx-border-radius: 0;
+}
+
+.scroll-bar:horizontal .increment-button,
+.scroll-bar:horizontal .decrement-button {
+	-fx-background-color: transparent;
+	-fx-background-radius: 0em;
+	-fx-padding: 0 0 10 0;
+
+}
+
+.scroll-bar:vertical .increment-button,
+.scroll-bar:vertical .decrement-button {
+	-fx-background-color: transparent;
+	-fx-background-radius: 0em;
+	-fx-padding: 0 10 0 0;
+
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+	-fx-shape: " ";
+	-fx-padding: 0.15em 0;
+}
+
+.scroll-bar:vertical .increment-arrow,
+.scroll-bar:vertical .decrement-arrow {
+	-fx-shape: " ";
+	-fx-padding: 0 0.15em;
+}
+
+.scroll-bar:horizontal .thumb,
+.scroll-bar:vertical .thumb {
+	-fx-background-color: rgba(78, 86, 102, 0.5);
+	-fx-background-insets: 2, 0, 0;
+	-fx-background-radius: 2em;
+}
+
+.scroll-bar:horizontal .thumb:hover,
+.scroll-bar:vertical .thumb:hover {
+	-fx-background-color: rgba(90, 99, 117, 0.5);
+	-fx-background-insets: 2, 0, 0;
+	-fx-background-radius: 2em;
+}
+
+.scroll-bar:horizontal .thumb:pressed,
+.scroll-bar:vertical .thumb:pressed {
+	-fx-background-color: rgba(116, 125, 145, 0.5);
+	-fx-background-insets: 2, 0, 0;
+	-fx-background-radius: 2em;
+}
+
+
+/* --- Text fields --- */
+
+.text-field {
+	-fx-padding: 4;
+	-fx-border-width: 0 4 2 4;
+	-fx-border-radius: 0;
+	-fx-border-color: -fx-ui-main-color;
+	-fx-background-radius: 0;
+	-fx-background-color: -fx-textbox-color;
+	-fx-focus-color: -fx-focus-or-hover-color;
+}
+
+.text-field:focused {
+	-fx-border-width: 1;
+	-fx-border-insets: 0 0 1 0;
+	-fx-border-color: -fx-focus-or-hover-color;
+}
+
+
+/* --- Bottom pane --- */
+
+#bottom-pane {
+	-fx-background-color: -fx-ui-main-color;
+}
+
+
+
+/*****************************/
+/*          WebView          */
+/*****************************/
+
+.code body {
+	color: #abb2bf;
+	background-color: #282c34;
+}
+
+
+.code .keyword,
+.code .annotation {
+	color: #c678dd;
+}
+
+.code .keyword {
+	font-weight: normal;
+}
+
+.code .import-declaration-package-name,
+.code .class-name {
+	color: #e5c07b;
+}
+
+.code .field-name {
+	color: #e06c75;
+}
+
+.code .method-name {
+	color: #61afef;
+}
+
+.code .variable-name {
+	color: #abb2bf;
+}
+
+.code .string {
+	color: #98c379;
+}
+
+.code .comment {
+	color: #5c6370;
+}
+
+.code .selected {
+	background-color: #3e4451;
+}
