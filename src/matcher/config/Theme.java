@@ -3,10 +3,10 @@ package matcher.config;
 import java.net.URL;
 
 public enum Theme {
-	VS_CODE_LIGHT("vs-code-light", "VS Code Light", false, ColorInterpolationMode.HSL),
-	ECLIPSE_LIGHT("eclipse-light", "Eclipse Light", false, ColorInterpolationMode.HSL),
-	ONE_DARK("one-dark", "One Dark", true, ColorInterpolationMode.HSL),
-	DARCULA("darcula", "Darcula", true, ColorInterpolationMode.HSL);
+	VS_CODE_LIGHT("vs-code-light", "VS Code Light", false, ColorInterpolationMode.HSB),
+	ECLIPSE_LIGHT("eclipse-light", "Eclipse Light", false, ColorInterpolationMode.HSB),
+	ONE_DARK("one-dark", "One Dark", true, ColorInterpolationMode.HSB),
+	DARCULA("darcula", "Darcula", true, ColorInterpolationMode.HSB);
 
 	public static Theme getDefault() {
 		return VS_CODE_LIGHT;
@@ -61,6 +61,6 @@ public enum Theme {
 		/**
 		 * For vibrant interpolated colors.
 		 */
-		HSL
+		HSB
 	}
 }
