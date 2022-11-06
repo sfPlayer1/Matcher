@@ -90,14 +90,13 @@ public class Gui extends Application {
 			l.accept(this);
 		}
 
-		scene.getStylesheets().add(getClass().getResource("/ui/styles/defaults.css").toExternalForm());
 		updateCss();
 
 		stage.setScene(scene);
 		stage.setTitle("Matcher");
 		stage.show();
 
-		srcPane.requestFocus();
+		border.requestFocus();
 	}
 
 	@Override
@@ -196,11 +195,11 @@ public class Gui extends Application {
 
 	public void updateCss() {
 		if (lastSwitchedToTheme != null) {
-			scene.getStylesheets().removeAll(getClass().getResource("/ui/styles/" + lastSwitchedToTheme.getId() + ".css").toExternalForm());
+			scene.getStylesheets().removeAll(lastSwitchedToTheme.getUrl().toExternalForm());
 		}
 
 		lastSwitchedToTheme = Config.getTheme();
-		scene.getStylesheets().add(getClass().getResource("/ui/styles/" + lastSwitchedToTheme.getId() + ".css").toExternalForm());
+		scene.getStylesheets().add(lastSwitchedToTheme.getUrl().toExternalForm());
 
 		for (IGuiComponent c : components) {
 			c.onViewChange(ViewChangeCause.THEME_CHANGED);

@@ -1,0 +1,15 @@
+.no-match-cell {
+	-fx-text-fill: dimgray;
+}
+
+.low-match-similarity-cell {
+	-fx-text-fill: firebrick;
+}
+
+.moderate-match-similarity-cell {
+	-fx-text-fill: chocolate;
+}
+
+.high-match-similarity-cell {
+	-fx-text-fill: darkgreen;
+}

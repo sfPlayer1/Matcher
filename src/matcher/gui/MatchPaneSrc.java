@@ -1,23 +1,38 @@
 package matcher.gui;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javafx.collections.FXCollections;
+import javafx.css.CssParser;
+import javafx.css.Declaration;
+import javafx.css.Rule;
+import javafx.css.Selector;
+import javafx.css.Stylesheet;
+import javafx.css.converter.ColorConverter;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
+import javafx.scene.control.Cell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import javafx.scene.paint.Color;
 
 import matcher.NameType;
 import matcher.Util;
+import matcher.config.Config;
+import matcher.config.Theme.ColorInterpolationMode;
 import matcher.gui.Gui.SortKey;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
@@ -36,6 +51,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 	private void init() {
 		setId("match-pane-src");
+		retrieveCellTextColors();
 
 		// lists
 
@@ -101,6 +117,47 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		setDividerPosition(0, 0.25);
 	}
 
+	private void retrieveCellTextColors() {
+		CssParser parser = new CssParser();
+		Stylesheet css;
+
+		try {
+			css = parser.parse(Config.getTheme().getUrl().toURI().toURL());
+		} catch (IOException | URISyntaxException e) {
+			System.err.println("CSS parsing failed");
+			return;
+		}
+
+		for (Rule rule : css.getRules()) {
+			boolean lowSimilarityStylePresent = false;
+			boolean highSimilarityStylePresent = false;
+
+			for (Selector selector : rule.getSelectors()) {
+				if (selector.toString().contains(CellStyleClass.LOW_MATCH_SIMILARITY.cssName)) {
+					lowSimilarityStylePresent = true;
+				}
+
+				if (selector.toString().contains(CellStyleClass.HIGH_MATCH_SIMILARITY.cssName)) {
+					highSimilarityStylePresent = true;
+				}
+
+				if (lowSimilarityStylePresent && highSimilarityStylePresent) break;
+			}
+
+			if (!lowSimilarityStylePresent && !highSimilarityStylePresent) continue;
+
+			Optional<Declaration> textColorDecl = rule.getDeclarations().stream()
+					.filter(decl -> decl.getProperty().equals("-fx-text-fill"))
+					.reduce((first, second) -> second);
+			if (textColorDecl.isEmpty()) continue;
+
+			Color color = ColorConverter.getInstance().convert(textColorDecl.get().getParsedValue(), null);
+
+			if (lowSimilarityStylePresent) lowSimilarityCellTextColor = color;
+			if (highSimilarityStylePresent) highSimilarityCellTextColor = color;
+		};
+	}
+
 	private Node createClassList() {
 		if (useClassTree) {
 			classList = null;
@@ -137,9 +194,29 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		}
 
 		@Override
-		protected String getStyle(T item) {
-			return getCellStyle(item);
+		protected void setCustomStyle(StyledListCell<?> cell, T item) {
+			setCellStyle(cell, item);
 		}
+	}
+
+	protected enum CellStyleClass {
+		NO_MATCH("no-match-cell"),
+		LOW_MATCH_SIMILARITY("low-match-similarity-cell"),
+		MODERATE_MATCH_SIMILARITY("moderate-match-similarity-cell"),
+		HIGH_MATCH_SIMILARITY("high-match-similarity-cell");
+
+		static {
+			cssNames = Arrays.stream(values())
+					.map(e -> e.cssName)
+					.collect(Collectors.toList());
+		}
+
+		CellStyleClass(String cssName) {
+			this.cssName = cssName;
+		}
+
+		public final String cssName;
+		public static final List<String> cssNames;
 	}
 
 	private class SrcTreeCell extends StyledTreeCell<Object> {
@@ -155,13 +232,11 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		}
 
 		@Override
-		protected String getStyle(Object item) {
-			if (item instanceof String) {
-				return "";
-			} else if (item instanceof Matchable<?>) {
-				return getCellStyle((Matchable<?>) item);
+		protected void setCustomStyle(StyledTreeCell<?> cell) {
+			if (cell.getItem() instanceof Matchable<?>) {
+				setCellStyle(cell, (Matchable<?>) cell.getItem());
 			} else {
-				return "";
+				cell.getStyleClass().removeAll(CellStyleClass.cssNames);
 			}
 		}
 	}
@@ -177,53 +252,91 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		}
 	}
 
-	private String getCellStyle(Matchable<?> item) {
-		if (gui.isUseDiffColors()) {
-			final float epsilon = 1e-5f;
+	private void setCellStyle(Cell<?> cell, Matchable<?> item) {
+		CellStyleClass styleClass = null;
+
+		if (!gui.isUseDiffColors()) {
+			if (!item.hasPotentialMatch()) {
+				styleClass = CellStyleClass.NO_MATCH;
+			} else if (item.getMatch() == null) {
+				styleClass = CellStyleClass.LOW_MATCH_SIMILARITY;
+			} else if (!item.isFullyMatched(false)) { // TODO: change recursive to true once arg+var matching is further implemented
+				styleClass = CellStyleClass.MODERATE_MATCH_SIMILARITY;
+			} else {
+				styleClass = CellStyleClass.HIGH_MATCH_SIMILARITY;
+			}
+		} else {
+			final float epsilon = 1e-5f; // float rounding error
 			float similarity = item.getSimilarity();
 
 			if (similarity < epsilon) {
-				return "-fx-text-fill: darkred;";
+				styleClass = CellStyleClass.LOW_MATCH_SIMILARITY;
 			} else if (similarity > 1 - epsilon) {
-				return "-fx-text-fill: darkgreen;";
+				styleClass = CellStyleClass.HIGH_MATCH_SIMILARITY;
 			} else {
-				final float hue0 = 30; // red, darkred=0
-				final float hue1 = 90; // green, darkgreen=120
-				final float saturation = 0.8f; // darkred=darkgreen=1
-				final float value0 = 0.645f; // darkred=0.545
-				final float value1 = 0.492f; // darkgreen=0.392
+				cell.setTextFill(null);
+				if (lowSimilarityCellTextColor == null || highSimilarityCellTextColor == null) return;
 
-				float f0 = 1 - similarity;
-				float f1 = similarity;
-				float h = hue0 * f0 + hue1 * f1;
-				float v = value0 * f0 + value1 * f1;
-
-				float vs = v * saturation;
-				float h6 = h * (1f / 60);
-
-				float red = hsvToRgb(v, vs, h6, 5);
-				float green = hsvToRgb(v, vs, h6, 3);
-				float blue = hsvToRgb(v, vs, h6, 1);
-
-				return String.format("-fx-text-fill: #%02x%02x%02x", (int) (red * 255), (int) (green * 255), (int) (blue * 255));
-			}
-		} else {
-			if (!item.hasPotentialMatch()) {
-				return "-fx-text-fill: dimgray;";
-			} else if (item.getMatch() == null) {
-				return "-fx-text-fill: darkred;";
-			} else if (!item.isFullyMatched(false)) { // TODO: change recursive to true once arg+var matching is further implemented
-				return "-fx-text-fill: chocolate;";
-			} else {
-				return "-fx-text-fill: darkgreen;";
+				if (Config.getTheme().getDiffColorInterpolationMode() == ColorInterpolationMode.RGB) {
+					cell.setTextFill(interpolateRgb(lowSimilarityCellTextColor, highSimilarityCellTextColor, similarity));
+				} else {
+					cell.setTextFill(interpolateHsb(lowSimilarityCellTextColor, highSimilarityCellTextColor, similarity));
+				}
 			}
 		}
+
+		cell.getStyleClass().removeAll(CellStyleClass.cssNames);
+		if (styleClass != null) cell.getStyleClass().add(styleClass.cssName);
 	}
 
-	private static float hsvToRgb(float v, float vs, float h6, int n) {
-		float k = (n + h6) % 6;
+	public Color interpolateRgb(Color colorA, Color colorB, float step) {
+		float redA = (float) colorA.getRed() * 255;
+		float redB = (float) colorB.getRed() * 255;
+		float greenA = (float) colorA.getGreen() * 255;
+		float greenB = (float) colorB.getGreen() * 255;
+		float blueA = (float) colorA.getBlue() * 255;
+		float blueB = (float) colorB.getBlue() * 255;
+		float stepInv = 1 - step;
 
-		return v - vs * Math.max(Math.min(Math.min(k, 4-k), 1), 0);
+		return Color.rgb(
+			(int) (redA * stepInv + redB * step),
+			(int) (greenA * stepInv + greenB * step),
+			(int) (blueA * stepInv + blueB * step));
+	}
+
+	public Color interpolateHsb(Color colorA, Color colorB, float step) {
+		float hueA = (float) colorA.getHue();
+		float hueB = (float) colorB.getHue();
+
+		// Hue interpolation
+		float hue;
+		float hueDiff = hueB - hueA;
+
+		if (hueA > hueB) {
+			float tempHue = hueB;
+			hueB = hueA;
+			hueA = tempHue;
+
+			Color tempColor = colorB;
+			colorB = colorA;
+			colorA = tempColor;
+
+			hueDiff = -hueDiff;
+			step = 1 - step;
+		}
+
+		if (hueDiff <= 180) {
+			hue = hueA + step * hueDiff;
+		} else {
+			hueA = hueA + 360;
+			hue = (hueA + step * (hueB - hueA)) % 360;
+		}
+
+		// Interpolate the rest
+		return Color.hsb(
+				hue,
+				colorA.getSaturation() + step * (colorB.getSaturation() - colorA.getSaturation()),
+				colorA.getBrightness() + step * (colorB.getBrightness() - colorA.getBrightness()));
 	}
 
 	@Override
@@ -335,19 +448,25 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			}
 
 			break;
+
+		case THEME_CHANGED:
+			retrieveCellTextColors();
+		case DIFF_COLORS_TOGGLED:
+			updateLists(true, true);
+			break;
+
 		case SHOW_NON_INPUTS_TOGGLED:
 			updateLists(true, false);
 			break;
+
+		case SORTING_CHANGED:
 		case NAME_TYPE_CHANGED:
 			updateLists(false, true);
 			break;
-		case SORTING_CHANGED:
-			updateLists(false, true);
 		}
 
 		IFwdGuiComponent.super.onViewChange(cause);
 	}
-
 
 	/**
 	 * @param updateContents if classes got added/removed or the use of the class tree view got toggled
@@ -634,5 +753,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private final ListView<MemberInstance<?>> memberList = new ListView<>();
 	private final ListView<MethodVarInstance> varList = new ListView<>();
 
+	private Color lowSimilarityCellTextColor;
+	private Color highSimilarityCellTextColor;
 	private boolean suppressChangeEvents;
 }

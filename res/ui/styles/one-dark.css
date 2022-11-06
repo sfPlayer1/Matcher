@@ -1,6 +1,8 @@
 /* See https://github.com/akamud/vscode-theme-onedark/blob/7139d67c9a64462339cd160191e1057fc855cc16/themes/OneDark.json */
 
-@import url(borderless-preset.css);
+@import url(presets/base.css);
+@import url(presets/borderless-controls.css);
+
 
 /*****************************/
 /*          JavaFx           */
@@ -44,14 +46,18 @@
 }
 
 .context-menu {
-	-fx-selection-bar: -fx-menu-item-hover-color;
+	-fx-padding: 2 0 2 0;
 	-fx-background-color: -fx-menu-color;
 	-fx-border-color: -fx-menu-color;
 	-fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.36), 12, 0.2, 1, 1);
 }
 
-.context-menu {
-	-fx-padding: 2 0 2 0
+.context-menu .menu-item {
+	-fx-selection-bar: -fx-menu-item-hover-color;
+}
+
+.context-menu .menu-item:hover {
+	-fx-background-color: -fx-menu-item-hover-color;
 }
 
 .context-menu .separator {
@@ -63,16 +69,13 @@
 	-fx-border-width: 1 0 0 0;
 }
 
-.context-menu .menu-item:hover {
-	-fx-background-color: -fx-menu-item-hover-color;
-}
-
 
 /* --- Match panes --- */
 
 #match-pane-src,
 #match-pane-dst {
 	-fx-background-color: -fx-ui-main-color;
+	-fx-control-inner-background-alt: -fx-ui-main-color;
 }
 
 #match-pane-dst {
@@ -83,6 +86,22 @@
 #match-pane-src .list-view,
 #match-pane-dst .list-view {
 	-fx-focus-color: -fx-focus-or-hover-color;
+}
+
+.no-match-cell {
+	-fx-text-fill: #abb2bf;
+}
+
+.low-match-similarity-cell {
+	-fx-text-fill: #ff4a4a;
+}
+
+.moderate-match-similarity-cell {
+	-fx-text-fill: #cca700;
+}
+
+.high-match-similarity-cell {
+	-fx-text-fill: #6a9955;
 }
 
 
