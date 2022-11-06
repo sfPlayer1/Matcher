@@ -1,6 +1,8 @@
 /* See Intellij Idea Settings -> Editor -> Color Scheme -> Darcula */
 
-@import url(borderless-preset.css);
+@import url(presets/base.css);
+@import url(presets/borderless-controls.css);
+
 
 /*****************************/
 /*          JavaFx           */
@@ -41,7 +43,7 @@ GridPane {
 	-fx-background-color: -fx-menu-button-hover-color;
 }
 
-.context-menu {
+.context-menu .menu-item {
 	-fx-selection-bar: -fx-menu-item-hover-color;
 }
 
@@ -70,6 +72,22 @@ GridPane {
 #match-pane-dst {
 	-fx-border-width: 0 0 0 3;
 	-fx-border-color: -fx-ui-main-color;
+}
+
+.no-match-cell {
+	-fx-text-fill: #a9b7c6;
+}
+
+.low-match-similarity-cell {
+	-fx-text-fill: #ec4b4b;
+}
+
+.moderate-match-similarity-cell {
+	-fx-text-fill: #ffc66d;
+}
+
+.high-match-similarity-cell {
+	-fx-text-fill: #70b152;
 }
 
 

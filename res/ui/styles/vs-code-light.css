@@ -1,5 +1,9 @@
 /* See https://github.com/microsoft/vscode/blob/98f401e8b951868cb4d9830e4c9ea0aa46292a3a/extensions/theme-defaults/themes/light_plus.json */
 
+@import url(presets/base.css);
+@import url(presets/light-theme-match-cells.css);
+
+
 /*****************************/
 /*          WebView          */
 /*****************************/

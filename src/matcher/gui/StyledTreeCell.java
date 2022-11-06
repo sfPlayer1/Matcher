@@ -12,13 +12,12 @@ abstract class StyledTreeCell<T> extends TreeCell<T> {
 			setStyle("");
 		} else {
 			setText(getText(item));
-			setStyle(getStyle(item));
+			setCustomStyle(this);
 		}
 	}
 
 	protected abstract String getText(T item);
 
-	protected String getStyle(T item) {
-		return "";
+	protected void setCustomStyle(StyledTreeCell<?> cell) {
 	}
 }

@@ -44,8 +44,8 @@ abstract class WebViewTab extends Tab implements IGuiComponent {
 
 	protected void displayHtml(String html) {
 		html = template.replace("%text%", html)
-				.replace("%styles_path%", getClass().getResource("/ui/styles").toExternalForm())
-				.replace("%theme%", Config.getTheme().getId());
+				.replace("%theme_path%", Config.getTheme().getUrl().toExternalForm());
+
 		// System.out.println(html);
 		webView.getEngine().loadContent(html);
 	}

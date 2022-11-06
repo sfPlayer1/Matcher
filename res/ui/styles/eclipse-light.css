@@ -1,5 +1,9 @@
 /* See https://github.com/lorenzobilli/Eclipse-color-theme/blob/7d93ba9d324a80bb60afc03f6f5b0f375a313161/Visual%20Studio%20Code/eclipse-classic-light/themes/Eclipse%20Classic%20Light-color-theme.json */
 
+@import url(presets/base.css);
+@import url(presets/light-theme-match-cells.css);
+
+
 /*****************************/
 /*          WebView          */
 /*****************************/
