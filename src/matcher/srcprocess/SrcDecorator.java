@@ -30,29 +30,34 @@ import matcher.type.MethodVarInstance;
 
 public class SrcDecorator {
 	public static String decorate(String src, ClassInstance cls, NameType nameType) {
-		if (cls.getOuterClass() != null) {
+		String name = cls.getName(nameType);
+
+		if (cls.getOuterClass() != null && name.contains("$")) {
 			// replace <outer>.<inner> with <outer>$<inner> since . is not a legal identifier within class names and thus gets rejected by JavaParser
 
-			String name = cls.getName(nameType);
-			int pos = name.indexOf('$');
+			int nameStartPos = Math.max(0, name.lastIndexOf('/') + 1);
+			List<String> classNames = new ArrayList<>();
+			boolean firstDollar = true;
 
-			if (pos != -1) {
-				int end = name.length();
-				char c;
+			name = name.substring(nameStartPos, name.length());
 
-				while ((c = name.charAt(end - 1)) >= '0' && c <= '9' || c == '$') { // FIXME: CFR strips digits only sometimes
-					end--;
-				}
+			for (int i = 0; i < name.length(); i++) {
+				char ch = name.charAt(i);
 
-				if (end > pos) {
-					if ((pos = name.lastIndexOf('/')) != -1) {
-						name = name.substring(pos + 1, end);
-					} else if (end != name.length()) {
-						name = name.substring(0, end);
+				if (ch == '$') {
+					if (firstDollar) {
+						firstDollar = false;
+						continue;
 					}
 
-					src = src.replace(name.replace('$', '.'), name);
+					classNames.add(name.substring(0, i));
 				}
+			}
+
+			classNames.add(name.substring(0, name.length()));
+
+			for (int i = classNames.size() - 1; i >= 0; i--) {
+				src = src.replace(classNames.get(i).replace('$', '.'), classNames.get(i));
 			}
 		}
 
