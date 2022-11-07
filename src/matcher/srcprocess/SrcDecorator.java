@@ -75,7 +75,7 @@ public class SrcDecorator {
 		HtmlPrinter printer = new HtmlPrinter(resolver);
 		cu.accept(printer, null);
 
-		return printer.getSource();
+		return printer.toString();
 	}
 
 	public static class SrcParseException extends RuntimeException {
