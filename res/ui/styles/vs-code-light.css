@@ -36,6 +36,10 @@
 	color: #008000;
 }
 
+.code .number {
+	color: #098658
+}
+
 .code .selected {
 	background-color: #add6ff;
 }
