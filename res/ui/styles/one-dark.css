@@ -287,6 +287,10 @@
 	color: #98c379;
 }
 
+.code .number {
+	color: #d19a66;
+}
+
 .code .comment {
 	color: #5c6370;
 }

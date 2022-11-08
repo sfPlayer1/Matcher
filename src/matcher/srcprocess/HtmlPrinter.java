@@ -64,8 +64,12 @@ import com.github.javaparser.ast.comments.LineComment;
 import com.github.javaparser.ast.expr.ArrayCreationExpr;
 import com.github.javaparser.ast.expr.BooleanLiteralExpr;
 import com.github.javaparser.ast.expr.CharLiteralExpr;
+import com.github.javaparser.ast.expr.DoubleLiteralExpr;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.InstanceOfExpr;
+import com.github.javaparser.ast.expr.IntegerLiteralExpr;
+import com.github.javaparser.ast.expr.LiteralStringValueExpr;
+import com.github.javaparser.ast.expr.LongLiteralExpr;
 import com.github.javaparser.ast.expr.MarkerAnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.MethodCallExpr;
@@ -662,6 +666,29 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.print("<span class=\"string\">'");
 		printer.print(HtmlUtil.escape(n.getValue()));
 		printer.print("'</span>");
+	}
+
+    @Override
+    public void visit(final DoubleLiteralExpr n, final Void arg) {
+        visitNumericLiteralExpr(n, arg);
+    }
+
+    @Override
+    public void visit(final IntegerLiteralExpr n, final Void arg) {
+        visitNumericLiteralExpr(n, arg);
+    }
+
+    @Override
+    public void visit(final LongLiteralExpr n, final Void arg) {
+        visitNumericLiteralExpr(n, arg);
+    }
+
+	private void visitNumericLiteralExpr(final LiteralStringValueExpr n, final Void arg) {
+        printOrphanCommentsBeforeThisChildNode(n);
+        printComment(n.getComment(), arg);
+		printer.print("<span class=\"number\">");
+        printer.print(n.getValue());
+		printer.print("</span>");
 	}
 
 	@Override

@@ -179,6 +179,10 @@ GridPane {
 	color: #6a8759;
 }
 
+.code .number {
+	color: #6897bb;
+}
+
 .code .comment {
 	color: #629755;
 }
