@@ -8,20 +8,30 @@
 /*          WebView          */
 /*****************************/
 
+.code body
+.code .field-name,
+.code .variable {
+	color: #001080;
+}
+
 .code .keyword {
 	color: #0000ff;
 	font-weight: normal;
 }
 
-.code .import-declaration-package-name,
+.code .import-declaration-package,
 .code .annotation,
 .code .class-name {
 	color: #267f99;
 }
 
-.code .field-name,
-.code .variable-name {
-	color: #001080;
+.code .standalone-annotation-member,
+.code .assigned-annotation-member {
+	color: #000000;
+}
+
+.code .enum-constant {
+	color: #0070c1;
 }
 
 .code .method-name {
