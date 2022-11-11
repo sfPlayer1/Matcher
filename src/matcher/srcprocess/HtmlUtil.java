@@ -1,5 +1,7 @@
 package matcher.srcprocess;
 
+import java.util.regex.Pattern;
+
 import matcher.type.FieldInstance;
 import matcher.type.MethodInstance;
 
@@ -44,7 +46,8 @@ public class HtmlUtil {
 		}
 	}
 
-	public static String escape(String str) {
+	public static String escape(String str, String... allowedTags) {
+		Pattern tagPattern = compileTagPattern(allowedTags);
 		StringBuilder ret = null;
 		int retEnd = 0;
 
@@ -53,6 +56,16 @@ public class HtmlUtil {
 
 			if (c == '<' || c == '>' || c == '&') {
 				if (ret == null) ret = new StringBuilder(max * 2);
+
+				if (c == '<' && allowedTags != null) {
+					int pos = str.substring(i, str.length()).indexOf('>');
+
+					if (tagPattern.matcher(str.substring(i, i + pos + 1)).find()) {
+						// Skip ahead to after the tag
+						i += pos;
+						continue;
+					}
+				}
 
 				ret.append(str, retEnd, i);
 
@@ -75,5 +88,22 @@ public class HtmlUtil {
 
 			return ret.toString();
 		}
+	}
+
+	private static Pattern compileTagPattern(String... tags) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("^<(/)?(");
+
+		for (int i = 0; i < tags.length; i++) {
+			builder.append(tags[i]);
+
+			if (i < tags.length - 1) {
+				builder.append('|');
+			}
+		}
+
+		builder.append(")[^>]*?>");
+
+		return Pattern.compile(builder.toString());
 	}
 }

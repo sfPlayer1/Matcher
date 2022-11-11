@@ -278,7 +278,7 @@
 }
 
 .code .accessed-identifier,
-.code .field-name {
+.code .field {
 	color: #e06c75;
 }
 
