@@ -148,8 +148,16 @@ GridPane {
 /*****************************/
 
 .code body {
-	color: #a9b7c6;
 	background-color: #2b2b2b;
+}
+
+.code body,
+.code .import-declaration-package,
+.code .standalone-annotation-member,
+.code .assigned-annotation-member,
+.code .class-name,
+.code .variable {
+	color: #a9b7c6;
 }
 
 .code .keyword {
@@ -157,16 +165,11 @@ GridPane {
 	font-weight: normal;
 }
 
-.code .import-declaration-package-name,
-.code .class-name,
-.code .variable-name {
-	color: #a9b7c6;
-}
-
 .code .annotation {
 	color: #bbb529;
 }
 
+.code .enum-constant,
 .code .field {
 	color: #9876aa;
 }

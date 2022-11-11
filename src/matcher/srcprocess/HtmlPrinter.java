@@ -64,8 +64,10 @@ import com.github.javaparser.ast.comments.LineComment;
 import com.github.javaparser.ast.expr.ArrayCreationExpr;
 import com.github.javaparser.ast.expr.BooleanLiteralExpr;
 import com.github.javaparser.ast.expr.CharLiteralExpr;
+import com.github.javaparser.ast.expr.ClassExpr;
 import com.github.javaparser.ast.expr.DoubleLiteralExpr;
 import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.FieldAccessExpr;
 import com.github.javaparser.ast.expr.InstanceOfExpr;
 import com.github.javaparser.ast.expr.IntegerLiteralExpr;
 import com.github.javaparser.ast.expr.LiteralStringValueExpr;
@@ -73,6 +75,7 @@ import com.github.javaparser.ast.expr.LongLiteralExpr;
 import com.github.javaparser.ast.expr.MarkerAnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.expr.NullLiteralExpr;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
@@ -576,11 +579,9 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		boolean isField = n.getParentNode().orElse(null) instanceof FieldDeclaration;
 
 		printer.print("<span class=\"");
-		printer.print(isField ? "field-name" : "variable-name");
+		printer.print(isField ? "field-name" : "variable");
 		printer.print("\">");
-
 		n.getName().accept(this, arg);
-
 		printer.print("</span>");
 
 		n.findAncestor(NodeWithVariables.class).ifPresent(ancestor -> ((NodeWithVariables<?>) ancestor).getMaximumCommonType().ifPresent(commonType -> {
@@ -644,6 +645,32 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 			n.getInitializer().get().accept(this, arg);
 		}
 	}
+
+    @Override
+    public void visit(final ClassExpr n, final Void arg) {
+        printOrphanCommentsBeforeThisChildNode(n);
+        printComment(n.getComment(), arg);
+        n.getType().accept(this, arg);
+        printer.print(".");
+		printer.print("<span class=\"field-name\">");
+        printer.print("class");
+		printer.print("</span>");
+    }
+
+    @Override
+    public void visit(final FieldAccessExpr n, final Void arg) {
+        printOrphanCommentsBeforeThisChildNode(n);
+        printComment(n.getComment(), arg);
+		printer.print("<span class=\"accessed-identifier\">");
+		printer.print("<span class=\"class-name\">");
+        n.getScope().accept(this, arg);
+		printer.print("</span>");
+		printer.print("</span>");
+        printer.print(".");
+		printer.print("<span class=\"field-name\">");
+        n.getName().accept(this, arg);
+		printer.print("</span>");
+    }
 
 	@Override
 	public void visit(final InstanceOfExpr n, final Void arg) {
@@ -837,7 +864,29 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		// we have a scope
 		// this means we are not the first method in the chain
 		n.getScope().ifPresent(scope -> {
+			NameExpr firstScopePart = null;
+			NameExpr lastScopePart = null;
+
+			if (scope.isNameExpr()) {
+				firstScopePart = (NameExpr) scope.clone();
+				String oldName = firstScopePart.getName().asString();
+				int dotIndex = oldName.indexOf('.');
+
+				if (dotIndex != -1) {
+					firstScopePart.setName(oldName.substring(0, dotIndex));
+					scope = firstScopePart;
+
+					lastScopePart = (NameExpr) scope.clone();
+					lastScopePart.setName(oldName.substring(dotIndex, oldName.length()));
+				}
+			}
+
+			if (scope.isNameExpr()) printer.print("<span class=\"accessed-identifier\">");
+			// TODO: Find a way to determine whether or not this is a class, and append span accordingly
 			scope.accept(this, arg);
+			if (scope.isNameExpr()) printer.print("</span>");
+
+			if (lastScopePart != null) lastScopePart.accept(this, arg);
 
 			if (columnAlignFirstMethodChain.get()) {
 				if (methodCallWithScopeInScope.get()) {
@@ -982,14 +1031,16 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 			printer.print(" ");
 		}
 
+		printer.print("<span class=\"method-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
 
 		if (!isNullOrEmpty(n.getThrownExceptions())) {
 			printer.print(" <span class=\"keyword\">throws</span> ");
 
 			for (final Iterator<ReferenceType> i = n.getThrownExceptions().iterator(); i.hasNext(); ) {
 				final ReferenceType name = i.next();
-				printer.print("<span class=\"variable-name\">");
+				printer.print("<span class=\"variable\">");
 				name.accept(this, arg);
 				printer.print("</span>");
 
@@ -1095,7 +1146,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 			printer.print(" ");
 		}
 
-		printer.print("<span class=\"variable-name\">");
+		printer.print("<span class=\"variable\">");
 		n.getName().accept(this, arg);
 		printer.print("</span>");
 	}
@@ -1249,7 +1300,10 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printModifiers(n.getModifiers());
 
 		printer.print("<span class=\"keyword\">enum</span> ");
+
+		printer.print("<span class=\"class-name\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
 
 		if (!n.getImplementedTypes().isEmpty()) {
 			printer.print(" <span class=\"keyword\">implements</span> ");
@@ -1315,7 +1369,10 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 
 		printComment(n.getComment(), arg);
 		printMemberAnnotations(n.getAnnotations(), arg);
+
+		printer.print("<span class=\"enum-constant\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
 
 		if (!n.getArguments().isEmpty()) {
 			printArguments(n.getArguments(), arg);
@@ -1612,7 +1669,9 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 
 		n.getType().accept(this, arg);
 		printer.print(" ");
+		printer.print("<span class=\"assigned-annotation-member\">");
 		n.getName().accept(this, arg);
+		printer.print("</span>");
 		printer.print("()");
 
 		if (n.getDefaultValue().isPresent()) {
@@ -1639,7 +1698,9 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.print("<span class=\"annotation\">@");
 		n.getName().accept(this, arg);
 		printer.print("</span>(");
+		printer.print("<span class=\"standalone-annotation-member\">");
 		n.getMemberValue().accept(this, arg);
+		printer.print("</span>");
 		printer.print(")");
 	}
 
@@ -1665,13 +1726,28 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.print(")");
 	}
 
+    @Override
+    public void visit(final MemberValuePair n, final Void arg) {
+        printOrphanCommentsBeforeThisChildNode(n);
+        printComment(n.getComment(), arg);
+
+		boolean annotation = (n.getParentNode().get() instanceof NormalAnnotationExpr);
+
+		if (annotation)	printer.print("<span class=\"assigned-annotation-member\">");
+        n.getName().accept(this, arg);
+		if (annotation) printer.print("</span>");
+
+        printer.print(" = ");
+        n.getValue().accept(this, arg);
+    }
+
 	@Override
 	public void visit(final LineComment n, final Void arg) {
 		if (!getOption(ConfigOption.PRINT_COMMENTS).isPresent()) {
 			return;
 		}
 
-		printer.print("<span class=\"comment\">//");
+		printer.print("<span class=\"comment\">");
 		printer.print("// ")
 				.println(Utils.normalizeEolInTextBlock(HtmlUtil.escape(n.getContent()), "").trim());
 		printer.println("</span>");
@@ -1706,7 +1782,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 			printer.print("<span class=\"keyword\">static</span> ");
 		}
 
-		printer.print("<span class=\"import-declaration-package-name\">");
+		printer.print("<span class=\"import-declaration-package\">");
 		n.getName().accept(this, arg);
 
 		if (n.isAsterisk()) {

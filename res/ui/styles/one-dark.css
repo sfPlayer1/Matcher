@@ -252,25 +252,32 @@
 /*****************************/
 
 .code body {
-	color: #abb2bf;
 	background-color: #282c34;
 }
 
+.code body,
+.code .standalone-annotation-member,
+.code .variable {
+	color: #abb2bf;
+}
 
 .code .keyword,
 .code .annotation {
 	color: #c678dd;
 }
 
-.code .keyword {
-	font-weight: normal;
-}
-
-.code .import-declaration-package-name,
+.code .import-declaration-package,
 .code .class-name {
 	color: #e5c07b;
 }
 
+.code .assigned-annotation-member,
+.code .enum-constant,
+.code .number {
+	color: #d19a66;
+}
+
+.code .accessed-identifier,
 .code .field-name {
 	color: #e06c75;
 }
@@ -279,16 +286,8 @@
 	color: #61afef;
 }
 
-.code .variable-name {
-	color: #abb2bf;
-}
-
 .code .string {
 	color: #98c379;
-}
-
-.code .number {
-	color: #d19a66;
 }
 
 .code .comment {
