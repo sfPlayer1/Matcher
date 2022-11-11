@@ -9,7 +9,7 @@
 /*****************************/
 
 .code body
-.code .field-name,
+.code .field,
 .code .variable {
 	color: #001080;
 }

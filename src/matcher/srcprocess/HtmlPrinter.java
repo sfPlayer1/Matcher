@@ -579,7 +579,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		boolean isField = n.getParentNode().orElse(null) instanceof FieldDeclaration;
 
 		printer.print("<span class=\"");
-		printer.print(isField ? "field-name" : "variable");
+		printer.print(isField ? "field" : "variable");
 		printer.print("\">");
 		n.getName().accept(this, arg);
 		printer.print("</span>");
@@ -652,7 +652,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
         printComment(n.getComment(), arg);
         n.getType().accept(this, arg);
         printer.print(".");
-		printer.print("<span class=\"field-name\">");
+		printer.print("<span class=\"field\">");
         printer.print("class");
 		printer.print("</span>");
     }
@@ -667,7 +667,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.print("</span>");
 		printer.print("</span>");
         printer.print(".");
-		printer.print("<span class=\"field-name\">");
+		printer.print("<span class=\"field\">");
         n.getName().accept(this, arg);
 		printer.print("</span>");
     }
