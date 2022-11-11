@@ -13,6 +13,7 @@ import matcher.srcprocess.SrcDecorator.SrcParseException;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MatchType;
+import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 
 public class SourcecodeTab extends WebViewTab {
@@ -31,49 +32,65 @@ public class SourcecodeTab extends WebViewTab {
 	}
 
 	@Override
+	public void onSelectStateChange(boolean tabSelected) {
+		this.tabSelected = tabSelected;
+		if (!tabSelected) return;
+
+		if (updateNeeded > 0) update();
+
+		if (selectedMember instanceof MethodInstance) {
+			onMethodSelect((MethodInstance) selectedMember);
+		} else if (selectedMember instanceof FieldInstance) {
+			onFieldSelect((FieldInstance) selectedMember);
+		}
+	}
+
+	@Override
 	public void onClassSelect(ClassInstance cls) {
-		update(cls, false);
+		selectedClass = cls;
+		if (updateNeeded == 0) updateNeeded = 1;
+		if (tabSelected) update();
 	}
 
 	@Override
 	public void onMatchChange(Set<MatchType> types) {
-		ClassInstance cls = selectionProvider.getSelectedClass();
+		selectedClass = selectionProvider.getSelectedClass();
+		updateNeeded = 2;
 
-		if (cls != null) {
-			update(cls, true);
+		if (tabSelected && selectedClass != null) {
+			update();
 		}
 	}
 
 	@Override
 	public void onViewChange(ViewChangeCause cause) {
-		ClassInstance cls = selectionProvider.getSelectedClass();
+		selectedClass = selectionProvider.getSelectedClass();
 
-		if ((cls != null
+		if ((selectedClass != null
 				&& (cause == ViewChangeCause.NAME_TYPE_CHANGED
 						|| cause == ViewChangeCause.DECOMPILER_CHANGED))
 				|| cause == ViewChangeCause.THEME_CHANGED) {
-			update(cls, true);
+			updateNeeded = 2;
+			if (tabSelected) update();
 		}
 	}
 
-	private void update(ClassInstance cls, boolean isRefresh) {
+	private void update() {
 		cancelWebViewTasks();
 
 		final int cDecompId = ++decompId;
 
-		if (cls == null) {
+		if (selectedClass == null) {
 			displayText("no class selected");
 			return;
 		}
 
-		if (!isRefresh) {
-			displayText("decompiling...");
-		}
+		displayText("decompiling...");
 
 		NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
 
-		//Gui.runAsyncTask(() -> gui.getEnv().decompile(cls, true))
-		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), cls, nameType), cls, nameType))
+		//Gui.runAsyncTask(() -> gui.getEnv().decompile(selectedClass, true))
+		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), selectedClass, nameType), selectedClass, nameType))
 				.whenComplete((res, exc) -> {
 					if (cDecompId == decompId) {
 						if (exc != null) {
@@ -89,28 +106,38 @@ public class SourcecodeTab extends WebViewTab {
 								displayText("decompile error: "+sw.toString());
 							}
 						} else {
-							double prevScroll = isRefresh ? getScrollTop() : 0;
+							double prevScroll = updateNeeded == 2 ? getScrollTop() : 0;
 
 							displayHtml(res);
 
-							if (isRefresh && prevScroll > 0) {
+							if (updateNeeded == 2 && prevScroll > 0) {
 								setScrollTop(prevScroll);
 							}
 						}
 					} else if (exc != null) {
 						exc.printStackTrace();
 					}
+
+					updateNeeded = 0;
 				});
 	}
 
 	@Override
 	public void onMethodSelect(MethodInstance method) {
-		if (method != null) select(HtmlUtil.getId(method));
+		selectedMember = method;
+
+		if (tabSelected && method != null) {
+			select(HtmlUtil.getId(method));
+		}
 	}
 
 	@Override
 	public void onFieldSelect(FieldInstance field) {
-		if (field != null) select(HtmlUtil.getId(field));
+		selectedMember = field;
+
+		if (tabSelected && field != null) {
+			select(HtmlUtil.getId(field));
+		}
 	}
 
 	private final Gui gui;
@@ -118,4 +145,8 @@ public class SourcecodeTab extends WebViewTab {
 	private final boolean unmatchedTmp;
 
 	private int decompId;
+	private int updateNeeded;
+	private boolean tabSelected;
+	private ClassInstance selectedClass;
+	private MemberInstance<?> selectedMember;
 }

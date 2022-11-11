@@ -19,7 +19,7 @@ import matcher.config.Config;
 import matcher.gui.IGuiComponent;
 import matcher.srcprocess.HtmlUtil;
 
-abstract class WebViewTab extends Tab implements IGuiComponent {
+abstract class WebViewTab extends Tab implements IGuiComponent.Selectable {
 	protected WebViewTab(String text, String templatePath) {
 		super(text);
 
