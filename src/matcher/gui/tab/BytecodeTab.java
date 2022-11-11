@@ -11,6 +11,7 @@ import matcher.gui.ISelectionProvider;
 import matcher.srcprocess.HtmlUtil;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
+import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 
 public class BytecodeTab extends WebViewTab {
@@ -23,54 +24,87 @@ public class BytecodeTab extends WebViewTab {
 	}
 
 	@Override
+	public void onSelectStateChange(boolean tabSelected) {
+		this.tabSelected = tabSelected;
+		if (!tabSelected) return;
+
+		if (updateNeeded > 0) update();
+
+		if (selectedMember instanceof MethodInstance) {
+			onMethodSelect((MethodInstance) selectedMember);
+		} else if (selectedMember instanceof FieldInstance) {
+			onFieldSelect((FieldInstance) selectedMember);
+		}
+	}
+
+	@Override
 	public void onClassSelect(ClassInstance cls) {
-		update(cls, false);
+		selectedClass = cls;
+		if (updateNeeded == 0) updateNeeded = 1;
+		if (tabSelected) update();
 	}
 
 	@Override
 	public void onViewChange(ViewChangeCause cause) {
-		ClassInstance cls = selectionProvider.getSelectedClass();
+		selectedClass = selectionProvider.getSelectedClass();
 
-		if ((cls != null
+		if ((selectedClass != null
 				&& (cause == ViewChangeCause.NAME_TYPE_CHANGED
 						|| cause == ViewChangeCause.DECOMPILER_CHANGED))
 				|| cause == ViewChangeCause.THEME_CHANGED) {
-			update(cls, true);
+
+			updateNeeded = 2;
+			if (tabSelected) update();
 		}
 	}
 
-	private void update(ClassInstance cls, boolean isRefresh) {
-		if (cls == null) {
+	private void update() {
+		if (selectedClass == null) {
 			displayText("no class selected");
 		} else {
 			StringWriter writer = new StringWriter();
 
 			try (PrintWriter pw = new PrintWriter(writer)) {
 				NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
-				cls.accept(new TraceClassVisitor(null, new HtmlTextifier(cls, nameType), pw), nameType);
+				selectedClass.accept(new TraceClassVisitor(null, new HtmlTextifier(selectedClass, nameType), pw), nameType);
 			}
 
-			double prevScroll = isRefresh ? getScrollTop() : 0;
+			double prevScroll = updateNeeded == 2 ? getScrollTop() : 0;
 
 			displayHtml(writer.toString());
 
-			if (isRefresh && prevScroll > 0) {
+			if (updateNeeded == 2 && prevScroll > 0) {
 				setScrollTop(prevScroll);
 			}
 		}
+
+		updateNeeded = 0;
 	}
 
 	@Override
 	public void onMethodSelect(MethodInstance method) {
-		if (method != null) select(HtmlUtil.getId(method));
+		selectedMember = method;
+
+		if (tabSelected && method != null) {
+			select(HtmlUtil.getId(method));
+		}
 	}
 
 	@Override
 	public void onFieldSelect(FieldInstance field) {
-		if (field != null) select(HtmlUtil.getId(field));
+		selectedMember = field;
+
+		if (tabSelected && field != null) {
+			select(HtmlUtil.getId(field));
+		}
 	}
 
 	private final Gui gui;
 	private final ISelectionProvider selectionProvider;
 	private final boolean unmatchedTmp;
+
+	private int updateNeeded;
+	private boolean tabSelected;
+	private ClassInstance selectedClass;
+	private MemberInstance<?> selectedMember;
 }

@@ -29,6 +29,7 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 		// source tab
 
 		SourcecodeTab scTab = new SourcecodeTab(gui, selectionProvider, isSource);
+		scTab.onSelectStateChange(true);
 		components.add(scTab);
 		getTabs().add(scTab);
 
@@ -85,6 +86,18 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 			components.add(mvsTab);
 			getTabs().add(mvsTab);
 		}
+
+		// add tab selection change listeners
+
+		getSelectionModel().selectedItemProperty().addListener((ov, oldTab, newTab) -> {
+			if (oldTab instanceof IGuiComponent.Selectable) {
+				((IGuiComponent.Selectable) oldTab).onSelectStateChange(false);
+			}
+
+			if (newTab instanceof IGuiComponent.Selectable) {
+				((IGuiComponent.Selectable) newTab).onSelectStateChange(true);
+			}
+		});
 	}
 
 	@Override

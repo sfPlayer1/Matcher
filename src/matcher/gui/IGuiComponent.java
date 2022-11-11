@@ -32,4 +32,8 @@ public interface IGuiComponent {
 		NAME_TYPE_CHANGED,
 		DECOMPILER_CHANGED
 	}
+
+	interface Selectable extends IGuiComponent {
+		void onSelectStateChange(boolean selected);
+	}
 }
