@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.objectweb.asm.Attribute;
@@ -73,7 +72,6 @@ final class HtmlTextifier extends Textifier {
 		ltab = "    ";
 	}
 
-
 	// -----------------------------------------------------------------------------------------------
 	// Classes
 	// -----------------------------------------------------------------------------------------------
@@ -90,6 +88,7 @@ final class HtmlTextifier extends Textifier {
 			// Modules are printed in visitModule.
 			return;
 		}
+
 		this.access = access;
 		int majorVersion = version & 0xFFFF;
 		int minorVersion = version >>> 16;
@@ -107,17 +106,21 @@ final class HtmlTextifier extends Textifier {
 		if ((access & Opcodes.ACC_DEPRECATED) != 0) {
 			stringBuilder.append(DEPRECATED);
 		}
+
 		if ((access & Opcodes.ACC_RECORD) != 0) {
 			stringBuilder.append(RECORD);
 		}
+
 		appendRawAccess(access);
 
 		appendDescriptor(CLASS_SIGNATURE, signature);
+
 		if (signature != null) {
 			appendJavaDeclaration(name, signature);
 		}
 
 		appendAccess(access & ~(Opcodes.ACC_SUPER | Opcodes.ACC_MODULE));
+
 		if ((access & Opcodes.ACC_ANNOTATION) != 0) {
 			stringBuilder
 					.append("<span class=\"keyword\">")
@@ -134,6 +137,7 @@ final class HtmlTextifier extends Textifier {
 					.append("class")
 					.append("</span> ");
 		}
+
 		appendDescriptor(INTERNAL_NAME, name);
 
 		if (superName != null && !"java/lang/Object".equals(superName)) {
@@ -144,6 +148,7 @@ final class HtmlTextifier extends Textifier {
 
 			appendDescriptor(INTERNAL_NAME, superName);
 		}
+
 		if (interfaces != null && interfaces.length > 0) {
 			stringBuilder
 					.append("<span class=\"keyword\">")
@@ -152,11 +157,13 @@ final class HtmlTextifier extends Textifier {
 
 			for (int i = 0; i < interfaces.length; ++i) {
 				appendDescriptor(INTERNAL_NAME, interfaces[i]);
+
 				if (i != interfaces.length - 1) {
 					stringBuilder.append(' ');
 				}
 			}
 		}
+
 		stringBuilder.append(" {\n\n");
 
 		text.add(stringBuilder.toString());
@@ -165,6 +172,7 @@ final class HtmlTextifier extends Textifier {
 	@Override
 	public void visitSource(final String file, final String debug) {
 		stringBuilder.setLength(0);
+
 		if (file != null) {
 			stringBuilder
 					.append(tab)
@@ -173,6 +181,7 @@ final class HtmlTextifier extends Textifier {
 					.append(file)
 					.append("</span>\n");
 		}
+
 		if (debug != null) {
 			stringBuilder
 					.append(tab)
@@ -181,6 +190,7 @@ final class HtmlTextifier extends Textifier {
 					.append(debug)
 					.append("</span>\n");
 		}
+
 		if (stringBuilder.length() > 0) {
 			text.add(stringBuilder.toString());
 		}
@@ -189,12 +199,14 @@ final class HtmlTextifier extends Textifier {
 	@Override
 	public Printer visitModule(final String name, final int access, final String version) {
 		stringBuilder.setLength(0);
+
 		if ((access & Opcodes.ACC_OPEN) != 0) {
 			stringBuilder
 					.append("<span class=\"keyword\">")
 					.append("open")
 					.append("</span> ");
 		}
+
 		stringBuilder
 				.append("<span class=\"keyword\">")
 				.append("module ")
@@ -232,16 +244,19 @@ final class HtmlTextifier extends Textifier {
 				.append("</span> ");
 		appendDescriptor(INTERNAL_NAME, owner);
 		stringBuilder.append(' ');
+
 		if (name != null) {
 			stringBuilder
 					.append("<span class=\"class-name\">")
 					.append(name)
 					.append("</span> ");
 		}
+
 		appendDescriptor(METHOD_DESCRIPTOR, descriptor);
 		stringBuilder.append('\n');
 		text.add(stringBuilder.toString());
 	}
+
 	@Override
 	public void visitNestMember(final String nestMember) {
 		stringBuilder.setLength(0);
@@ -328,13 +343,16 @@ final class HtmlTextifier extends Textifier {
 
 		stringBuilder.setLength(0);
 		stringBuilder.append('\n');
+
 		if ((access & Opcodes.ACC_DEPRECATED) != 0) {
 			stringBuilder
 					.append(tab)
 					.append(DEPRECATED);
 		}
+
 		stringBuilder.append(tab);
 		appendRawAccess(access);
+
 		if (signature != null) {
 			stringBuilder.append(tab);
 			appendDescriptor(FIELD_SIGNATURE, signature);
@@ -352,6 +370,7 @@ final class HtmlTextifier extends Textifier {
 				.append("</span>");
 		if (value != null) {
 			stringBuilder.append(" = ");
+
 			if (value instanceof String) {
 				stringBuilder
 						.append('\"')
@@ -381,11 +400,13 @@ final class HtmlTextifier extends Textifier {
 
 		stringBuilder.setLength(0);
 		stringBuilder.append('\n');
+
 		if ((access & Opcodes.ACC_DEPRECATED) != 0) {
 			stringBuilder
 					.append(tab)
 					.append(DEPRECATED);
 		}
+
 		stringBuilder.append(tab);
 		appendRawAccess(access);
 
@@ -398,24 +419,28 @@ final class HtmlTextifier extends Textifier {
 
 		stringBuilder.append(tab);
 		appendAccess(access & ~(Opcodes.ACC_VOLATILE | Opcodes.ACC_TRANSIENT));
+
 		if ((access & Opcodes.ACC_NATIVE) != 0) {
 			stringBuilder
 					.append("<span class=\"keyword\">")
 					.append("native")
 					.append("</span> ");
 		}
+
 		if ((access & Opcodes.ACC_VARARGS) != 0) {
 			stringBuilder
 					.append("<span class=\"keyword\">")
 					.append("varargs")
 					.append("</span> ");
 		}
+
 		if ((access & Opcodes.ACC_BRIDGE) != 0) {
 			stringBuilder
 					.append("<span class=\"keyword\">")
 					.append("bridge")
 					.append("</span> ");
 		}
+
 		if ((this.access & Opcodes.ACC_INTERFACE) != 0
 				&& (access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_STATIC)) == 0) {
 			stringBuilder
@@ -429,6 +454,7 @@ final class HtmlTextifier extends Textifier {
 				.append(name)
 				.append("</span>");
 		appendDescriptor(METHOD_DESCRIPTOR, descriptor);
+
 		if (exceptions != null && exceptions.length > 0) {
 			stringBuilder
 					.append(" <span class=\"keyword\">")
@@ -495,14 +521,17 @@ final class HtmlTextifier extends Textifier {
 					.append("transitive")
 					.append("</span> ");
 		}
+
 		if ((access & Opcodes.ACC_STATIC_PHASE) != 0) {
 			stringBuilder
 					.append("<span class=\"keyword\">")
 					.append("static")
 					.append("</span> ");
 		}
+
 		stringBuilder.append(require).append(';');
 		appendRawAccess(access);
+
 		if (version != null) {
 			stringBuilder
 					.append("  <span class=\"comment\">")
@@ -510,6 +539,7 @@ final class HtmlTextifier extends Textifier {
 					.append(version)
 					.append("</span>\n");
 		}
+
 		text.add(stringBuilder.toString());
 	}
 
@@ -530,7 +560,7 @@ final class HtmlTextifier extends Textifier {
 				.append(tab)
 				.append("<span class=\"keyword\">")
 				.append(method)
-				.append("</span>" )
+				.append("</span>")
 				.append("<span class=\"import-declaration-package\">")
 				.append(packaze)
 				.append("</span>");
@@ -542,7 +572,9 @@ final class HtmlTextifier extends Textifier {
 		} else {
 			stringBuilder.append(';');
 		}
+
 		appendRawAccess(access);
+
 		if (modules != null && modules.length > 0) {
 			for (int i = 0; i < modules.length; ++i) {
 				stringBuilder
@@ -553,6 +585,7 @@ final class HtmlTextifier extends Textifier {
 						.append(i != modules.length - 1 ? ",\n" : ";\n");
 			}
 		}
+
 		text.add(stringBuilder.toString());
 	}
 
@@ -587,6 +620,7 @@ final class HtmlTextifier extends Textifier {
 			appendDescriptor(INTERNAL_NAME, providers[i]);
 			stringBuilder.append(i != providers.length - 1 ? ",\n" : ";\n");
 		}
+
 		text.add(stringBuilder.toString());
 	}
 
@@ -598,6 +632,7 @@ final class HtmlTextifier extends Textifier {
 	@Override
 	public void visit(final String name, final Object value) {
 		visitAnnotationValue(name);
+
 		if (value instanceof String) {
 			visitString((String) value);
 		} else if (value instanceof Type) {
@@ -620,57 +655,68 @@ final class HtmlTextifier extends Textifier {
 			visitDouble(((Double) value).doubleValue());
 		} else if (value.getClass().isArray()) {
 			stringBuilder.append('{');
+
 			if (value instanceof byte[]) {
 				byte[] byteArray = (byte[]) value;
+
 				for (int i = 0; i < byteArray.length; i++) {
 					maybeAppendComma(i);
 					visitByte(byteArray[i]);
 				}
 			} else if (value instanceof boolean[]) {
 				boolean[] booleanArray = (boolean[]) value;
+
 				for (int i = 0; i < booleanArray.length; i++) {
 					maybeAppendComma(i);
 					visitBoolean(booleanArray[i]);
 				}
 			} else if (value instanceof short[]) {
 				short[] shortArray = (short[]) value;
+
 				for (int i = 0; i < shortArray.length; i++) {
 					maybeAppendComma(i);
 					visitShort(shortArray[i]);
 				}
 			} else if (value instanceof char[]) {
 				char[] charArray = (char[]) value;
+
 				for (int i = 0; i < charArray.length; i++) {
 					maybeAppendComma(i);
 					visitChar(charArray[i]);
 				}
 			} else if (value instanceof int[]) {
 				int[] intArray = (int[]) value;
+
 				for (int i = 0; i < intArray.length; i++) {
 					maybeAppendComma(i);
 					visitInt(intArray[i]);
 				}
 			} else if (value instanceof long[]) {
 				long[] longArray = (long[]) value;
+
 				for (int i = 0; i < longArray.length; i++) {
 					maybeAppendComma(i);
 					visitLong(longArray[i]);
 				}
 			} else if (value instanceof float[]) {
 				float[] floatArray = (float[]) value;
+
 				for (int i = 0; i < floatArray.length; i++) {
 					maybeAppendComma(i);
 					visitFloat(floatArray[i]);
 				}
 			} else if (value instanceof double[]) {
 				double[] doubleArray = (double[]) value;
+
 				for (int i = 0; i < doubleArray.length; i++) {
 					maybeAppendComma(i);
 					visitDouble(doubleArray[i]);
 				}
 			}
+
 			stringBuilder.append('}');
 		}
+
 		text.add(stringBuilder.toString());
 	}
 
@@ -791,6 +837,7 @@ final class HtmlTextifier extends Textifier {
 	private void visitAnnotationValue(final String name) {
 		stringBuilder.setLength(0);
 		maybeAppendComma(numAnnotationValues++);
+
 		if (name != null) {
 			stringBuilder
 					.append("<span class=\"variable\">")
@@ -877,45 +924,46 @@ final class HtmlTextifier extends Textifier {
 				.append("<span class=\"keyword\">")
 				.append("FRAME ");
 		switch (type) {
-			case Opcodes.F_NEW:
-			case Opcodes.F_FULL:
-				stringBuilder
-						.append("FULL")
-						.append("</span> ")
-						.append('[');
-				appendFrameTypes(numLocal, local);
-				stringBuilder.append("] [");
-				appendFrameTypes(numStack, stack);
-				stringBuilder.append(']');
-				break;
-			case Opcodes.F_APPEND:
-				stringBuilder
-						.append("APPEND")
-						.append("</span> ")
-						.append('[');
-				appendFrameTypes(numLocal, local);
-				stringBuilder.append(']');
-				break;
-			case Opcodes.F_CHOP:
-				stringBuilder
-						.append("CHOP")
-						.append("</span> ")
-						.append(numLocal);
-				break;
-			case Opcodes.F_SAME:
-				stringBuilder
-						.append("SAME")
-						.append("</span>");
-				break;
-			case Opcodes.F_SAME1:
-				stringBuilder
-						.append("SAME1")
-						.append("</span> ");
-				appendFrameTypes(1, stack);
-				break;
-			default:
-				throw new IllegalArgumentException();
+		case Opcodes.F_NEW:
+		case Opcodes.F_FULL:
+			stringBuilder
+					.append("FULL")
+					.append("</span> ")
+					.append('[');
+			appendFrameTypes(numLocal, local);
+			stringBuilder.append("] [");
+			appendFrameTypes(numStack, stack);
+			stringBuilder.append(']');
+			break;
+		case Opcodes.F_APPEND:
+			stringBuilder
+					.append("APPEND")
+					.append("</span> ")
+					.append('[');
+			appendFrameTypes(numLocal, local);
+			stringBuilder.append(']');
+			break;
+		case Opcodes.F_CHOP:
+			stringBuilder
+					.append("CHOP")
+					.append("</span> ")
+					.append(numLocal);
+			break;
+		case Opcodes.F_SAME:
+			stringBuilder
+					.append("SAME")
+					.append("</span>");
+			break;
+		case Opcodes.F_SAME1:
+			stringBuilder
+					.append("SAME1")
+					.append("</span> ");
+			appendFrameTypes(1, stack);
+			break;
+		default:
+			throw new IllegalArgumentException();
 		}
+
 		stringBuilder.append('\n');
 		text.add(stringBuilder.toString());
 	}
@@ -940,7 +988,7 @@ final class HtmlTextifier extends Textifier {
 				.append(OPCODES[opcode])
 				.append(' ');
 
-		if (opcode == Opcodes.NEWARRAY ) {
+		if (opcode == Opcodes.NEWARRAY) {
 			stringBuilder
 					.append(TYPES[operand])
 					.append("</span>");
@@ -1027,9 +1075,11 @@ final class HtmlTextifier extends Textifier {
 				.append(name)
 				.append("</span> ");
 		appendDescriptor(METHOD_DESCRIPTOR, descriptor);
+
 		if (isInterface) {
 			stringBuilder.append(" (itf)");
 		}
+
 		stringBuilder.append('\n');
 		text.add(stringBuilder.toString());
 	}
@@ -1066,14 +1116,17 @@ final class HtmlTextifier extends Textifier {
 					.append("</span>");
 		} else {
 			stringBuilder.append("</span>\n");
+
 			for (Object value : bootstrapMethodArguments) {
 				stringBuilder.append(tab3);
+
 				if (value instanceof String) {
 					stringBuilder.append("<span class=\"string\">");
 					Printer.appendString(stringBuilder, (String) value);
 					stringBuilder.append("</span>");
 				} else if (value instanceof Type) {
 					Type type = (Type) value;
+
 					if (type.getSort() == Type.METHOD) {
 						appendDescriptor(METHOD_DESCRIPTOR, type.getDescriptor());
 					} else {
@@ -1084,10 +1137,13 @@ final class HtmlTextifier extends Textifier {
 				} else {
 					stringBuilder.append(value);
 				}
+
 				stringBuilder.append(", \n");
 			}
+
 			stringBuilder.setLength(stringBuilder.length() - 3);
 		}
+
 		stringBuilder
 				.append('\n')
 				.append(tab2)
@@ -1135,6 +1191,7 @@ final class HtmlTextifier extends Textifier {
 					.append(value)
 					.append("</span>");
 		}
+
 		stringBuilder.append('\n');
 		text.add(stringBuilder.toString());
 	}
@@ -1171,6 +1228,7 @@ final class HtmlTextifier extends Textifier {
 			appendLabel(labels[i]);
 			stringBuilder.append('\n');
 		}
+
 		stringBuilder
 				.append(tab3)
 				.append("default: ");
@@ -1195,6 +1253,7 @@ final class HtmlTextifier extends Textifier {
 			appendLabel(labels[i]);
 			stringBuilder.append('\n');
 		}
+
 		stringBuilder
 				.append(tab3)
 				.append("default: ");
@@ -1297,6 +1356,7 @@ final class HtmlTextifier extends Textifier {
 			stringBuilder.append(tab2);
 			appendJavaDeclaration(name, signature);
 		}
+
 		text.add(stringBuilder.toString());
 	}
 
@@ -1335,6 +1395,7 @@ final class HtmlTextifier extends Textifier {
 					.append(index[i])
 					.append(" ]");
 		}
+
 		stringBuilder.append(visible ? "\n" : INVISIBLE);
 		return addNewTextifier(stringBuilder.toString());
 	}
@@ -1447,6 +1508,7 @@ final class HtmlTextifier extends Textifier {
 			if (labelNames == null) {
 				labelNames = new HashMap<>();
 			}
+
 			((TextifierSupport) attribute).textify(stringBuilder, labelNames);
 		} else {
 			stringBuilder.append(" : unknown\n");
@@ -1470,39 +1532,51 @@ final class HtmlTextifier extends Textifier {
 		if ((accessFlags & Opcodes.ACC_PUBLIC) != 0) {
 			stringBuilder.append("public ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_PRIVATE) != 0) {
 			stringBuilder.append("private ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_PROTECTED) != 0) {
 			stringBuilder.append("protected ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_FINAL) != 0) {
 			stringBuilder.append("final ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_STATIC) != 0) {
 			stringBuilder.append("static ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_SYNCHRONIZED) != 0) {
 			stringBuilder.append("synchronized ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_VOLATILE) != 0) {
 			stringBuilder.append("volatile ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_TRANSIENT) != 0) {
 			stringBuilder.append("transient ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_ABSTRACT) != 0) {
 			stringBuilder.append("abstract ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_STRICT) != 0) {
 			stringBuilder.append("strictfp ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_SYNTHETIC) != 0) {
 			stringBuilder.append("synthetic ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_MANDATED) != 0) {
 			stringBuilder.append("mandated ");
 		}
+
 		if ((accessFlags & Opcodes.ACC_ENUM) != 0) {
 			stringBuilder.append("enum ");
 		}
@@ -1557,13 +1631,16 @@ final class HtmlTextifier extends Textifier {
 			stringBuilder.append(traceSignatureVisitor.getReturnType());
 			stringBuilder.append(' ');
 		}
+
 		stringBuilder.append(name);
 		stringBuilder.append(traceSignatureVisitor.getDeclaration());
+
 		if (traceSignatureVisitor.getExceptions() != null) {
 			stringBuilder
 					.append(" throws ")
 					.append(traceSignatureVisitor.getExceptions());
 		}
+
 		stringBuilder.append("</span>\n");
 	}
 
@@ -1572,7 +1649,9 @@ final class HtmlTextifier extends Textifier {
 		if (labelNames == null) {
 			labelNames = new HashMap<>();
 		}
+
 		String name = labelNames.get(label);
+
 		if (name == null) {
 			name = "L" + labelNames.size();
 			labelNames.put(label, name);
@@ -1596,53 +1675,58 @@ final class HtmlTextifier extends Textifier {
 				.append(" : ");
 		boolean isMethodHandle = false;
 		switch (tag) {
-			case Opcodes.H_GETFIELD:
-				stringBuilder.append("GETFIELD");
-				break;
-			case Opcodes.H_GETSTATIC:
-				stringBuilder.append("GETSTATIC");
-				break;
-			case Opcodes.H_PUTFIELD:
-				stringBuilder.append("PUTFIELD");
-				break;
-			case Opcodes.H_PUTSTATIC:
-				stringBuilder.append("PUTSTATIC");
-				break;
-			case Opcodes.H_INVOKEINTERFACE:
-				stringBuilder.append("INVOKEINTERFACE");
-				isMethodHandle = true;
-				break;
-			case Opcodes.H_INVOKESPECIAL:
-				stringBuilder.append("INVOKESPECIAL");
-				isMethodHandle = true;
-				break;
-			case Opcodes.H_INVOKESTATIC:
-				stringBuilder.append("INVOKESTATIC");
-				isMethodHandle = true;
-				break;
-			case Opcodes.H_INVOKEVIRTUAL:
-				stringBuilder.append("INVOKEVIRTUAL");
-				isMethodHandle = true;
-				break;
-			case Opcodes.H_NEWINVOKESPECIAL:
-				stringBuilder.append("NEWINVOKESPECIAL");
-				isMethodHandle = true;
-				break;
-			default:
-				throw new IllegalArgumentException();
+		case Opcodes.H_GETFIELD:
+			stringBuilder.append("GETFIELD");
+			break;
+		case Opcodes.H_GETSTATIC:
+			stringBuilder.append("GETSTATIC");
+			break;
+		case Opcodes.H_PUTFIELD:
+			stringBuilder.append("PUTFIELD");
+			break;
+		case Opcodes.H_PUTSTATIC:
+			stringBuilder.append("PUTSTATIC");
+			break;
+		case Opcodes.H_INVOKEINTERFACE:
+			stringBuilder.append("INVOKEINTERFACE");
+			isMethodHandle = true;
+			break;
+		case Opcodes.H_INVOKESPECIAL:
+			stringBuilder.append("INVOKESPECIAL");
+			isMethodHandle = true;
+			break;
+		case Opcodes.H_INVOKESTATIC:
+			stringBuilder.append("INVOKESTATIC");
+			isMethodHandle = true;
+			break;
+		case Opcodes.H_INVOKEVIRTUAL:
+			stringBuilder.append("INVOKEVIRTUAL");
+			isMethodHandle = true;
+			break;
+		case Opcodes.H_NEWINVOKESPECIAL:
+			stringBuilder.append("NEWINVOKESPECIAL");
+			isMethodHandle = true;
+			break;
+		default:
+			throw new IllegalArgumentException();
 		}
+
 		stringBuilder.append("</span>\n");
 		stringBuilder.append(tab3);
 		appendDescriptor(INTERNAL_NAME, handle.getOwner());
 		stringBuilder.append('.');
 		stringBuilder.append(handle.getName());
+
 		if (!isMethodHandle) {
 			stringBuilder.append('(');
 		}
+
 		appendDescriptor(HANDLE_DESCRIPTOR, handle.getDesc());
+
 		if (!isMethodHandle) {
 			stringBuilder.append(')');
 		}
+
 		if (handle.isInterface()) {
 			stringBuilder.append("itf");
 		}
@@ -1671,135 +1755,135 @@ final class HtmlTextifier extends Textifier {
 		stringBuilder.append("<span class=\"keyword\">");
 
 		switch (typeReference.getSort()) {
-			case TypeReference.CLASS_TYPE_PARAMETER:
-				stringBuilder
-						.append("CLASS_TYPE_PARAMETER")
-						.append("</span> ")
-						.append(typeReference.getTypeParameterIndex());
-				break;
-			case TypeReference.METHOD_TYPE_PARAMETER:
-				stringBuilder
-						.append("METHOD_TYPE_PARAMETER")
-						.append("</span> ")
-						.append(typeReference.getTypeParameterIndex());
-				break;
-			case TypeReference.CLASS_EXTENDS:
-				stringBuilder
-						.append("CLASS_EXTENDS")
-						.append("</span> ")
-						.append(typeReference.getSuperTypeIndex());
-				break;
-			case TypeReference.CLASS_TYPE_PARAMETER_BOUND:
-				stringBuilder
-						.append("CLASS_TYPE_PARAMETER_BOUND")
-						.append("</span> ")
-						.append(typeReference.getTypeParameterIndex())
-						.append(", ")
-						.append(typeReference.getTypeParameterBoundIndex());
-				break;
-			case TypeReference.METHOD_TYPE_PARAMETER_BOUND:
-				stringBuilder
-						.append("METHOD_TYPE_PARAMETER_BOUND")
-						.append("</span> ")
-						.append(typeReference.getTypeParameterIndex())
-						.append(", ")
-						.append(typeReference.getTypeParameterBoundIndex());
-				break;
-			case TypeReference.FIELD:
-				stringBuilder
-						.append("FIELD")
-						.append("</span>");
-				break;
-			case TypeReference.METHOD_RETURN:
-				stringBuilder
-						.append("METHOD_RETURN")
-						.append("</span>");
-				break;
-			case TypeReference.METHOD_RECEIVER:
-				stringBuilder
-						.append("METHOD_RECEIVER")
-						.append("</span>");
-				break;
-			case TypeReference.METHOD_FORMAL_PARAMETER:
-				stringBuilder
-						.append("METHOD_FORMAL_PARAMETER")
-						.append("</span> ")
-						.append(typeReference.getFormalParameterIndex());
-				break;
-			case TypeReference.THROWS:
-				stringBuilder
-						.append("THROWS")
-						.append("</span> ")
-						.append(typeReference.getExceptionIndex());
-				break;
-			case TypeReference.LOCAL_VARIABLE:
-				stringBuilder
-						.append("LOCAL_VARIABLE")
-						.append("</span>");
-				break;
-			case TypeReference.RESOURCE_VARIABLE:
-				stringBuilder
-						.append("RESOURCE_VARIABLE")
-						.append("</span>");
-				break;
-			case TypeReference.EXCEPTION_PARAMETER:
-				stringBuilder
-						.append("EXCEPTION_PARAMETER")
-						.append("</span> ")
-						.append(typeReference.getTryCatchBlockIndex());
-				break;
-			case TypeReference.INSTANCEOF:
-				stringBuilder
-						.append("INSTANCEOF")
-						.append("</span>");
-				break;
-			case TypeReference.NEW:
-				stringBuilder
-						.append("NEW")
-						.append("</span>");
-				break;
-			case TypeReference.CONSTRUCTOR_REFERENCE:
-				stringBuilder
-						.append("CONSTRUCTOR_REFERENCE")
-						.append("</span>");
-				break;
-			case TypeReference.METHOD_REFERENCE:
-				stringBuilder
-						.append("METHOD_REFERENCE")
-						.append("</span>");
-				break;
-			case TypeReference.CAST:
-				stringBuilder
-						.append("CAST")
-						.append("</span> ")
-						.append(typeReference.getTypeArgumentIndex());
-				break;
-			case TypeReference.CONSTRUCTOR_INVOCATION_TYPE_ARGUMENT:
-				stringBuilder
-						.append("CONSTRUCTOR_INVOCATION_TYPE_ARGUMENT")
-						.append("</span> ")
-						.append(typeReference.getTypeArgumentIndex());
-				break;
-			case TypeReference.METHOD_INVOCATION_TYPE_ARGUMENT:
-				stringBuilder
-						.append("METHOD_INVOCATION_TYPE_ARGUMENT")
-						.append("</span> ")
-						.append(typeReference.getTypeArgumentIndex());
-				break;
-			case TypeReference.CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT:
-				stringBuilder
-						.append("CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT")
-						.append("</span> ")
-						.append(typeReference.getTypeArgumentIndex());
-				break;
-			case TypeReference.METHOD_REFERENCE_TYPE_ARGUMENT:
-				stringBuilder
-						.append("METHOD_REFERENCE_TYPE_ARGUMENT")
-						.append("</span> ")
-						.append(typeReference.getTypeArgumentIndex());
-				break;
-			default:
-				throw new IllegalArgumentException();
+		case TypeReference.CLASS_TYPE_PARAMETER:
+			stringBuilder
+					.append("CLASS_TYPE_PARAMETER")
+					.append("</span> ")
+					.append(typeReference.getTypeParameterIndex());
+			break;
+		case TypeReference.METHOD_TYPE_PARAMETER:
+			stringBuilder
+					.append("METHOD_TYPE_PARAMETER")
+					.append("</span> ")
+					.append(typeReference.getTypeParameterIndex());
+			break;
+		case TypeReference.CLASS_EXTENDS:
+			stringBuilder
+					.append("CLASS_EXTENDS")
+					.append("</span> ")
+					.append(typeReference.getSuperTypeIndex());
+			break;
+		case TypeReference.CLASS_TYPE_PARAMETER_BOUND:
+			stringBuilder
+					.append("CLASS_TYPE_PARAMETER_BOUND")
+					.append("</span> ")
+					.append(typeReference.getTypeParameterIndex())
+					.append(", ")
+					.append(typeReference.getTypeParameterBoundIndex());
+			break;
+		case TypeReference.METHOD_TYPE_PARAMETER_BOUND:
+			stringBuilder
+					.append("METHOD_TYPE_PARAMETER_BOUND")
+					.append("</span> ")
+					.append(typeReference.getTypeParameterIndex())
+					.append(", ")
+					.append(typeReference.getTypeParameterBoundIndex());
+			break;
+		case TypeReference.FIELD:
+			stringBuilder
+					.append("FIELD")
+					.append("</span>");
+			break;
+		case TypeReference.METHOD_RETURN:
+			stringBuilder
+					.append("METHOD_RETURN")
+					.append("</span>");
+			break;
+		case TypeReference.METHOD_RECEIVER:
+			stringBuilder
+					.append("METHOD_RECEIVER")
+					.append("</span>");
+			break;
+		case TypeReference.METHOD_FORMAL_PARAMETER:
+			stringBuilder
+					.append("METHOD_FORMAL_PARAMETER")
+					.append("</span> ")
+					.append(typeReference.getFormalParameterIndex());
+			break;
+		case TypeReference.THROWS:
+			stringBuilder
+					.append("THROWS")
+					.append("</span> ")
+					.append(typeReference.getExceptionIndex());
+			break;
+		case TypeReference.LOCAL_VARIABLE:
+			stringBuilder
+					.append("LOCAL_VARIABLE")
+					.append("</span>");
+			break;
+		case TypeReference.RESOURCE_VARIABLE:
+			stringBuilder
+					.append("RESOURCE_VARIABLE")
+					.append("</span>");
+			break;
+		case TypeReference.EXCEPTION_PARAMETER:
+			stringBuilder
+					.append("EXCEPTION_PARAMETER")
+					.append("</span> ")
+					.append(typeReference.getTryCatchBlockIndex());
+			break;
+		case TypeReference.INSTANCEOF:
+			stringBuilder
+					.append("INSTANCEOF")
+					.append("</span>");
+			break;
+		case TypeReference.NEW:
+			stringBuilder
+					.append("NEW")
+					.append("</span>");
+			break;
+		case TypeReference.CONSTRUCTOR_REFERENCE:
+			stringBuilder
+					.append("CONSTRUCTOR_REFERENCE")
+					.append("</span>");
+			break;
+		case TypeReference.METHOD_REFERENCE:
+			stringBuilder
+					.append("METHOD_REFERENCE")
+					.append("</span>");
+			break;
+		case TypeReference.CAST:
+			stringBuilder
+					.append("CAST")
+					.append("</span> ")
+					.append(typeReference.getTypeArgumentIndex());
+			break;
+		case TypeReference.CONSTRUCTOR_INVOCATION_TYPE_ARGUMENT:
+			stringBuilder
+					.append("CONSTRUCTOR_INVOCATION_TYPE_ARGUMENT")
+					.append("</span> ")
+					.append(typeReference.getTypeArgumentIndex());
+			break;
+		case TypeReference.METHOD_INVOCATION_TYPE_ARGUMENT:
+			stringBuilder
+					.append("METHOD_INVOCATION_TYPE_ARGUMENT")
+					.append("</span> ")
+					.append(typeReference.getTypeArgumentIndex());
+			break;
+		case TypeReference.CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT:
+			stringBuilder
+					.append("CONSTRUCTOR_REFERENCE_TYPE_ARGUMENT")
+					.append("</span> ")
+					.append(typeReference.getTypeArgumentIndex());
+			break;
+		case TypeReference.METHOD_REFERENCE_TYPE_ARGUMENT:
+			stringBuilder
+					.append("METHOD_REFERENCE_TYPE_ARGUMENT")
+					.append("</span> ")
+					.append(typeReference.getTypeArgumentIndex());
+			break;
+		default:
+			throw new IllegalArgumentException();
 		}
 	}
 
@@ -1815,8 +1899,10 @@ final class HtmlTextifier extends Textifier {
 			if (i > 0) {
 				stringBuilder.append(' ');
 			}
+
 			if (frameTypes[i] instanceof String) {
 				String descriptor = (String) frameTypes[i];
+
 				if (descriptor.charAt(0) == '[') {
 					appendDescriptor(FIELD_DESCRIPTOR, descriptor);
 				} else {
@@ -1842,9 +1928,11 @@ final class HtmlTextifier extends Textifier {
 	private Textifier addNewTextifier(final String endText) {
 		Textifier textifier = createTextifier();
 		text.add(textifier.getText());
+
 		if (endText != null) {
 			text.add(endText);
 		}
+
 		return textifier;
 	}
 
@@ -1898,7 +1986,7 @@ final class HtmlTextifier extends Textifier {
 	private static final String INVISIBLE = " <span class=\"comment\">// invisible</span>\n";
 
 	private static final List<String> FRAME_TYPES =
-		Collections.unmodifiableList(Arrays.asList("T", "I", "F", "D", "J", "N", "U"));
+			Collections.unmodifiableList(Arrays.asList("T", "I", "F", "D", "J", "N", "U"));
 
 	private static final Pattern numberPattern = Pattern.compile("-?\\d+(\\.\\d+)?");
 
