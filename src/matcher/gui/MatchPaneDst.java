@@ -12,6 +12,9 @@ import java.util.concurrent.Callable;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
@@ -71,10 +74,23 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 		// match filter text field
 
-		vbox.getChildren().add(filterField);
+		HBox filterBox = new HBox();
+		filterBox.setId("match-filter-box");
+		filterBox.getChildren().add(filterField);
+		filterBox.getChildren().add(advancedFilterToggle);
+		vbox.getChildren().add(filterBox);
+
 		filterField.textProperty().addListener((observable, oldValue, newValue) -> {
 			RankResult<? extends Matchable<?>> oldSelection = matchList.getSelectionModel().getSelectedItem();
-			updateResults(oldSelection != null ? oldSelection.getSubject() : null);
+			updateResults(oldSelection != null ? oldSelection.getSubject() : null, !advancedFilterToggle.isSelected());
+		});
+
+		advancedFilterToggle.setText("Adv.");
+		advancedFilterToggle.setMinWidth(40);
+		advancedFilterToggle.setTooltip(new Tooltip("Toggle Advanced Filter Mode"));
+		advancedFilterToggle.setOnAction(event -> {
+			RankResult<? extends Matchable<?>> oldSelection = matchList.getSelectionModel().getSelectedItem();
+			updateResults(oldSelection != null ? oldSelection.getSubject() : null, !advancedFilterToggle.isSelected());
 		});
 
 		// positioning
@@ -307,9 +323,9 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		return Comparator.<RankResult<? extends Matchable<?>>>comparingDouble(r -> r.getScore()).reversed();
 	}
 
-	private void updateResults(Matchable<?> oldSelection) {
+	private void updateResults(Matchable<?> oldSelection, boolean simpleMode) {
 		List<RankResult<? extends Matchable<?>>> newItems = new ArrayList<>(rankResults.size());
-		String filterStr = filterField.getText();
+		String filterStr = filterField.getText().toLowerCase(Locale.ROOT);
 
 		if (filterStr.isBlank()) {
 			newItems.addAll(rankResults);
@@ -317,19 +333,29 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			List<Object> stack = new ArrayList<>();
 
 			for (RankResult<? extends Matchable<?>> item : rankResults) {
-				stack.add(item);
+				if (simpleMode) {
+					Matchable<?> matchable = item.getSubject();
+					String matchableText = String.format("%.3f %s", item.getScore(),
+							matchable.getDisplayName(gui.getNameType(), matchable instanceof ClassInstance).toLowerCase(Locale.ROOT));
 
-				Boolean res = evalFilter(stack, item);
+					if (matchableText.contains(filterStr.trim())) {
+						newItems.add(item);
+					}
+				} else {
+					stack.add(item);
 
-				if (res == null) { // eval failed
-					newItems.clear();
-					newItems.addAll(rankResults);
-					break;
-				} else if (res) {
-					newItems.add(item);
+					Boolean res = evalFilter(stack, item);
+
+					if (res == null) { // eval failed
+						newItems.clear();
+						newItems.addAll(rankResults);
+						break;
+					} else if (res) {
+						newItems.add(item);
+					}
+
+					stack.clear();
 				}
-
-				stack.clear();
 			}
 		}
 
@@ -710,7 +736,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 					assert rankResults.isEmpty();
 					rankResults.addAll(res);
 
-					updateResults(oldDstSelection);
+					updateResults(oldDstSelection, !advancedFilterToggle.isSelected());
 					oldDstSelection = null;
 
 					if (matchChangeTypes != null) {
@@ -750,6 +776,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	private final Collection<IGuiComponent> components = new ArrayList<>();
 	private final ListView<RankResult<? extends Matchable<?>>> matchList = new ListView<>();
 	private final TextField filterField = new TextField();
+	private final ToggleButton advancedFilterToggle = new ToggleButton();
 	private final List<RankResult<? extends Matchable<?>>> rankResults = new ArrayList<>();
 	private final SrcListener srcListener = new SrcListener();
 	private List<ClassInstance> cmpClasses;

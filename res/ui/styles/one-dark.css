@@ -18,6 +18,8 @@
 	-fx-split-pane-divider-color: #333842;
 	-fx-tab-border-color: #181a1f;
 	-fx-textbox-color: #1B1D23;
+	-fx-textbox-button-hover-color: #3a3d40;
+	-fx-textbox-button-selected-color: #31497B;
 	-fx-focus-or-hover-color: #528BFF;
 }
 
@@ -86,6 +88,24 @@
 #match-pane-src .list-view,
 #match-pane-dst .list-view {
 	-fx-focus-color: -fx-focus-or-hover-color;
+}
+
+#match-filter-box {
+	-fx-spacing: 0;
+	-fx-padding: 0 4 0 0;
+}
+
+#match-filter-box .toggle-button {
+	-fx-padding: 4 0 3 0;
+	-fx-background-color: -fx-textbox-color;
+}
+
+#match-filter-box .toggle-button:hover {
+	-fx-background-color: -fx-textbox-button-hover-color;
+}
+
+#match-filter-box .toggle-button:selected {
+	-fx-background-color: -fx-textbox-button-selected-color;
 }
 
 .no-match-cell {
