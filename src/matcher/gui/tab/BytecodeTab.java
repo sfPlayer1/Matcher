@@ -52,7 +52,6 @@ public class BytecodeTab extends WebViewTab {
 				&& (cause == ViewChangeCause.NAME_TYPE_CHANGED
 						|| cause == ViewChangeCause.DECOMPILER_CHANGED))
 				|| cause == ViewChangeCause.THEME_CHANGED) {
-
 			updateNeeded = 2;
 			if (tabSelected) update();
 		}
