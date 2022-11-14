@@ -646,31 +646,31 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		}
 	}
 
-    @Override
-    public void visit(final ClassExpr n, final Void arg) {
-        printOrphanCommentsBeforeThisChildNode(n);
-        printComment(n.getComment(), arg);
-        n.getType().accept(this, arg);
-        printer.print(".");
+	@Override
+	public void visit(final ClassExpr n, final Void arg) {
+		printOrphanCommentsBeforeThisChildNode(n);
+		printComment(n.getComment(), arg);
+		n.getType().accept(this, arg);
+		printer.print(".");
 		printer.print("<span class=\"field\">");
-        printer.print("class");
+		printer.print("class");
 		printer.print("</span>");
-    }
+	}
 
-    @Override
-    public void visit(final FieldAccessExpr n, final Void arg) {
-        printOrphanCommentsBeforeThisChildNode(n);
-        printComment(n.getComment(), arg);
+	@Override
+	public void visit(final FieldAccessExpr n, final Void arg) {
+		printOrphanCommentsBeforeThisChildNode(n);
+		printComment(n.getComment(), arg);
 		printer.print("<span class=\"accessed-identifier\">");
 		printer.print("<span class=\"class-name\">");
-        n.getScope().accept(this, arg);
+		n.getScope().accept(this, arg);
 		printer.print("</span>");
 		printer.print("</span>");
-        printer.print(".");
+		printer.print(".");
 		printer.print("<span class=\"field\">");
-        n.getName().accept(this, arg);
+		n.getName().accept(this, arg);
 		printer.print("</span>");
-    }
+	}
 
 	@Override
 	public void visit(final InstanceOfExpr n, final Void arg) {
@@ -695,26 +695,26 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.print("'</span>");
 	}
 
-    @Override
-    public void visit(final DoubleLiteralExpr n, final Void arg) {
-        visitNumericLiteralExpr(n, arg);
-    }
+	@Override
+	public void visit(final DoubleLiteralExpr n, final Void arg) {
+		visitNumericLiteralExpr(n, arg);
+	}
 
-    @Override
-    public void visit(final IntegerLiteralExpr n, final Void arg) {
-        visitNumericLiteralExpr(n, arg);
-    }
+	@Override
+	public void visit(final IntegerLiteralExpr n, final Void arg) {
+		visitNumericLiteralExpr(n, arg);
+	}
 
-    @Override
-    public void visit(final LongLiteralExpr n, final Void arg) {
-        visitNumericLiteralExpr(n, arg);
-    }
+	@Override
+	public void visit(final LongLiteralExpr n, final Void arg) {
+		visitNumericLiteralExpr(n, arg);
+	}
 
 	private void visitNumericLiteralExpr(final LiteralStringValueExpr n, final Void arg) {
-        printOrphanCommentsBeforeThisChildNode(n);
-        printComment(n.getComment(), arg);
+		printOrphanCommentsBeforeThisChildNode(n);
+		printComment(n.getComment(), arg);
 		printer.print("<span class=\"number\">");
-        printer.print(n.getValue());
+		printer.print(n.getValue());
 		printer.print("</span>");
 	}
 
@@ -1726,20 +1726,20 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.print(")");
 	}
 
-    @Override
-    public void visit(final MemberValuePair n, final Void arg) {
-        printOrphanCommentsBeforeThisChildNode(n);
-        printComment(n.getComment(), arg);
+	@Override
+	public void visit(final MemberValuePair n, final Void arg) {
+		printOrphanCommentsBeforeThisChildNode(n);
+		printComment(n.getComment(), arg);
 
 		boolean annotation = (n.getParentNode().get() instanceof NormalAnnotationExpr);
 
-		if (annotation)	printer.print("<span class=\"assigned-annotation-member\">");
-        n.getName().accept(this, arg);
+		if (annotation) printer.print("<span class=\"assigned-annotation-member\">");
+		n.getName().accept(this, arg);
 		if (annotation) printer.print("</span>");
 
-        printer.print(" = ");
-        n.getValue().accept(this, arg);
-    }
+		printer.print(" = ");
+		n.getValue().accept(this, arg);
+	}
 
 	@Override
 	public void visit(final LineComment n, final Void arg) {
