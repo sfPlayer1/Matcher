@@ -19,10 +19,12 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.ColumnConstraints;
@@ -41,9 +43,11 @@ import javafx.stage.Window;
 import matcher.Matcher;
 import matcher.NameType;
 import matcher.config.Config;
+import matcher.config.ProjectConfig;
 import matcher.config.Theme;
 import matcher.gui.IGuiComponent.ViewChangeCause;
 import matcher.gui.menu.MainMenuBar;
+import matcher.gui.menu.NewProjectPane;
 import matcher.srcprocess.BuiltinDecompiler;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
@@ -97,11 +101,137 @@ public class Gui extends Application {
 		stage.show();
 
 		border.requestFocus();
+		handleStartupArgs(getParameters().getRaw());
 	}
 
 	@Override
 	public void stop() throws Exception {
 		threadPool.shutdown();
+	}
+
+	private void handleStartupArgs(List<String> args) {
+		List<Path> inputsA = new ArrayList<>();
+		List<Path> inputsB = new ArrayList<>();
+		List<Path> classPathA = new ArrayList<>();
+		List<Path> classPathB = new ArrayList<>();
+		List<Path> sharedClassPath = new ArrayList<>();
+		boolean inputsBeforeClassPath = false;
+		String nonObfuscatedClassPatternA = "";
+		String nonObfuscatedClassPatternB = "";
+		String nonObfuscatedMemberPatternA = "";
+		String nonObfuscatedMemberPatternB = "";
+		boolean validArgEncountered = false;
+
+		for (int i = 0; i < args.size(); i++) {
+			switch (args.get(i)) {
+			case "--inputs-a":
+				while (!args.get(i+1).startsWith("--")) {
+					inputsA.add(Path.of(args.get(++i)));
+					validArgEncountered = true;
+				}
+
+				break;
+			case "--inputs-b":
+				while (!args.get(i+1).startsWith("--")) {
+					inputsB.add(Path.of(args.get(++i)));
+					validArgEncountered = true;
+				}
+
+				break;
+			case "--classpath-a":
+				while (!args.get(i+1).startsWith("--")) {
+					classPathA.add(Path.of(args.get(++i)));
+					validArgEncountered = true;
+				}
+
+				break;
+			case "--classpath-b":
+				while (!args.get(i+1).startsWith("--")) {
+					classPathB.add(Path.of(args.get(++i)));
+					validArgEncountered = true;
+				}
+
+				break;
+			case "--shared-classpath":
+				while (!args.get(i+1).startsWith("--")) {
+					sharedClassPath.add(Path.of(args.get(++i)));
+					validArgEncountered = true;
+				}
+
+				break;
+			case "--inputs-before-classpath":
+				inputsBeforeClassPath = true;
+				validArgEncountered = true;
+				break;
+			case "--non-obfuscated-class-pattern-a":
+				nonObfuscatedClassPatternA = args.get(++i);
+				validArgEncountered = true;
+				break;
+			case "--non-obfuscated-class-pattern-b":
+				nonObfuscatedClassPatternB = args.get(++i);
+				validArgEncountered = true;
+				break;
+			case "--non-obfuscated-member-pattern-a":
+				nonObfuscatedMemberPatternA = args.get(++i);
+				validArgEncountered = true;
+				break;
+			case "--non-obfuscated-member-pattern-b":
+				nonObfuscatedMemberPatternB = args.get(++i);
+				validArgEncountered = true;
+				break;
+			}
+		}
+
+		if (!validArgEncountered) return;
+
+		ProjectConfig config = new ProjectConfig(inputsA, inputsB, classPathA, classPathB, sharedClassPath, inputsBeforeClassPath,
+				nonObfuscatedClassPatternA, nonObfuscatedClassPatternB, nonObfuscatedMemberPatternA, nonObfuscatedMemberPatternB);
+
+		newProject(config, inputsA.isEmpty() || inputsB.isEmpty());
+	}
+
+	public CompletableFuture<Boolean> newProject(ProjectConfig config, boolean showConfigDialog) {
+		ProjectConfig newConfig;
+
+		if (showConfigDialog) {
+			Dialog<ProjectConfig> dialog = new Dialog<>();
+			//dialog.initModality(Modality.APPLICATION_MODAL);
+			dialog.setResizable(true);
+			dialog.setTitle("Project configuration");
+			dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+			Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
+			NewProjectPane content = new NewProjectPane(config, dialog.getOwner(), okButton);
+
+			dialog.getDialogPane().setContent(content);
+			dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
+
+			newConfig = dialog.showAndWait().orElse(null);
+			if (newConfig == null || !newConfig.isValid()) return CompletableFuture.completedFuture(false);
+		} else {
+			newConfig = config;
+		}
+
+		Config.setProjectConfig(newConfig);
+		Config.saveAsLast();
+
+		matcher.reset();
+		onProjectChange();
+
+		CompletableFuture<Boolean> ret = new CompletableFuture<>();
+
+		runProgressTask("Initializing files...",
+				progressReceiver -> {
+					matcher.init(newConfig, progressReceiver);
+					ret.complete(true);
+				},
+				() -> onProjectChange(),
+				exc -> {
+					exc.printStackTrace();
+					ret.completeExceptionally(exc);
+				});
+
+		return ret;
 	}
 
 	public ClassEnvironment getEnv() {

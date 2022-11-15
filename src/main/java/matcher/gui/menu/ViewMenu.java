@@ -129,6 +129,7 @@ public class ViewMenu extends Menu implements IGuiComponent {
 
 			radioMenuItem.setOnAction(event -> {
 				Config.setTheme(theme);
+				Config.saveTheme();
 				gui.updateCss();
 			});
 		}

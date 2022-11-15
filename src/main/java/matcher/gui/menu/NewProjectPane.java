@@ -41,7 +41,7 @@ import matcher.gui.GuiConstants;
 import matcher.gui.GuiUtil;
 
 public class NewProjectPane extends GridPane {
-	NewProjectPane(ProjectConfig config, Window window, Node okButton) {
+	public NewProjectPane(ProjectConfig config, Window window, Node okButton) {
 		this.window = window;
 		this.okButton = okButton;
 
