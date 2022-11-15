@@ -8,7 +8,7 @@
 /*          WebView          */
 /*****************************/
 
-.code body
+.code body,
 .code .field,
 .code .variable {
 	color: #001080;
