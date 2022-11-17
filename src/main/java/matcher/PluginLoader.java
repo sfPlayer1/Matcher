@@ -51,7 +51,7 @@ class PluginLoader {
 				} else if (path.getFileName().toString().toLowerCase(Locale.ENGLISH).endsWith(".jar")) {
 					urls.add(path.toUri().toURL());
 				} else {
-					System.err.println("Path is not a plugin: " + path);
+					System.err.println("Failed to load plugin(s) from " + path);
 				}
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);
