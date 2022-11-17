@@ -1,6 +1,7 @@
 package matcher.gui;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,6 +41,8 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
+import net.fabricmc.mappingio.MappingReader;
+
 import matcher.Matcher;
 import matcher.NameType;
 import matcher.config.Config;
@@ -48,6 +51,8 @@ import matcher.config.Theme;
 import matcher.gui.IGuiComponent.ViewChangeCause;
 import matcher.gui.menu.MainMenuBar;
 import matcher.gui.menu.NewProjectPane;
+import matcher.mapping.MappingField;
+import matcher.mapping.Mappings;
 import matcher.srcprocess.BuiltinDecompiler;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
@@ -116,76 +121,110 @@ public class Gui extends Application {
 		List<Path> classPathB = new ArrayList<>();
 		List<Path> sharedClassPath = new ArrayList<>();
 		boolean inputsBeforeClassPath = false;
+		Path mappingsPathA = null;
+		Path mappingsPathB = null;
+		boolean saveUnmappedMatches = true;
 		String nonObfuscatedClassPatternA = "";
 		String nonObfuscatedClassPatternB = "";
 		String nonObfuscatedMemberPatternA = "";
 		String nonObfuscatedMemberPatternB = "";
-		boolean validArgEncountered = false;
+		boolean validProjectConfigArgPresent = false;
 
 		for (int i = 0; i < args.size(); i++) {
 			switch (args.get(i)) {
+			// ProjectConfig args
+
 			case "--inputs-a":
 				while (!args.get(i+1).startsWith("--")) {
 					inputsA.add(Path.of(args.get(++i)));
-					validArgEncountered = true;
+					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--inputs-b":
 				while (!args.get(i+1).startsWith("--")) {
 					inputsB.add(Path.of(args.get(++i)));
-					validArgEncountered = true;
+					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--classpath-a":
 				while (!args.get(i+1).startsWith("--")) {
 					classPathA.add(Path.of(args.get(++i)));
-					validArgEncountered = true;
+					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--classpath-b":
 				while (!args.get(i+1).startsWith("--")) {
 					classPathB.add(Path.of(args.get(++i)));
-					validArgEncountered = true;
+					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--shared-classpath":
 				while (!args.get(i+1).startsWith("--")) {
 					sharedClassPath.add(Path.of(args.get(++i)));
-					validArgEncountered = true;
+					validProjectConfigArgPresent = true;
 				}
 
 				break;
+			case "--mappings-a":
+				mappingsPathA = Path.of(args.get(++i));
+				validProjectConfigArgPresent = true;
+				break;
+			case "--mappings-b":
+				mappingsPathB = Path.of(args.get(++i));
+				validProjectConfigArgPresent = true;
+				break;
+			case "--dont-save-unmapped-matches":
+				saveUnmappedMatches = false;
+				validProjectConfigArgPresent = true;
+				break;
 			case "--inputs-before-classpath":
 				inputsBeforeClassPath = true;
-				validArgEncountered = true;
+				validProjectConfigArgPresent = true;
 				break;
 			case "--non-obfuscated-class-pattern-a":
 				nonObfuscatedClassPatternA = args.get(++i);
-				validArgEncountered = true;
+				validProjectConfigArgPresent = true;
 				break;
 			case "--non-obfuscated-class-pattern-b":
 				nonObfuscatedClassPatternB = args.get(++i);
-				validArgEncountered = true;
+				validProjectConfigArgPresent = true;
 				break;
 			case "--non-obfuscated-member-pattern-a":
 				nonObfuscatedMemberPatternA = args.get(++i);
-				validArgEncountered = true;
+				validProjectConfigArgPresent = true;
 				break;
 			case "--non-obfuscated-member-pattern-b":
 				nonObfuscatedMemberPatternB = args.get(++i);
-				validArgEncountered = true;
+				validProjectConfigArgPresent = true;
+				break;
+
+			// GUI args
+
+			case "--hide-unmapped-a":
+				hideUnmappedA = true;
 				break;
 			}
 		}
 
-		if (!validArgEncountered) return;
+		if (!validProjectConfigArgPresent) return;
 
-		ProjectConfig config = new ProjectConfig(inputsA, inputsB, classPathA, classPathB, sharedClassPath, inputsBeforeClassPath,
-				nonObfuscatedClassPatternA, nonObfuscatedClassPatternB, nonObfuscatedMemberPatternA, nonObfuscatedMemberPatternB);
+		ProjectConfig config = new ProjectConfig.Builder(inputsA, inputsB)
+				.classPathA(new ArrayList<>(classPathA))
+				.classPathB(new ArrayList<>(classPathB))
+				.sharedClassPath(new ArrayList<>(sharedClassPath))
+				.inputsBeforeClassPath(inputsBeforeClassPath)
+				.mappingsPathA(mappingsPathA)
+				.mappingsPathB(mappingsPathB)
+				.saveUnmappedMatches(saveUnmappedMatches)
+				.nonObfuscatedClassPatternA(nonObfuscatedClassPatternA)
+				.nonObfuscatedClassPatternB(nonObfuscatedClassPatternB)
+				.nonObfuscatedMemberPatternA(nonObfuscatedMemberPatternA)
+				.nonObfuscatedMemberPatternB(nonObfuscatedMemberPatternB)
+				.build();
 
 		newProject(config, inputsA.isEmpty() || inputsB.isEmpty());
 	}
@@ -225,7 +264,37 @@ public class Gui extends Application {
 					matcher.init(newConfig, progressReceiver);
 					ret.complete(true);
 				},
-				() -> onProjectChange(),
+				() -> {
+					if (newConfig.getMappingsPathA() != null) {
+						Path mappingsPath = newConfig.getMappingsPathA();
+
+						try {
+							List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
+							Mappings.load(mappingsPath, null,
+									namespaces.get(0), namespaces.get(1),
+									MappingField.PLAIN, MappingField.MAPPED,
+									env.getEnvA(), true);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+
+					if (newConfig.getMappingsPathB() != null) {
+						Path mappingsPath = newConfig.getMappingsPathB();
+
+						try {
+							List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
+							Mappings.load(mappingsPath, null,
+									namespaces.get(0), namespaces.get(1),
+									MappingField.PLAIN, MappingField.MAPPED,
+									env.getEnvB(), true);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+
+					onProjectChange();
+				},
 				exc -> {
 					exc.printStackTrace();
 					ret.completeExceptionally(exc);
@@ -319,7 +388,21 @@ public class Gui extends Application {
 		this.showNonInputs = showNonInputs;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange(ViewChangeCause.SHOW_NON_INPUTS_TOGGLED);
+			c.onViewChange(ViewChangeCause.DISPLAY_CLASSES_CHANGED);
+		}
+	}
+
+	public boolean isHideUnmappedA() {
+		return hideUnmappedA;
+	}
+
+	public void setHideUnmappedA(boolean hideUnmappedA) {
+		if (this.hideUnmappedA == hideUnmappedA) return;
+
+		this.hideUnmappedA = hideUnmappedA;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange(ViewChangeCause.DISPLAY_CLASSES_CHANGED);
 		}
 	}
 
@@ -575,6 +658,7 @@ public class Gui extends Application {
 	private boolean sortMatchesAlphabetically;
 	private boolean useClassTreeView;
 	private boolean showNonInputs;
+	private boolean hideUnmappedA;
 	private boolean useDiffColors;
 	private Theme lastSwitchedToTheme;
 

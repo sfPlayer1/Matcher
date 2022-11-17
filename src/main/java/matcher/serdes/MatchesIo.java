@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.function.DoubleConsumer;
 
 import matcher.Matcher;
+import matcher.config.Config;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
@@ -338,13 +339,15 @@ public class MatchesIo {
 		List<ClassInstance> classes = new ArrayList<>();
 
 		for (ClassInstance cls : env.getClassesA()) {
-			if (cls.isReal() && (cls.hasMatch() || !cls.isMatchable())) {
+			if (cls.isReal() && (cls.hasMatch() || !cls.isMatchable())
+					&& (Config.getProjectConfig().isSaveUnmappedMatches() || cls.hasMappedName() || cls.hasMappedChildren())) {
 				classes.add(cls);
 			}
 		}
 
 		for (ClassInstance cls : env.getClassesB()) {
-			if (cls.isReal() && !cls.isMatchable()) {
+			if (cls.isReal() && !cls.isMatchable()
+					&& (Config.getProjectConfig().isSaveUnmappedMatches() || cls.hasMappedName() || cls.hasMappedChildren())) {
 				classes.add(cls);
 			}
 		}
@@ -434,26 +437,32 @@ public class MatchesIo {
 			out.write(cls.getMatch().getId());
 			out.write('\n');
 
+			boolean saveUnmapped = Config.getProjectConfig().isSaveUnmappedMatches();
+
 			for (MethodInstance method : cls.getMethods()) {
-				if (method.hasMatch() || !method.isMatchable()) {
+				if ((method.hasMatch() || !method.isMatchable())
+						&& (saveUnmapped || method.hasMappedName() || method.hasMappedChildren())) {
 					writeMethod(method, 'a', out);
 				}
 			}
 
 			for (FieldInstance field : cls.getFields()) {
-				if (field.hasMatch() || !field.isMatchable()) {
+				if ((field.hasMatch() || !field.isMatchable())
+						&& (saveUnmapped || field.hasMappedName())) {
 					writeMemberMain(field, 'a', out);
 				}
 			}
 
 			for (MethodInstance method : cls.getMatch().getMethods()) {
-				if (!method.isMatchable()) {
+				if (!method.isMatchable()
+						&& (saveUnmapped || method.hasMappedName() || method.hasMappedChildren())) {
 					writeMethod(method, 'b', out);
 				}
 			}
 
 			for (FieldInstance field : cls.getMatch().getFields()) {
-				if (!field.isMatchable()) {
+				if (!field.isMatchable()
+						&& (saveUnmapped || field.hasMappedName())) {
 					writeMemberMain(field, 'b', out);
 				}
 			}

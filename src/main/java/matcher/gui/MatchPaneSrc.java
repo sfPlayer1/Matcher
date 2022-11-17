@@ -368,12 +368,20 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		items.clear();
 
 		if (cls != null) {
-			for (MethodInstance m : cls.getMethods()) {
-				if (m.isReal()) items.add(m);
+			for (MethodInstance mth : cls.getMethods()) {
+				if (!mth.isReal() || (gui.isHideUnmappedA() && !mth.hasMappedName() && !mth.hasMappedChildren())) {
+					continue;
+				}
+
+				items.add(mth);
 			}
 
-			for (FieldInstance m : cls.getFields()) {
-				if (m.isReal()) items.add(m);
+			for (FieldInstance fld : cls.getFields()) {
+				if (!fld.isReal() || (gui.isHideUnmappedA() && !fld.hasMappedName())) {
+					continue;
+				}
+
+				items.add(fld);
 			}
 
 			items.sort(getMemberComparator());
@@ -388,12 +396,20 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		items.clear();
 
 		if (method != null) {
-			for (MethodVarInstance m : method.getArgs()) {
-				items.add(m);
+			for (MethodVarInstance arg : method.getArgs()) {
+				if (gui.isHideUnmappedA() && !arg.hasMappedName()) {
+					continue;
+				}
+
+				items.add(arg);
 			}
 
-			for (MethodVarInstance m : method.getVars()) {
-				items.add(m);
+			for (MethodVarInstance var : method.getVars()) {
+				if (gui.isHideUnmappedA() && !var.hasMappedName()) {
+					continue;
+				}
+
+				items.add(var);
 			}
 
 			items.sort(getVarComparator());
@@ -480,7 +496,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 			updateLists(true, true);
 			break;
 
-		case SHOW_NON_INPUTS_TOGGLED:
+		case DISPLAY_CLASSES_CHANGED:
 			updateLists(true, false);
 			break;
 
@@ -506,7 +522,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		suppressChangeEvents = true;
 
-		List<ClassInstance> classes = updateContents ? gui.getEnv().getDisplayClassesA(!gui.isShowNonInputs()) : null;
+		List<ClassInstance> classes = updateContents ? gui.getEnv().getDisplayClassesA(!gui.isShowNonInputs(), gui.isHideUnmappedA()) : null;
 
 		if (useClassTree) {
 			updateClassTree(classes, clsComparator, selClass);

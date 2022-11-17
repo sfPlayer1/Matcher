@@ -17,7 +17,7 @@ public class Config {
 			if (prefs.nodeExists(userPrefFolder)) {
 				prefs = prefs.node(userPrefFolder);
 
-				if (prefs.nodeExists(lastProjectSetupKey)) setProjectConfig(new ProjectConfig(prefs.node(lastProjectSetupKey)));
+				if (prefs.nodeExists(lastProjectSetupKey)) setProjectConfig(new ProjectConfig.Builder(prefs.node(lastProjectSetupKey)).build());
 				setInputDirs(loadList(prefs, lastInputDirsKey, Config::deserializePath));
 				setVerifyInputFiles(prefs.getBoolean(lastVerifyInputFilesKey, true));
 				setUidConfig(new UidConfig(prefs));
@@ -155,7 +155,7 @@ public class Config {
 	private static final String lastVerifyInputFilesKey = "last-verify-input-files";
 	private static final String themeKey = "theme";
 
-	private static ProjectConfig projectConfig = new ProjectConfig();
+	private static ProjectConfig projectConfig = ProjectConfig.EMPTY;
 	private static final List<Path> inputDirs = new ArrayList<>();
 	private static boolean verifyInputFiles = true;
 	private static UidConfig uidConfig = new UidConfig();

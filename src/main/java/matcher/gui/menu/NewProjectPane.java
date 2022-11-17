@@ -310,16 +310,16 @@ public class NewProjectPane extends GridPane {
 	}
 
 	public ProjectConfig createConfig() {
-		return new ProjectConfig(new ArrayList<>(pathsA),
-				new ArrayList<>(pathsB),
-				new ArrayList<>(classPathA),
-				new ArrayList<>(classPathB),
-				new ArrayList<>(sharedClassPath),
-				inputsBeforeClassPath,
-				nonObfuscatedClassPatternA.getText(),
-				nonObfuscatedClassPatternB.getText(),
-				nonObfuscatedMemberPatternA.getText(),
-				nonObfuscatedMemberPatternB.getText());
+		return new ProjectConfig.Builder(new ArrayList<>(pathsA), new ArrayList<>(pathsB))
+				.classPathA(new ArrayList<>(classPathA))
+				.classPathB(new ArrayList<>(classPathB))
+				.sharedClassPath(new ArrayList<>(sharedClassPath))
+				.inputsBeforeClassPath(inputsBeforeClassPath)
+				.nonObfuscatedClassPatternA(nonObfuscatedClassPatternA.getText())
+				.nonObfuscatedClassPatternB(nonObfuscatedClassPatternB.getText())
+				.nonObfuscatedMemberPatternA(nonObfuscatedMemberPatternA.getText())
+				.nonObfuscatedMemberPatternB(nonObfuscatedMemberPatternB.getText())
+				.build();
 	}
 
 	private final Window window;

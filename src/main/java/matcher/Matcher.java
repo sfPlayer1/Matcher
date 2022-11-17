@@ -103,8 +103,15 @@ public class Matcher {
 		List<Path> classPathA = resolvePaths(inputDirs, cpFilesA);
 		List<Path> classPathB = resolvePaths(inputDirs, cpFilesB);
 
-		ProjectConfig config = new ProjectConfig(pathsA, pathsB, classPathA, classPathB, sharedClassPath, false,
-				nonObfuscatedClassPatternA, nonObfuscatedClassPatternB, nonObfuscatedMemberPatternA, nonObfuscatedMemberPatternB);
+		ProjectConfig config = new ProjectConfig.Builder(pathsA, pathsB)
+				.classPathA(new ArrayList<>(classPathA))
+				.classPathB(new ArrayList<>(classPathB))
+				.sharedClassPath(new ArrayList<>(sharedClassPath))
+				.nonObfuscatedClassPatternA(nonObfuscatedClassPatternA)
+				.nonObfuscatedClassPatternB(nonObfuscatedClassPatternB)
+				.nonObfuscatedMemberPatternA(nonObfuscatedMemberPatternA)
+				.nonObfuscatedMemberPatternB(nonObfuscatedMemberPatternB)
+				.build();
 		if (!config.isValid()) throw new IOException("invalid config");
 		Config.setProjectConfig(config);
 		Config.saveAsLast();

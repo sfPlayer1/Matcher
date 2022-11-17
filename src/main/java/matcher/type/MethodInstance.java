@@ -18,7 +18,7 @@ import matcher.Util;
 import matcher.classifier.ClassifierUtil;
 import matcher.type.Signature.MethodSignature;
 
-public final class MethodInstance extends MemberInstance<MethodInstance> {
+public final class MethodInstance extends MemberInstance<MethodInstance> implements ParentInstance {
 	/**
 	 * Create a shared unknown method.
 	 */
@@ -339,6 +339,19 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		}
 
 		return true;
+	}
+
+	@Override
+	public boolean hasMappedChildren() {
+		for (MethodVarInstance arg : args) {
+			if (arg.hasMappedName()) return true;
+		}
+
+		for (MethodVarInstance var : vars) {
+			if (var.hasMappedName()) return true;
+		}
+
+		return false;
 	}
 
 	public ClassInstance getRetType() {
