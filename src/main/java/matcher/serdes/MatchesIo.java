@@ -480,27 +480,31 @@ public class MatchesIo {
 	private static void writeMethod(MethodInstance method, char side, Writer out) throws IOException {
 		writeMemberMain(method, side, out);
 
+		boolean saveUnmapped = Config.getProjectConfig().isSaveUnmappedMatches();
+
 		if (method.hasMatch()) {
 			for (MethodVarInstance arg : method.getArgs()) {
-				if (arg.hasMatch() || !arg.isMatchable()) {
+				if ((arg.hasMatch() || !arg.isMatchable())
+						&& (saveUnmapped || arg.hasMappedName())) {
 					writeVar(arg, 'a', out);
 				}
 			}
 
 			for (MethodVarInstance var : method.getVars()) {
-				if (var.hasMatch() || !var.isMatchable()) {
+				if ((var.hasMatch() || !var.isMatchable())
+						&& (saveUnmapped || var.hasMappedName())) {
 					writeVar(var, 'a', out);
 				}
 			}
 
 			for (MethodVarInstance arg : method.getMatch().getArgs()) {
-				if (!arg.isMatchable()) {
+				if (!arg.isMatchable() && (saveUnmapped || arg.hasMappedName())) {
 					writeVar(arg, 'b', out);
 				}
 			}
 
 			for (MethodVarInstance var : method.getMatch().getVars()) {
-				if (!var.isMatchable()) {
+				if (!var.isMatchable() && (saveUnmapped || var.hasMappedName())) {
 					writeVar(var, 'b', out);
 				}
 			}
