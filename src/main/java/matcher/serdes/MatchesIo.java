@@ -441,7 +441,7 @@ public class MatchesIo {
 
 			for (MethodInstance method : cls.getMethods()) {
 				if ((method.hasMatch() || !method.isMatchable())
-						&& (saveUnmapped || method.hasMappedName() || method.hasMappedChildren())) {
+						&& (saveUnmapped || method.hasNonInheritedMappedName() || method.hasMappedChildren())) {
 					writeMethod(method, 'a', out);
 				}
 			}
@@ -455,7 +455,7 @@ public class MatchesIo {
 
 			for (MethodInstance method : cls.getMatch().getMethods()) {
 				if (!method.isMatchable()
-						&& (saveUnmapped || method.hasMappedName() || method.hasMappedChildren())) {
+						&& (saveUnmapped || method.hasNonInheritedMappedName() || method.hasMappedChildren())) {
 					writeMethod(method, 'b', out);
 				}
 			}

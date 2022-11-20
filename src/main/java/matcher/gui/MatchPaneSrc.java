@@ -369,7 +369,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		if (cls != null) {
 			for (MethodInstance mth : cls.getMethods()) {
-				if (!mth.isReal() || (gui.isHideUnmappedA() && !mth.hasMappedName() && !mth.hasMappedChildren())) {
+				if (!mth.isReal() || (gui.isHideUnmappedA() && !mth.hasNonInheritedMappedName() && !mth.hasMappedChildren())) {
 					continue;
 				}
 
