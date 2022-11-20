@@ -157,7 +157,7 @@ public class ProjectConfig {
 	}
 
 	public Path getMappingsPathB() {
-		return mappingsPathA;
+		return mappingsPathB;
 	}
 
 	public boolean isSaveUnmappedMatches() {
