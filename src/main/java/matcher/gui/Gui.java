@@ -135,35 +135,35 @@ public class Gui extends Application {
 			// ProjectConfig args
 
 			case "--inputs-a":
-				while (!args.get(i+1).startsWith("--")) {
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
 					inputsA.add(Path.of(args.get(++i)));
 					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--inputs-b":
-				while (!args.get(i+1).startsWith("--")) {
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
 					inputsB.add(Path.of(args.get(++i)));
 					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--classpath-a":
-				while (!args.get(i+1).startsWith("--")) {
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
 					classPathA.add(Path.of(args.get(++i)));
 					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--classpath-b":
-				while (!args.get(i+1).startsWith("--")) {
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
 					classPathB.add(Path.of(args.get(++i)));
 					validProjectConfigArgPresent = true;
 				}
 
 				break;
 			case "--shared-classpath":
-				while (!args.get(i+1).startsWith("--")) {
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
 					sharedClassPath.add(Path.of(args.get(++i)));
 					validProjectConfigArgPresent = true;
 				}

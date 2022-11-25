@@ -23,7 +23,7 @@ class PluginLoader {
 		for (int i = 0; i < args.length; i++) {
 			switch (args[i]) {
 			case "--additional-plugins":
-				while (!args[i+1].startsWith("--")) {
+				while (i+1 < args.length && !args[i+1].startsWith("--")) {
 					pluginPaths.add(Path.of(args[++i]));
 				}
 
