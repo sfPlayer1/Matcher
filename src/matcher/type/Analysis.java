@@ -481,6 +481,7 @@ class Analysis {
 				case Opcodes.RET: {
 					throw new UnsupportedOperationException("RET is not supported");
 				}
+
 				// TypeInsnNode
 				case Opcodes.NEW:
 					rec.push(method.getEnv().getCreateClassInstance(ClassInstance.getId(((TypeInsnNode) ain).desc)), rec.getNextVarId(VarSource.New));
@@ -508,6 +509,7 @@ class Analysis {
 					rec.push(common.INT, rec.getNextVarId(VarSource.Computed));
 					break;
 				}
+
 				// FieldInsnNode
 				case Opcodes.GETSTATIC:
 				case Opcodes.PUTSTATIC:
@@ -533,6 +535,7 @@ class Analysis {
 
 					break;
 				}
+
 				// MethodInsnNode
 				case Opcodes.INVOKEVIRTUAL:
 				case Opcodes.INVOKESPECIAL:
@@ -542,6 +545,7 @@ class Analysis {
 					handleMethodInvocation(method.getEnv(), in.owner, in.name, in.desc, in.itf, op == Opcodes.INVOKESTATIC, rec);
 					break;
 				}
+
 				// InvokeDynamicInsnNode:
 				case Opcodes.INVOKEDYNAMIC: {
 					InvokeDynamicInsnNode in = (InvokeDynamicInsnNode) ain;
@@ -570,6 +574,7 @@ class Analysis {
 
 					break;
 				}
+
 				// JumpInsnNode
 				case Opcodes.IF_ICMPEQ:
 				case Opcodes.IF_ICMPNE:
@@ -615,6 +620,7 @@ class Analysis {
 				case Opcodes.JSR: {
 					throw new UnsupportedOperationException("JSR is not supported");
 				}
+
 				// LdcInsnNode
 				case Opcodes.LDC: {
 					LdcInsnNode in = (LdcInsnNode) ain;
@@ -650,12 +656,14 @@ class Analysis {
 
 					break;
 				}
+
 				// IincInsnNode
 				case Opcodes.IINC: {
 					IincInsnNode in = (IincInsnNode) ain;
 					rec.set(in.var, rec.get(in.var), rec.getId(in.var));
 					break;
 				}
+
 				// TableSwitchInsnNode
 				case Opcodes.TABLESWITCH: {
 					TableSwitchInsnNode in = (TableSwitchInsnNode) ain;
@@ -681,6 +689,7 @@ class Analysis {
 					idx = dstIdx;
 					break;
 				}
+
 				// LookupSwitchInsnNode
 				case Opcodes.LOOKUPSWITCH: {
 					LookupSwitchInsnNode in = (LookupSwitchInsnNode) ain;
@@ -706,6 +715,7 @@ class Analysis {
 					idx = dstIdx;
 					break;
 				}
+
 				// MultiANewArrayInsnNode
 				case Opcodes.MULTIANEWARRAY: {
 					MultiANewArrayInsnNode in = (MultiANewArrayInsnNode) ain;
@@ -809,7 +819,7 @@ class Analysis {
 	}
 
 	private static class QueueElement {
-		public QueueElement(int dstIndex, ExecState srcState) {
+		QueueElement(int dstIndex, ExecState srcState) {
 			this.dstIndex = dstIndex;
 			this.srcState = srcState;
 		}
@@ -1898,7 +1908,7 @@ class Analysis {
 	}
 
 	private static class Variable {
-		public Variable(ClassInstance type, int id) {
+		Variable(ClassInstance type, int id) {
 			this.type = type;
 			this.id = id;
 		}
@@ -1912,14 +1922,14 @@ class Analysis {
 	}
 
 	private static class ExecState {
-		public ExecState(ClassInstance[] locals, int[] localVarIds, int localsSize, ClassInstance[] stack, int[] stackVarIds, int stackSize) {
+		ExecState(ClassInstance[] locals, int[] localVarIds, int localsSize, ClassInstance[] stack, int[] stackVarIds, int stackSize) {
 			this((localsSize != 0 ? Arrays.copyOf(locals, localsSize) : empty),
 					(localsSize != 0 ? Arrays.copyOf(localVarIds, localsSize) : emptyIds),
 					(stackSize != 0 ? Arrays.copyOf(stack, stackSize) : empty),
 					(stackSize != 0 ? Arrays.copyOf(stackVarIds, stackSize) : emptyIds));
 		}
 
-		public ExecState(ClassInstance[] locals, int[] localVarIds, ClassInstance[] stack, int[] stackVarIds) {
+		ExecState(ClassInstance[] locals, int[] localVarIds, ClassInstance[] stack, int[] stackVarIds) {
 			if (locals == null) throw new NullPointerException("null locals");
 			if (localVarIds == null) throw new NullPointerException("null local var ids");
 			if (stack == null) throw new NullPointerException("null stack");

@@ -26,7 +26,7 @@ public class MappingMenu extends Menu {
 		menuItem.setOnAction(event -> gui.runProgressTask(
 				"Propagating method names/args...",
 				progressReceiver -> MappingPropagator.propagateNames(gui.getEnv(), progressReceiver),
-				() -> {},
+				() -> { },
 				Throwable::printStackTrace));
 
 		menuItem = new MenuItem("Fix record member names");
@@ -54,7 +54,6 @@ public class MappingMenu extends Menu {
 			gui.onMappingChange();
 		}
 	}
-
 
 	private final Gui gui;
 }

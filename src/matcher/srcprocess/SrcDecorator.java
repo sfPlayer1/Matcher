@@ -179,12 +179,14 @@ public class SrcDecorator {
 			}
 
 			n.getBody().accept(this, resolver);
-			/*n.getName().accept(this, arg);
-	        n.getParameters().forEach(p -> p.accept(this, arg));
-	        n.getThrownExceptions().forEach(p -> p.accept(this, arg));
-	        n.getTypeParameters().forEach(p -> p.accept(this, arg));
-	        n.getAnnotations().forEach(p -> p.accept(this, arg));
-	        n.getComment().ifPresent(l -> l.accept(this, arg));*/
+
+			/*	n.getName().accept(this, arg);
+				n.getParameters().forEach(p -> p.accept(this, arg));
+				n.getThrownExceptions().forEach(p -> p.accept(this, arg));
+				n.getTypeParameters().forEach(p -> p.accept(this, arg));
+				n.getAnnotations().forEach(p -> p.accept(this, arg));
+				n.getComment().ifPresent(l -> l.accept(this, arg));
+			*/
 		}
 
 		@Override

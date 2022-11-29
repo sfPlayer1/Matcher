@@ -210,6 +210,7 @@ public class NewProjectPane extends GridPane {
 		footer.getChildren().add(button);
 		button.setOnAction(event -> {
 			List<SelectedFile> res = Gui.requestFiles("Select file to add", window, getInputLoadExtensionFilters());
+
 			for (SelectedFile each : res) {
 				if (!list.getItems().contains(each.path)) list.getItems().add(each.path);
 			}
@@ -219,15 +220,17 @@ public class NewProjectPane extends GridPane {
 		footer.getChildren().add(addDirecotyButton);
 		addDirecotyButton.setOnAction(event -> {
 			Path res = Gui.requestDir("Select directory to add", window);
+
 			try (Stream<Path> stream = Files.walk(res, 128)) {
 				stream.filter(Files::isRegularFile)
-				.filter(getInputLoadExtensionMatcher()::matches)
-				.forEach(path -> {
-					if (!list.getItems().contains(path)) {
-						list.getItems().add(path);
-					}
-				});
-			} catch (IOException ignored) {
+						.filter(getInputLoadExtensionMatcher()::matches)
+						.forEach(path -> {
+							if (!list.getItems().contains(path)) {
+								list.getItems().add(path);
+							}
+						});
+			} catch (IOException e) {
+				// ignored
 			}
 		});
 

@@ -214,7 +214,6 @@ public class Gui extends Application {
 		}
 	}
 
-
 	public BuiltinDecompiler getDecompiler() {
 		return decompiler;
 	}
@@ -367,8 +366,9 @@ public class Gui extends Application {
 			lastChooserFile = lastChooserFile.getParentFile();
 		}
 
-		if (lastChooserFile != null)
+		if (lastChooserFile != null) {
 			fileChooser.setInitialDirectory(lastChooserFile);
+		}
 
 		return fileChooser;
 	}

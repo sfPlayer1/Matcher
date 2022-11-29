@@ -308,7 +308,7 @@ public class FieldClassifier {
 		return a.getAsmNode() == null && b.getAsmNode() == null ? 1 : 0;
 	}
 
-	public static abstract class AbstractClassifier implements IClassifier<FieldInstance> {
+	public abstract static class AbstractClassifier implements IClassifier<FieldInstance> {
 		public AbstractClassifier(String name) {
 			this.name = name;
 		}

@@ -213,7 +213,7 @@ public final class Signature {
 			if (cls != null) {
 				return o.cls != null && cls.isPotentiallyEqual(o.cls);
 			} else if (var != null) {
-				return true;//var.equals(o.var);
+				return true; //var.equals(o.var);
 			} else {
 				assert arrayElemCls != null;
 				return o.arrayElemCls != null && arrayElemCls.isPotentiallyEqual(o.arrayElemCls);
@@ -677,7 +677,7 @@ public final class Signature {
 			if (cls != null) {
 				return o.cls != null && cls.isPotentiallyEqual(o.cls);
 			} else {
-				return true;//var.equals(o.var);
+				return true; //var.equals(o.var);
 			}
 		}
 

@@ -15,6 +15,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
+
 import matcher.gui.IGuiComponent;
 import matcher.type.ClassInstance;
 

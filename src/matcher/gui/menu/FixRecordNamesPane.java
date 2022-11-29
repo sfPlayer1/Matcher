@@ -47,7 +47,7 @@ class FixRecordNamesPane extends GridPane {
 	}
 
 	public static class NamespaceSettings {
-		public NamespaceSettings(NameType ns, NameType linkNs) {
+		NamespaceSettings(NameType ns, NameType linkNs) {
 			this.ns = ns;
 			this.linkNs = linkNs;
 		}

@@ -1,6 +1,7 @@
 package matcher.gui.tab;
 
 import static matcher.gui.tab.ClassInfoTab.getName;
+
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
 import javafx.scene.Node;
@@ -8,6 +9,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
+
 import matcher.NameType;
 import matcher.gui.Gui;
 import matcher.gui.GuiConstants;

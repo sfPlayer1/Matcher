@@ -83,7 +83,7 @@ class SaveMappingsPane extends GridPane {
 	}
 
 	public static class MappingsSaveSettings {
-		public MappingsSaveSettings(boolean a, List<NameType> nsTypes, List<String> nsNames,
+		MappingsSaveSettings(boolean a, List<NameType> nsTypes, List<String> nsNames,
 				MappingsExportVerbosity verbosity, boolean forAnyInput, boolean fieldsFirst) {
 			this.a = a;
 			this.nsTypes = nsTypes;

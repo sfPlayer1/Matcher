@@ -181,7 +181,6 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		return arg.getIndex()+": "+getName(arg, nameType)+" ("+getName(arg.getType(), nameType)+")";
 	}
 
-
 	static String formatClass(Collection<? extends MemberInstance<?>> c, NameType nameType) {
 		return c.stream().map(v -> getName(v.getCls(), nameType)).sorted().collect(Collectors.joining("\n"));
 	}

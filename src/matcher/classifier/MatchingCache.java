@@ -21,10 +21,10 @@ public class MatchingCache {
 		cache.clear();
 	}
 
-	public static final class CacheToken<t> {}
+	public static final class CacheToken<t> { }
 
 	private static class CacheKey<T extends Matchable<T>> {
-		public CacheKey(CacheToken<?> token, T a, T b) {
+		CacheKey(CacheToken<?> token, T a, T b) {
 			this.token = token;
 			this.a = a;
 			this.b = b;

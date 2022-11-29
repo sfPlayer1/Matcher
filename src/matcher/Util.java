@@ -30,14 +30,14 @@ import org.objectweb.asm.tree.MethodInsnNode;
 
 public class Util {
 	public static <T> Set<T> newIdentityHashSet() {
-		return Collections.newSetFromMap(new IdentityHashMap<>());//new IdentityHashSet<>();
+		return Collections.newSetFromMap(new IdentityHashMap<>()); //new IdentityHashSet<>();
 	}
 
 	public static <T> Set<T> newIdentityHashSet(Collection<? extends T> c) {
 		Set<T> ret = Collections.newSetFromMap(new IdentityHashMap<>(c.size()));
 		ret.addAll(c);
 
-		return ret;//new IdentityHashSet<>(c);
+		return ret; //new IdentityHashSet<>(c);
 	}
 
 	public static <T> Set<T> copySet(Set<T> set) {
@@ -130,7 +130,9 @@ public class Util {
 
 		try {
 			c.close();
-		} catch (IOException e) { }
+		} catch (IOException e) {
+			// ignored
+		}
 	}
 
 	public static boolean isCallToInterface(MethodInsnNode insn) {

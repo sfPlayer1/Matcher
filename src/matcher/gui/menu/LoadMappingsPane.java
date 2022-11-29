@@ -76,7 +76,7 @@ class LoadMappingsPane extends GridPane {
 	}
 
 	public static class MappingsLoadSettings {
-		public MappingsLoadSettings(String nsSource, String nsTarget, MappingField fieldSource, MappingField fieldTarget, boolean a, boolean replace) {
+		MappingsLoadSettings(String nsSource, String nsTarget, MappingField fieldSource, MappingField fieldTarget, boolean a, boolean replace) {
 			this.nsSource = nsSource;
 			this.nsTarget = nsTarget;
 			this.fieldSource = fieldSource;
@@ -95,7 +95,7 @@ class LoadMappingsPane extends GridPane {
 
 	// logic to avoid selecting the same value for source+target, swaps selections if this condition would emerge
 	private static class DedupeChangeListener<T> implements ChangeListener<T> {
-		public DedupeChangeListener(ComboBox<T> a, ComboBox<T> b) {
+		DedupeChangeListener(ComboBox<T> a, ComboBox<T> b) {
 			this.a = a;
 			this.b = b;
 

@@ -88,6 +88,7 @@ public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
 				default:
 					// not supported
 				}
+
 				break;
 			case MCP:
 			case SRG:
@@ -118,6 +119,7 @@ public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
 
 					writer.write('\n');
 				}
+
 				break;
 			case SRG:
 				if (isFirstPresent(dstNames)) {
@@ -127,6 +129,7 @@ public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
 					writer.write(dstNames[0]);
 					writer.write('\n');
 				}
+
 				break;
 			}
 		} catch (IOException e) {
@@ -166,6 +169,7 @@ public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
 
 					writer.write('\n');
 				}
+
 				break;
 			case SRG:
 				if (isFirstPresent(dstNames)) {
@@ -183,6 +187,7 @@ public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
 					writer.write(dstDescs[0]); // TODO: handle null
 					writer.write('\n');
 				}
+
 				break;
 			}
 		} catch (IOException e) {
@@ -276,6 +281,7 @@ public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
 
 					writer.write('\n');
 				}
+
 				break;
 			case SRG:
 				if (isFirstPresent(dstNames)) {
@@ -289,6 +295,7 @@ public class MappingWriterImpl implements FlatMappingVisitor, Closeable {
 					writer.write(dstNames[0]);
 					writer.write('\n');
 				}
+
 				break;
 			}
 		} catch (IOException e) {

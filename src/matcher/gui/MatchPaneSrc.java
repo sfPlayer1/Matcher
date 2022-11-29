@@ -348,7 +348,6 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		List<ClassInstance> classes = updateContents ? gui.getEnv().getDisplayClassesA(!gui.isShowNonInputs()) : null;
 
-
 		if (useClassTree) {
 			updateClassTree(classes, clsComparator, selClass);
 		} else {
