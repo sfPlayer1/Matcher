@@ -34,19 +34,19 @@ checkstyle {
 }
 
 java {
-	sourceCompatibility = JavaVersion.VERSION_11
-	targetCompatibility = JavaVersion.VERSION_11
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
 
-	if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11)) {
+	if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
 		toolchain {
-			languageVersion = JavaLanguageVersion.of(11)
+			languageVersion = JavaLanguageVersion.of(17)
 		}
 	}
 }
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.encoding = "UTF-8"
-	it.options.release = 11
+	it.options.release = 17
 }
 
 javafx {
