@@ -78,14 +78,17 @@ public class SrcDecorator {
 			cu = result.getResult().orElseThrow();
 		} else {
 			String fixedSrc = tryFixCodeFormat(src, result.getProblems());
-			ParseResult<CompilationUnit> result2 = parser.parse(fixedSrc);
 
 			if (fixedSrc == null) {
 				throw new SrcParseException(result.getProblems(), src);
-			} else if (!result2.isSuccessful()) {
-				throw new SrcParseException(result2.getProblems(), fixedSrc);
+			}
+
+			ParseResult<CompilationUnit> fixedResult = parser.parse(fixedSrc);
+
+			if (!fixedResult.isSuccessful()) {
+				throw new SrcParseException(fixedResult.getProblems(), fixedSrc);
 			} else {
-				cu = result.getResult().orElseThrow();
+				cu = fixedResult.getResult().orElseThrow();
 			}
 		}
 
