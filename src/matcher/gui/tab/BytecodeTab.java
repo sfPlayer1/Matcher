@@ -21,6 +21,8 @@ public class BytecodeTab extends WebViewTab {
 		this.gui = gui;
 		this.selectionProvider = selectionProvider;
 		this.unmatchedTmp = unmatchedTmp;
+
+		update();
 	}
 
 	@Override

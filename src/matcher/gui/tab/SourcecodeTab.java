@@ -24,11 +24,7 @@ public class SourcecodeTab extends WebViewTab {
 		this.selectionProvider = selectionProvider;
 		this.unmatchedTmp = unmatchedTmp;
 
-		init();
-	}
-
-	private void init() {
-		displayText("no class selected");
+		update();
 	}
 
 	@Override
