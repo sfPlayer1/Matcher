@@ -62,10 +62,12 @@ public class SourcecodeTab extends WebViewTab {
 	public void onViewChange(ViewChangeCause cause) {
 		selectedClass = selectionProvider.getSelectedClass();
 
-		if ((selectedClass != null
+		if (cause == ViewChangeCause.THEME_CHANGED) {
+			// Update immediately to prevent flashes when switching
+			update();
+		} else if (selectedClass != null
 				&& (cause == ViewChangeCause.NAME_TYPE_CHANGED
-						|| cause == ViewChangeCause.DECOMPILER_CHANGED))
-				|| cause == ViewChangeCause.THEME_CHANGED) {
+						|| cause == ViewChangeCause.DECOMPILER_CHANGED)) {
 			updateNeeded = 2;
 			if (tabSelected) update();
 		}
