@@ -33,6 +33,7 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.Util;
 import matcher.classifier.ClassifierUtil;
@@ -582,7 +583,7 @@ public final class ClassEnvironment implements ClassEnv {
 			outerClass = cls.getEnv().getCreateClassInstance(ClassInstance.getId(name), createUnknown);
 
 			if (outerClass == null) {
-				System.err.println("missing outer cls: "+name+" for "+cls);
+				Matcher.LOGGER.error("missing outer cls: {} for {}", name, cls);
 				return;
 			}
 		}

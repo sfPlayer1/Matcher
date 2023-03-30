@@ -34,6 +34,7 @@ import org.jetbrains.java.decompiler.struct.lazy.LazyLoader;
 import org.jetbrains.java.decompiler.util.DataInputFullStream;
 import org.jetbrains.java.decompiler.util.TextBuffer;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.type.ClassEnv;
 import matcher.type.ClassFeatureExtractor;
@@ -45,6 +46,7 @@ public class Fernflower implements Decompiler {
 		// invoke ff with on-demand class lookup into matcher's state and string based output
 		Map<String, Object> properties = new HashMap<>(IFernflowerPreferences.DEFAULTS);
 		properties.put(IFernflowerPreferences.DECOMPILE_GENERIC_SIGNATURES, "1");
+		properties.put(IFernflowerPreferences.LOG_LEVEL, IFernflowerLogger.Severity.WARN);
 
 		ResultSaver resultSaver = new ResultSaver();
 		DecompiledData data = new DecompiledData();
@@ -140,7 +142,7 @@ public class Fernflower implements Decompiler {
 
 		@Override
 		public StructClass getClass(String name) {
-			if (DEBUG) System.out.printf("getClass(%s)%n", name);
+			if (DEBUG) Matcher.LOGGER.debug("getClass({})", name);
 
 			// use classes as a cache, load anything missing on demand
 			StructClass ret = classes.get(name);
@@ -231,7 +233,7 @@ public class Fernflower implements Decompiler {
 
 		@Override
 		public void saveClassFile(String path, String qualifiedName, String entryName, String content, int[] mapping) {
-			if (DEBUG) System.out.printf("saveClassFile(%s, %s, %s, %s, %s)%n", path, qualifiedName, entryName, content, Arrays.toString(mapping));
+			if (DEBUG) Matcher.LOGGER.debug("saveClassFile({}, {}, {}, {}, {})", path, qualifiedName, entryName, content, Arrays.toString(mapping));
 
 			results.put(qualifiedName, content);
 		}
@@ -242,7 +244,7 @@ public class Fernflower implements Decompiler {
 	private static class DecompiledData implements IDecompiledData {
 		@Override
 		public String getClassEntryName(StructClass cl, String entryname) {
-			if (DEBUG) System.out.printf("getClassEntryName(%s, %s)%n", cl, entryname);
+			if (DEBUG) Matcher.LOGGER.debug("getClassEntryName({}, {})", cl, entryname);
 
 			ClassNode node = classProcessor.getMapRootClasses().get(cl.qualifiedName);
 
@@ -258,7 +260,7 @@ public class Fernflower implements Decompiler {
 
 		@Override
 		public String getClassContent(StructClass cl) {
-			if (DEBUG) System.out.printf("getClassContent(%s)%n", cl);
+			if (DEBUG) Matcher.LOGGER.debug("getClassContent({})", cl);
 
 			try {
 				TextBuffer buffer = new TextBuffer(ClassesProcessor.AVERAGE_CLASS_SIZE);
@@ -283,7 +285,7 @@ public class Fernflower implements Decompiler {
 
 		@Override
 		public byte[] getBytecode(String externalPath, String internalPath) throws IOException {
-			if (DEBUG) System.out.printf("getBytecode(%s, %s)%n", externalPath, internalPath);
+			if (DEBUG) Matcher.LOGGER.debug("getBytecode({}, {})", externalPath, internalPath);
 
 			if (externalPath.startsWith(pathPrefix) && externalPath.endsWith(pathSuffix)) {
 				String name = externalPath.substring(pathPrefix.length(), externalPath.length() - pathSuffix.length());

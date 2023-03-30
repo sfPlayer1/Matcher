@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.DoubleConsumer;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.Util;
 import matcher.type.ClassEnvironment;
@@ -87,7 +88,7 @@ public final class MappingPropagator {
 			}
 		}
 
-		System.out.printf("Propagated %d method names, %d method arg names.", propagatedMethodNames, propagatedArgNames);
+		Matcher.LOGGER.info("Propagated {} method names and {} method arg names.", propagatedMethodNames, propagatedArgNames);
 
 		return propagatedMethodNames > 0 || propagatedArgNames > 0;
 	}
@@ -114,10 +115,10 @@ public final class MappingPropagator {
 
 				if (linkedMethod.isNameObfuscated()
 						&& (!field.isNameObfuscated() || !linkedMethod.hasMappedName() || field.hasMappedName())) {
-					System.out.println("copy record component name for method "+linkedMethod+" from field "+field+" -> "+fieldName);
+					Matcher.LOGGER.debug("Copying record component name for method {} from field {} -> {}", linkedMethod, field, fieldName);
 					linkedMethod.setMappedName(fieldName);
 				} else {
-					System.out.println("copy record component name for field "+field+" from method "+linkedMethod+" -> "+methodName);
+					Matcher.LOGGER.debug("Copying record component name for field {} from method {} -> {}", field, linkedMethod, methodName);
 					field.setMappedName(methodName);
 				}
 
@@ -125,7 +126,7 @@ public final class MappingPropagator {
 			}
 		}
 
-		System.out.printf("Fixed %d names.%n", modified);
+		Matcher.LOGGER.info("Fixed {} record names.", modified);
 
 		return modified > 0;
 	}

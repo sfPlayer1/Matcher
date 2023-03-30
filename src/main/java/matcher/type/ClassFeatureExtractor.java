@@ -28,6 +28,7 @@ import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.Util;
 import matcher.type.Analysis.CommonClasses;
@@ -240,7 +241,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 
 	private void processMethodInsns(MethodInstance method) {
 		if (!method.isReal()) { // artificial method to capture calls to types with incomplete/unknown hierarchy/super type method info
-			System.out.println("skipping empty method "+method);
+			Matcher.LOGGER.debug("Skipping empty method "+method);
 			return;
 		}
 
@@ -303,7 +304,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 							Util.isCallToInterface(impl), impl.getTag() == Opcodes.H_INVOKESTATIC);
 					break;
 				default:
-					System.out.println("unexpected impl tag: "+impl.getTag());
+					Matcher.LOGGER.warn("Unexpected impl tag: "+impl.getTag());
 				}
 
 				break;
@@ -328,7 +329,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		MethodInstance ret = cls.resolveMethod(name, desc, toInterface);
 
 		if (ret == null && create) {
-			System.out.printf("creating synthetic method %s/%s%s%n", owner, name, desc);
+			Matcher.LOGGER.debug("Creating synthetic method {}/{}{}", owner, name, desc);
 
 			ret = new MethodInstance(cls, name, desc, isStatic);
 			cls.addMethod(ret);

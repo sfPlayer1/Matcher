@@ -11,6 +11,7 @@ module matcher {
 	exports matcher.bcremap;
 	exports matcher.serdes;
 
+	requires transitive org.apache.logging.log4j;
 	requires cfr;
 	requires com.github.javaparser.core;
 	requires intellij.fernflower;
