@@ -1,1 +1,13 @@
+pluginManagement {
+	repositories {
+		gradlePluginPortal()
+		mavenCentral();
+	}
+	plugins {
+		id 'org.openjfx.javafxplugin' version "${javafx_plugin_version}"
+		id 'com.github.johnrengelman.shadow' version "${shadow_version}"
+		id 'de.jjohannes.extra-java-module-info' version "${extra_java_module_info_version}"
+	}
+}
+
 rootProject.name = 'matcher'
