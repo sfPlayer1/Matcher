@@ -21,13 +21,6 @@ group = 'net.fabricmc'
 
 def ENV = System.getenv()
 
-sourceSets {
-    main {
-        java.srcDirs = ['src']
-		resources.srcDirs = ['res']
-    }
-}
-
 checkstyle {
 	configFile = project.file("checkstyle.xml")
 	toolVersion = project.checkstyle_version
