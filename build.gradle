@@ -5,7 +5,7 @@ plugins {
 	id "checkstyle"
 	id 'org.openjfx.javafxplugin'
 	id 'com.github.johnrengelman.shadow'
-	id 'de.jjohannes.extra-java-module-info'
+	id 'org.gradlex.extra-java-module-info'
 }
 
 repositories {
@@ -89,11 +89,19 @@ dependencies {
 }
 
 extraJavaModuleInfo {
-	automaticModule("cfr-${fabric_cfr_version}.jar", "cfr")
-	automaticModule("procyon-core-${procyon_version}.jar", "procyon.core")
-	automaticModule("procyon-compilertools-${procyon_version}.jar", "procyon.compilertools")
-	automaticModule("fabric-fernflower-${fabric_fernflower_version}.jar", "intellij.fernflower")
-	automaticModule("mapping-io-${mappingio_version}.jar", "net.fabricmc.mappingio")
+	failOnMissingModuleInfo.set(false) // because of transitive dependencies
+
+	// Mapping-IO
+	automaticModule("net.fabricmc:mapping-io", "net.fabricmc.mappingio")
+
+	// CFR
+	automaticModule("net.fabricmc:cfr", "cfr")
+
+	// Fernflower
+	automaticModule("net.fabricmc:fabric-fernflower", "intellij.fernflower")
+
+	// Procyon
+	automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
 }
 
 application {
