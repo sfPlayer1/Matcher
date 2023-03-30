@@ -3,9 +3,9 @@ plugins {
 	id 'application'
 	id 'maven-publish'
 	id "checkstyle"
-	id 'org.openjfx.javafxplugin' version '0.0.13'
-	id 'com.github.johnrengelman.shadow' version '7.1.2'
-	id 'de.jjohannes.extra-java-module-info' version '0.16'
+	id 'org.openjfx.javafxplugin'
+	id 'com.github.johnrengelman.shadow'
+	id 'de.jjohannes.extra-java-module-info'
 }
 
 repositories {
