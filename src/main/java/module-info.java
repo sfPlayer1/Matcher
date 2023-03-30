@@ -26,6 +26,8 @@ module matcher {
 	requires org.objectweb.asm.tree.analysis;
 	requires org.objectweb.asm.util;
 	requires procyon.compilertools;
+	requires jadx.core;
+	requires jadx.java_input;
 	requires transitive net.fabricmc.mappingio;
 
 	uses matcher.Plugin;

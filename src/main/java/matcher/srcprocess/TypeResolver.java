@@ -61,11 +61,19 @@ class TypeResolver {
 		}
 	}
 
+	// TODO: Clean up once you can disable JADX repackaging orphaned classes
 	public ClassInstance getCls(Node node) {
 		StringBuilder sb = new StringBuilder();
+		String jadxDefaultPackage = jadx.core.Consts.DEFAULT_PACKAGE_NAME;
 
-		if (pkg != null) {
-			sb.append(pkg);
+		if (pkg != null && !pkg.equals(jadxDefaultPackage)) {
+			String pkgCleaned = pkg;
+
+			if (pkg.startsWith(jadxDefaultPackage)) {
+				pkgCleaned = pkg.substring(jadxDefaultPackage.length() + 1);
+			}
+
+			sb.append(pkgCleaned);
 			sb.append('/');
 		}
 
