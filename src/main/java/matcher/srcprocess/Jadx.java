@@ -69,7 +69,12 @@ public class Jadx implements Decompiler {
 	private static final AtomicInteger idGenerator = new AtomicInteger();
 
 	static {
-		jadxArgs = new JadxArgs();
+		jadxArgs = new JadxArgs() {
+			@Override
+			public void close() {
+				return;
+			}
+		};
 		jadxArgs.setCodeCache(NoOpCodeCache.INSTANCE);
 		jadxArgs.setShowInconsistentCode(true);
 		jadxArgs.setInlineAnonymousClasses(false);
