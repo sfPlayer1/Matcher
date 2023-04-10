@@ -23,7 +23,7 @@ import matcher.type.ClassInstance;
 
 public class Jadx implements Decompiler {
 	@Override
-	public synchronized String decompile(ClassInstance cls, ClassFeatureExtractor env, NameType nameType) {
+	public String decompile(ClassInstance cls, ClassFeatureExtractor env, NameType nameType) {
 		String errorMessage = null;
 		final String fullClassName = cls.getName(NameType.PLAIN, true);
 
