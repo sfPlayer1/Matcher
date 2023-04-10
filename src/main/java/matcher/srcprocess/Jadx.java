@@ -1,71 +1,62 @@
 package matcher.srcprocess;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import jadx.api.CommentsLevel;
-import jadx.api.ICodeCache;
 import jadx.api.JadxArgs;
 import jadx.api.JadxDecompiler;
-import jadx.api.JavaClass;
-import jadx.api.impl.InMemoryCodeCache;
-import jadx.core.Consts;
+import jadx.api.impl.NoOpCodeCache;
+import jadx.api.plugins.input.data.IClassData;
+import jadx.api.plugins.input.data.ILoadResult;
+import jadx.api.plugins.input.data.IResourceData;
 import jadx.core.utils.Utils;
+import jadx.plugins.input.java.JavaClassReader;
+import jadx.plugins.input.java.data.JavaClassData;
 
 import matcher.NameType;
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
-import matcher.type.InputFile;
 
 public class Jadx implements Decompiler {
 	@Override
 	public synchronized String decompile(ClassInstance cls, ClassFeatureExtractor env, NameType nameType) {
 		String errorMessage = null;
-		String fullClassName = cls.getName(NameType.PLAIN, true);
+		final String fullClassName = cls.getName(NameType.PLAIN, true);
 
 		if (fullClassName.contains("$")) {
 			errorMessage = "JADX doesn't support decompiling inner classes!";
 		} else {
-			try {
-				JadxDecompiler jadx = envDecompilerMap.get(env);
-
-				if (jadx == null) {
-					ICodeCache cache = new InMemoryCodeCache();
-
-					JadxArgs jadxArgs = new JadxArgs();
-					jadxArgs.setInputFiles(toActualFiles(env.getInputFiles()));
-					jadxArgs.setCodeCache(cache);
-					jadxArgs.setShowInconsistentCode(true);
-					jadxArgs.setInlineAnonymousClasses(false);
-					jadxArgs.setInlineMethods(false);
-					jadxArgs.setSkipResources(true);
-					jadxArgs.setRespectBytecodeAccModifiers(true);
-					jadxArgs.setCommentsLevel(CommentsLevel.INFO);
-
-					jadx = new JadxDecompiler(jadxArgs);
-					envDecompilerMap.put(env, jadx);
-					envCacheMap.put(env, cache);
-
-					jadx.load();
-				}
-
-				String defpackage = Consts.DEFAULT_PACKAGE_NAME + ".";
-				String jadxFullClassName;
-
-				for (JavaClass jadxCls : jadx.getClassesWithInners()) {
-					jadxFullClassName = jadxCls.getFullName().replace(defpackage, "");
-					fullClassName = fullClassName
-							.replace('/', '.')
-							.replace('$', '.');
-
-					if (jadxFullClassName.equals(fullClassName)) {
-						return jadxCls.getCode();
+			try (JadxDecompiler jadx = new JadxDecompiler(jadxArgs)) {
+				jadx.addCustomLoad(new ILoadResult() {
+					@Override
+					public void close() throws IOException {
+						return;
 					}
-				}
+
+					@Override
+					public void visitClasses(Consumer<IClassData> consumer) {
+						consumer.accept(new JavaClassData(new JavaClassReader(idGenerator.getAndIncrement(),
+								fullClassName + ".class", cls.serialize(nameType))));
+					}
+
+					@Override
+					public void visitResources(Consumer<IResourceData> consumer) {
+						return;
+					}
+
+					@Override
+					public boolean isEmpty() {
+						return false;
+					}
+				});
+				jadx.load();
+
+				assert jadx.getClassesWithInners().size() == 1;
+				return jadx.getClassesWithInners().get(0).getCode();
 			} catch (Exception e) {
 				errorMessage = Utils.getStackTrace(e);
 			}
@@ -74,18 +65,17 @@ public class Jadx implements Decompiler {
 		throw new RuntimeException(errorMessage != null ? errorMessage : "JADX couldn't find the requested class");
 	}
 
-	private List<File> toActualFiles(Collection<InputFile> inputFiles) {
-		List<File> files = new ArrayList<>();
+	private static final JadxArgs jadxArgs;
+	private static final AtomicInteger idGenerator = new AtomicInteger();
 
-		for (InputFile inputFile : inputFiles) {
-			if (inputFile.path != null && inputFile.path.toFile().exists()) {
-				files.add(inputFile.path.toFile());
-			}
-		}
-
-		return files;
+	static {
+		jadxArgs = new JadxArgs();
+		jadxArgs.setCodeCache(NoOpCodeCache.INSTANCE);
+		jadxArgs.setShowInconsistentCode(true);
+		jadxArgs.setInlineAnonymousClasses(false);
+		jadxArgs.setInlineMethods(false);
+		jadxArgs.setSkipResources(true);
+		jadxArgs.setRespectBytecodeAccModifiers(true);
+		jadxArgs.setCommentsLevel(CommentsLevel.INFO);
 	}
-
-	private static final Map<ClassFeatureExtractor, JadxDecompiler> envDecompilerMap = new ConcurrentHashMap<>();
-	private static final Map<ClassFeatureExtractor, ICodeCache> envCacheMap = new ConcurrentHashMap<>();
 }
