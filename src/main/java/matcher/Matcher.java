@@ -26,8 +26,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import matcher.classifier.ClassClassifier;
 import matcher.classifier.ClassifierLevel;
@@ -839,7 +839,7 @@ public class Matcher {
 	}
 
 	public static final ExecutorService threadPool = Executors.newWorkStealingPool();
-	public static final Logger LOGGER = LogManager.getLogger("Matcher");
+	public static final Logger LOGGER = LoggerFactory.getLogger("Matcher");
 
 	private final ClassEnvironment env;
 	private final ClassifierLevel autoMatchLevel = ClassifierLevel.Extra;
