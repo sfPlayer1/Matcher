@@ -107,6 +107,10 @@ application {
 	mainClass = 'matcher.Main'
 }
 
+jar {
+	processResources.exclude('tinylog-dev.properties')
+}
+
 publishing {
 	publications {
 		mavenJava(MavenPublication) {
