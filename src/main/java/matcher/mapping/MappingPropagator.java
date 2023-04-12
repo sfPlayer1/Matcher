@@ -88,7 +88,7 @@ public final class MappingPropagator {
 			}
 		}
 
-		Matcher.LOGGER.info("Propagated {} method names and {} method arg names.", propagatedMethodNames, propagatedArgNames);
+		Matcher.LOGGER.info("Propagated {} method names and {} method arg names", propagatedMethodNames, propagatedArgNames);
 
 		return propagatedMethodNames > 0 || propagatedArgNames > 0;
 	}

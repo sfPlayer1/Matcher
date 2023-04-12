@@ -204,7 +204,7 @@ public class Util {
 		} else if (isIrrelevantBsm(bsm)) {
 			return null;
 		} else {
-			Matcher.LOGGER.warn("unknown invokedynamic bsm: {}/{}{} (tag={} iif={})",
+			Matcher.LOGGER.warn("Unknown invokedynamic bsm: {}/{}{} (tag={} iif={})",
 					bsm.getOwner(), bsm.getName(), bsm.getDesc(), bsm.getTag(), bsm.isInterface());
 
 			return null;

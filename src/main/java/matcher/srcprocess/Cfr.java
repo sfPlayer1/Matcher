@@ -98,16 +98,16 @@ public class Cfr implements Decompiler {
 		public <T> OutputSinkFactory.Sink<T> getSink(SinkType sinkType, SinkClass sinkClass) {
 			switch (sinkType) {
 			case EXCEPTION:
-				return str -> Matcher.LOGGER.debug("e {}", str);
+				return str -> Matcher.LOGGER.error("CFR exception: {}", str);
 			case JAVA:
 				return sb::append;
 			case PROGRESS:
-				return str -> Matcher.LOGGER.debug("p {}", str);
+				return str -> Matcher.LOGGER.debug("CFR progress: {}", str);
 			case SUMMARY:
-				return str -> Matcher.LOGGER.debug("s {}", str);
+				return str -> Matcher.LOGGER.debug("CFR summary: {}", str);
 			default:
-				Matcher.LOGGER.warn("Unknown CFR sink type: {}", sinkType);
-				return str -> Matcher.LOGGER.warn("* {}", str);
+				Matcher.LOGGER.debug("Unknown CFR sink type: {}", sinkType);
+				return str -> Matcher.LOGGER.debug("{}", str);
 			}
 		}
 

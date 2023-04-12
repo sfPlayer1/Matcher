@@ -52,10 +52,6 @@ public class Gui extends Application {
 	@Override
 	public void start(Stage stage) {
 		Matcher.init();
-		Matcher.LOGGER.debug("Debug message");
-		Matcher.LOGGER.info("Info message");
-		Matcher.LOGGER.warn("Warn message");
-		Matcher.LOGGER.error("Error message");
 
 		env = new ClassEnvironment();
 		matcher = new Matcher(env);

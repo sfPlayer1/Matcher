@@ -1896,6 +1896,7 @@ class Analysis {
 			}
 
 			sb.append(']');
+			Matcher.LOGGER.debug(sb.toString());
 		}
 
 		final ExecState[] states; // state at the start of every instruction index
