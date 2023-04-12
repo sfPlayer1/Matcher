@@ -1,8 +1,6 @@
 package matcher.srcprocess;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -27,39 +25,35 @@ public class Jadx implements Decompiler {
 		String errorMessage = null;
 		final String fullClassName = cls.getName(NameType.PLAIN, true);
 
-		if (fullClassName.contains("$")) {
-			errorMessage = "JADX doesn't support decompiling inner classes!";
-		} else {
-			try (JadxDecompiler jadx = new JadxDecompiler(jadxArgs)) {
-				jadx.addCustomLoad(new ILoadResult() {
-					@Override
-					public void close() throws IOException {
-						return;
-					}
+		try (JadxDecompiler jadx = new JadxDecompiler(jadxArgs)) {
+			jadx.addCustomLoad(new ILoadResult() {
+				@Override
+				public void close() throws IOException {
+					return;
+				}
 
-					@Override
-					public void visitClasses(Consumer<IClassData> consumer) {
-						consumer.accept(new JavaClassData(new JavaClassReader(idGenerator.getAndIncrement(),
-								fullClassName + ".class", cls.serialize(nameType))));
-					}
+				@Override
+				public void visitClasses(Consumer<IClassData> consumer) {
+					consumer.accept(new JavaClassData(new JavaClassReader(idGenerator.getAndIncrement(),
+							fullClassName + ".class", cls.serialize(nameType))));
+				}
 
-					@Override
-					public void visitResources(Consumer<IResourceData> consumer) {
-						return;
-					}
+				@Override
+				public void visitResources(Consumer<IResourceData> consumer) {
+					return;
+				}
 
-					@Override
-					public boolean isEmpty() {
-						return false;
-					}
-				});
-				jadx.load();
+				@Override
+				public boolean isEmpty() {
+					return false;
+				}
+			});
+			jadx.load();
 
-				assert jadx.getClassesWithInners().size() == 1;
-				return jadx.getClassesWithInners().get(0).getCode();
-			} catch (Exception e) {
-				errorMessage = Utils.getStackTrace(e);
-			}
+			assert jadx.getClassesWithInners().size() == 1;
+			return jadx.getClassesWithInners().get(0).getCode();
+		} catch (Exception e) {
+			errorMessage = Utils.getStackTrace(e);
 		}
 
 		throw new RuntimeException(errorMessage != null ? errorMessage : "JADX couldn't find the requested class");
