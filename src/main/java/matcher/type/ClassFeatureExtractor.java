@@ -329,7 +329,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		MethodInstance ret = cls.resolveMethod(name, desc, toInterface);
 
 		if (ret == null && create) {
-			Matcher.LOGGER.debug("Creating synthetic method {}/{}{}", owner, name, desc);
+			Matcher.LOGGER.trace("Creating synthetic method {}/{}{}", owner, name, desc);
 
 			ret = new MethodInstance(cls, name, desc, isStatic);
 			cls.addMethod(ret);

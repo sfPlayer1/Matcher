@@ -583,7 +583,7 @@ public final class ClassEnvironment implements ClassEnv {
 			outerClass = cls.getEnv().getCreateClassInstance(ClassInstance.getId(name), createUnknown);
 
 			if (outerClass == null) {
-				Matcher.LOGGER.error("missing outer cls: {} for {}", name, cls);
+				Matcher.LOGGER.trace("Missing outer cls: {} for {}", name, cls);
 				return;
 			}
 		}
