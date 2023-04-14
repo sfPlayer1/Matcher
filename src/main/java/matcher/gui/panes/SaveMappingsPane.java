@@ -1,4 +1,4 @@
-package matcher.gui.menu;
+package matcher.gui.panes;
 
 import java.util.List;
 
@@ -16,8 +16,8 @@ import matcher.NameType;
 import matcher.gui.GuiConstants;
 import matcher.mapping.MappingsExportVerbosity;
 
-class SaveMappingsPane extends GridPane {
-	SaveMappingsPane(boolean offerNamespaces) {
+public class SaveMappingsPane extends GridPane {
+	public SaveMappingsPane(boolean offerNamespaces) {
 		init(offerNamespaces);
 	}
 

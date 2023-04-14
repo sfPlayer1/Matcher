@@ -31,6 +31,12 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.MethodInsnNode;
 
 public class Util {
+	public static String getStacktrace(Throwable throwable) {
+		StringWriter stringWriter = new StringWriter();
+		throwable.printStackTrace(new PrintWriter(stringWriter));
+		return stringWriter.toString();
+	}
+
 	public static <T> Set<T> newIdentityHashSet() {
 		return Collections.newSetFromMap(new IdentityHashMap<>()); //new IdentityHashSet<>();
 	}
@@ -373,4 +379,6 @@ public class Util {
 	}
 
 	public static final Object asmNodeSync = new Object();
+	/** Max accepted float rounding error. */
+	public static final float floatError = 1e-5f;
 }

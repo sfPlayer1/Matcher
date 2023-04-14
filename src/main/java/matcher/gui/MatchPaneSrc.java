@@ -266,12 +266,11 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 				styleClass = CellStyleClass.HIGH_MATCH_SIMILARITY;
 			}
 		} else {
-			final float epsilon = 1e-5f; // float rounding error
 			float similarity = item.getSimilarity();
 
-			if (similarity < epsilon) {
+			if (similarity < Util.floatError) {
 				styleClass = CellStyleClass.LOW_MATCH_SIMILARITY;
-			} else if (similarity > 1 - epsilon) {
+			} else if (similarity > 1 - Util.floatError) {
 				styleClass = CellStyleClass.HIGH_MATCH_SIMILARITY;
 			} else {
 				cell.setTextFill(null);

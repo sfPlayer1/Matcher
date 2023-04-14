@@ -1,4 +1,4 @@
-package matcher.gui.menu;
+package matcher.gui.panes;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,8 +12,8 @@ import javafx.scene.layout.GridPane;
 import matcher.NameType;
 import matcher.gui.GuiConstants;
 
-class FixRecordNamesPane extends GridPane {
-	FixRecordNamesPane() {
+public class FixRecordNamesPane extends GridPane {
+	public FixRecordNamesPane() {
 		init();
 	}
 
