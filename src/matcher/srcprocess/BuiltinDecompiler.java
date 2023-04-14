@@ -5,8 +5,7 @@ import java.util.function.Supplier;
 public enum BuiltinDecompiler {
 	CFR("CFR", Cfr::new),
 	FERNFLOWER("Fernflower", Fernflower::new),
-	PROCYON("Procyon", Procyon::new),
-	NOP("no-op", NoOp::new);
+	PROCYON("Procyon", Procyon::new);
 
 	BuiltinDecompiler(String name, Supplier<? extends Decompiler> supplier) {
 		this.name = name;
