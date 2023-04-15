@@ -1,142 +1,62 @@
 plugins {
-	id 'java-library'
-	id 'application'
-	id 'maven-publish'
-	id "checkstyle"
-	id 'org.openjfx.javafxplugin'
-	id 'com.github.johnrengelman.shadow'
-	id 'org.gradlex.extra-java-module-info'
+	id 'com.github.johnrengelman.shadow' apply false
 }
 
-repositories {
-	mavenCentral()
-	maven {
-		name "Fabric"
-		url 'https://maven.fabricmc.net/'
-	}
-}
-
-archivesBaseName = 'matcher'
-group = 'net.fabricmc'
-
-def ENV = System.getenv()
-
-checkstyle {
-	configFile = project.file("checkstyle.xml")
-	toolVersion = project.checkstyle_version
-}
-
-java {
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
-
-	if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
-		toolchain {
-			languageVersion = JavaLanguageVersion.of(17)
-		}
-	}
-
-	withSourcesJar()
-}
-
-tasks.withType(JavaCompile).configureEach {
-	it.options.encoding = "UTF-8"
-	it.options.release = 17
-}
-
-javafx {
-	version = javafx_version
-	modules = [ 'javafx.controls', 'javafx.web' ]
-
-	// Don't include native binaries via the plugin,
-	// since it will only include those for the current OS.
-	// The full set of native libraries gets shadowed a few lines beneath.
-	configuration = 'compileOnly'
-}
-
-dependencies {
-	api "org.ow2.asm:asm:${asm_version}"
-	api "org.ow2.asm:asm-tree:${asm_version}"
-	api "org.slf4j:slf4j-api:${slf4j_version}"
-	api "net.fabricmc:mapping-io:${mappingio_version}"
-	implementation "org.ow2.asm:asm-commons:${asm_version}"
-	implementation "org.ow2.asm:asm-util:${asm_version}"
-	implementation "com.github.javaparser:javaparser-core:${javaparser_version}"
-	implementation "net.fabricmc:cfr:${fabric_cfr_version}"
-	implementation "org.vineflower:vineflower:${vineflower_version}"
-	implementation "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
-	implementation ("io.github.skylot:jadx-core:${jadx_version}") {
-		exclude group: 'com.android.tools.build', module: 'aapt2-proto'
-	}
-	implementation ("io.github.skylot:jadx-java-input:${jadx_version}") {
-		exclude group: 'io.github.skylot', module: 'raung-disasm'
-	}
-	runtimeOnly "org.tinylog:tinylog-impl:${tinylog_version}"
-	runtimeOnly "org.tinylog:slf4j-tinylog:${tinylog_version}"
-
-	// JavaFX for all platforms (needed for cross-platform fat jar)
-	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:win"
-	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:mac"
-	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:linux"
-	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:win"
-	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:mac"
-	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:linux"
-	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:win"
-	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:mac"
-	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:linux"
-	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:win"
-	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:mac"
-	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:linux"
-	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:win"
-	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:mac"
-	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:linux"
-}
-
-extraJavaModuleInfo {
-	failOnMissingModuleInfo.set(false) // because of transitive dependencies
-
-	// CFR
-	automaticModule("net.fabricmc:cfr", "cfr")
-
-	// Vineflower
-	automaticModule("org.vineflower:vineflower", "org.vineflower.vineflower")
-
-	// Procyon
-	automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
-
-	// JADX
-	automaticModule("io.github.skylot:jadx-core", "jadx.core")
-	automaticModule("io.github.skylot:jadx-plugins-api", "jadx.plugins.api")
-	automaticModule("io.github.skylot:jadx-java-input", "jadx.plugins.java_input")
-}
-
-application {
-	mainModule = 'matcher'
-	mainClass = 'matcher.Main'
-}
-
-jar {
-	processResources.exclude('tinylog-dev.properties')
-}
-
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			from components.java
-		}
-	}
+subprojects {
+	apply plugin: 'java-library'
+	apply plugin: 'maven-publish'
+	apply plugin: 'checkstyle'
+	apply plugin: 'com.github.johnrengelman.shadow'
 
 	repositories {
-		mavenLocal()
+		mavenCentral()
+		maven {
+			name "Fabric"
+			url 'https://maven.fabricmc.net/'
+		}
+	}
 
-		if (ENV.MAVEN_URL) {
-			repositories.maven {
-				name "fabric"
-				url ENV.MAVEN_URL
-				credentials {
-					username ENV.MAVEN_USERNAME
-					password ENV.MAVEN_PASSWORD
-				}
+	group = 'net.fabricmc.matcher'
+	version = rootProject.version
+
+	checkstyle {
+		configFile = rootProject.file("checkstyle.xml")
+		toolVersion = rootProject.checkstyle_version
+	}
+
+	java {
+		withJavadocJar()
+		withSourcesJar()
+	}
+
+	tasks.withType(JavaCompile).configureEach {
+		it.options.encoding = "UTF-8"
+	}
+
+	tasks.withType(com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configureEach {
+		// https://github.com/johnrengelman/shadow/issues/882#issuecomment-1715703146
+		// Defer the resolution  of 'runtimeClasspath'. This is an issue in the shadow
+		// plugin that it automatically accesses the files in 'runtimeClasspath' while
+		// Gradle is building the task graph. The three lines below work around that.
+		inputs.files(project.configurations.runtimeClasspath)
+		configurations = Collections.emptyList()
+
+		doFirst {
+			configurations = Collections.singletonList(project.configurations.runtimeClasspath)
+		}
+	}
+
+	javadoc {
+		options.addBooleanOption('html5', true)
+
+		// disable 'missing' warnings
+		options.addStringOption('Xdoclint:all,-missing', '-quiet')
+	}
+
+	publishing {
+		publications {
+			"$project.name"(MavenPublication) {
+				from components.java
 			}
 		}
 	}

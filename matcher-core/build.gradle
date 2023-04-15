@@ -1,0 +1,25 @@
+archivesBaseName = 'matcher-core'
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_11
+	targetCompatibility = JavaVersion.VERSION_11
+
+	if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11)) {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(11)
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 11
+}
+
+dependencies {
+	api "net.fabricmc:mapping-io:${mappingio_version}"
+	api "org.ow2.asm:asm:${asm_version}"
+	api "org.ow2.asm:asm-tree:${asm_version}"
+	api "org.slf4j:slf4j-api:${slf4j_version}"
+	implementation "org.ow2.asm:asm-commons:${asm_version}"
+	implementation "org.ow2.asm:asm-util:${asm_version}"
+}
