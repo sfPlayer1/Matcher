@@ -32,7 +32,6 @@ import javafx.scene.paint.Color;
 import matcher.NameType;
 import matcher.Util;
 import matcher.config.Config;
-import matcher.config.Theme.ColorInterpolationMode;
 import matcher.gui.Gui.SortKey;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
@@ -277,11 +276,35 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 				cell.setTextFill(null);
 				if (lowSimilarityCellTextColor == null || highSimilarityCellTextColor == null) return;
 
-				if (Config.getTheme().getDiffColorInterpolationMode() == ColorInterpolationMode.RGB) {
-					cell.setTextFill(interpolateRgb(lowSimilarityCellTextColor, highSimilarityCellTextColor, similarity));
-				} else {
-					cell.setTextFill(interpolateHsb(lowSimilarityCellTextColor, highSimilarityCellTextColor, similarity));
+				similarity = Math.round((similarity / diffColorStepAlignment)) * diffColorStepAlignment;
+				int similarityAsInt = (int) (similarity * 100);
+				Color textColor;
+
+				switch (Config.getTheme().getDiffColorInterpolationMode()) {
+				case RGB:
+					textColor = similarityToColorRgb.get(similarityAsInt);
+
+					if (textColor == null) {
+						textColor = interpolateRgb(lowSimilarityCellTextColor, highSimilarityCellTextColor, similarity);
+						similarityToColorRgb.put(similarityAsInt, textColor);
+					}
+
+					break;
+				case HSB:
+					textColor = similarityToColorHsb.get(similarityAsInt);
+
+					if (textColor == null) {
+						textColor = interpolateHsb(lowSimilarityCellTextColor, highSimilarityCellTextColor, similarity);
+						similarityToColorHsb.put(similarityAsInt, textColor);
+					}
+
+					break;
+				default:
+					throw new UnsupportedOperationException("Unsupported color interpolation mode!");
 				}
+
+				assert textColor != null;
+				cell.setTextFill(textColor);
 			}
 		}
 
@@ -451,6 +474,8 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 
 		case THEME_CHANGED:
 			retrieveCellTextColors();
+			similarityToColorRgb.clear();
+			similarityToColorHsb.clear();
 		case DIFF_COLORS_TOGGLED:
 			updateLists(true, true);
 			break;
@@ -744,6 +769,10 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	};
 
 	private static final Comparator<String> clsNameComparator = Util::compareNatural;
+	private static final int diffColorSteps = 20;
+	private static final float diffColorStepAlignment = 1f / diffColorSteps;
+	private static final Map<Integer, Color> similarityToColorRgb = new HashMap<>(diffColorSteps / 2 + 1);
+	private static final Map<Integer, Color> similarityToColorHsb = new HashMap<>(diffColorSteps / 2 + 1);
 
 	private final Gui gui;
 	private final Collection<IGuiComponent> components = new ArrayList<>();
