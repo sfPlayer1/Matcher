@@ -648,7 +648,7 @@ public class Matcher {
 	}
 
 	public boolean autoMatchMethodVars(DoubleConsumer progressReceiver) {
-		return autoMatchMethodArgs(autoMatchLevel, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
+		return autoMatchMethodVars(autoMatchLevel, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
 	}
 
 	public boolean autoMatchMethodVars(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
