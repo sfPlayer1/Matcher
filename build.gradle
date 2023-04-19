@@ -5,7 +5,6 @@ plugins {
 	id "checkstyle"
 	id 'org.openjfx.javafxplugin'
 	id 'com.github.johnrengelman.shadow'
-	id 'org.gradlex.extra-java-module-info'
 }
 
 repositories {
@@ -37,11 +36,6 @@ java {
 	}
 
 	withSourcesJar()
-}
-
-tasks.withType(JavaCompile).configureEach {
-	it.options.encoding = "UTF-8"
-	it.options.release = 17
 }
 
 javafx {
@@ -83,22 +77,19 @@ dependencies {
 	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:linux"
 }
 
-extraJavaModuleInfo {
-	failOnMissingModuleInfo.set(false) // because of transitive dependencies
-
-	// CFR
-	automaticModule("net.fabricmc:cfr", "cfr")
-
-	// Vineflower
-	automaticModule("org.vineflower:vineflower", "org.vineflower.vineflower")
-
-	// Procyon
-	automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
+application {
+	mainClass = 'matcher.Main'
 }
 
-application {
-	mainModule = 'matcher'
-	mainClass = 'matcher.Main'
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = "UTF-8"
+	it.options.release = 17
+}
+
+jar {
+	manifest {
+		attributes 'Automatic-Module-Name': 'matcher'
+	}
 }
 
 publishing {
