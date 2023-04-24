@@ -5,8 +5,8 @@ import java.io.StringWriter;
 import java.util.Set;
 
 import matcher.NameType;
-import matcher.gui.ui.Gui;
 import matcher.gui.ui.ISelectionProvider;
+import matcher.gui.MatcherGui;
 import matcher.gui.srcprocess.Decompiler;
 import matcher.gui.srcprocess.HtmlUtil;
 import matcher.gui.srcprocess.SrcDecorator;
@@ -18,7 +18,7 @@ import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 
 public class SourcecodeTab extends WebViewTab {
-	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
+	public SourcecodeTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("source", "ui/templates/CodeViewTemplate.htm");
 
 		this.gui = gui;
@@ -89,7 +89,7 @@ public class SourcecodeTab extends WebViewTab {
 		NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
 
 		//Gui.runAsyncTask(() -> gui.getEnv().decompile(selectedClass, true))
-		Gui.runAsyncTask(() -> SrcDecorator.decorate(Decompiler.decompile(gui.getEnv(), gui.getDecompiler().get(), selectedClass, nameType), selectedClass, nameType))
+		MatcherGui.runAsyncTask(() -> SrcDecorator.decorate(Decompiler.decompile(gui.getEnv(), gui.getDecompiler().get(), selectedClass, nameType), selectedClass, nameType))
 				.whenComplete((res, exc) -> {
 					if (cDecompId == decompId) {
 						if (exc != null) {
@@ -139,7 +139,7 @@ public class SourcecodeTab extends WebViewTab {
 		}
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final ISelectionProvider selectionProvider;
 	private final boolean unmatchedTmp;
 

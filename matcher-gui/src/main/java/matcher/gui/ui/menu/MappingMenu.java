@@ -7,12 +7,12 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 
-import matcher.mapping.MappingPropagator;
-import matcher.gui.ui.Gui;
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.menu.FixRecordNamesPane.NamespaceSettings;
+import matcher.mapping.MappingPropagator;
 
 public class MappingMenu extends Menu {
-	MappingMenu(Gui gui) {
+	MappingMenu(MatcherGui gui) {
 		super("Mapping");
 
 		this.gui = gui;
@@ -55,5 +55,5 @@ public class MappingMenu extends Menu {
 		}
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 }

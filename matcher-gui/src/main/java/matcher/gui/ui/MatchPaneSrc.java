@@ -33,7 +33,8 @@ import matcher.Matcher;
 import matcher.NameType;
 import matcher.Util;
 import matcher.config.Config;
-import matcher.gui.ui.Gui.SortKey;
+import matcher.gui.MatcherGui;
+import matcher.gui.MatcherGui.SortKey;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MatchType;
@@ -43,7 +44,7 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelectionProvider {
-	public MatchPaneSrc(Gui gui) {
+	public MatchPaneSrc(MatcherGui gui) {
 		this.gui = gui;
 
 		init();
@@ -791,7 +792,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 	private static final Map<Integer, Color> similarityToColorRgb = new HashMap<>(diffColorSteps / 2 + 1);
 	private static final Map<Integer, Color> similarityToColorHsb = new HashMap<>(diffColorSteps / 2 + 1);
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final Collection<IGuiComponent> components = new ArrayList<>();
 	private boolean useClassTree;
 	private ListView<ClassInstance> classList;

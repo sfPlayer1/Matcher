@@ -1,5 +1,6 @@
 plugins {
 	id 'com.github.johnrengelman.shadow' apply false
+	id 'org.gradlex.extra-java-module-info' apply false
 }
 
 subprojects {
@@ -7,6 +8,7 @@ subprojects {
 	apply plugin: 'maven-publish'
 	apply plugin: 'checkstyle'
 	apply plugin: 'com.github.johnrengelman.shadow'
+	apply plugin: 'org.gradlex.extra-java-module-info'
 
 	repositories {
 		mavenCentral()
@@ -22,6 +24,27 @@ subprojects {
 	checkstyle {
 		configFile = rootProject.file("checkstyle.xml")
 		toolVersion = rootProject.checkstyle_version
+	}
+
+	extraJavaModuleInfo {
+		failOnMissingModuleInfo.set(false) // because of transitive dependencies
+
+		// JCommander
+		automaticModule("com.beust:jcommander", "jcommander")
+
+		// CFR
+		automaticModule("net.fabricmc:cfr", "cfr")
+
+		// Vineflower
+		automaticModule("org.vineflower:vineflower", "org.vineflower.vineflower")
+
+		// Procyon
+		automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
+
+		// JADX
+		automaticModule("io.github.skylot:jadx-core", "jadx.core")
+		automaticModule("io.github.skylot:jadx-plugins-api", "jadx.plugins.api")
+		automaticModule("io.github.skylot:jadx-java-input", "jadx.plugins.java_input")
 	}
 
 	java {

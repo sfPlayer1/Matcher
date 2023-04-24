@@ -5,6 +5,7 @@ import java.util.Collection;
 
 import javafx.scene.control.TabPane;
 
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.tab.BytecodeTab;
 import matcher.gui.ui.tab.ClassInfoTab;
 import matcher.gui.ui.tab.ClassScoresTab;
@@ -17,7 +18,7 @@ import matcher.gui.ui.tab.SourcecodeTab;
 import matcher.gui.ui.tab.VarInfoTab;
 
 public class ContentPane extends TabPane implements IFwdGuiComponent {
-	public ContentPane(Gui gui, ISelectionProvider selectionProvider, boolean isSource) {
+	public ContentPane(MatcherGui gui, ISelectionProvider selectionProvider, boolean isSource) {
 		this.gui = gui;
 		this.isSource = isSource;
 
@@ -107,7 +108,7 @@ public class ContentPane extends TabPane implements IFwdGuiComponent {
 
 	private static final boolean showHierarchy = false;
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final boolean isSource;
 	private final Collection<IGuiComponent> components = new ArrayList<>();
 }

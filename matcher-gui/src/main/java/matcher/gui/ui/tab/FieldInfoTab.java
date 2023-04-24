@@ -17,13 +17,13 @@ import matcher.NameType;
 import matcher.Util;
 import matcher.Util.AFElementType;
 import matcher.type.FieldInstance;
-import matcher.gui.ui.Gui;
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
 
 public class FieldInfoTab extends Tab implements IGuiComponent {
-	public FieldInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
+	public FieldInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("field info");
 
 		this.gui = gui;
@@ -149,7 +149,7 @@ public class FieldInfoTab extends Tab implements IGuiComponent {
 		}
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final ISelectionProvider selectionProvider;
 	private final boolean unmatchedTmp;
 

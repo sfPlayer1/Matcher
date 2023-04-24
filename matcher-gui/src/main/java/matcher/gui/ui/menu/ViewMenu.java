@@ -10,14 +10,14 @@ import javafx.scene.control.ToggleGroup;
 import matcher.NameType;
 import matcher.config.Config;
 import matcher.config.Theme;
-import matcher.gui.ui.Gui;
-import matcher.gui.ui.Gui.SortKey;
 import matcher.gui.ui.GuiUtil;
 import matcher.gui.ui.IGuiComponent;
+import matcher.gui.MatcherGui;
+import matcher.gui.MatcherGui.SortKey;
 import matcher.gui.srcprocess.BuiltinDecompiler;
 
 public class ViewMenu extends Menu implements IGuiComponent {
-	ViewMenu(Gui gui) {
+	ViewMenu(MatcherGui gui) {
 		super("View");
 
 		this.gui = gui;
@@ -177,7 +177,7 @@ public class ViewMenu extends Menu implements IGuiComponent {
 		}
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private ToggleGroup sortSourceToggleGroup;
 	private ToggleGroup themeToggleGroup;
 	private CheckMenuItem sortAlphabeticallyItem;

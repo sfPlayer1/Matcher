@@ -1,7 +1,6 @@
 plugins {
 	id 'application'
 	id 'org.openjfx.javafxplugin'
-	id 'org.gradlex.extra-java-module-info'
 }
 
 archivesBaseName = 'matcher-gui'
@@ -32,10 +31,10 @@ javafx {
 }
 
 dependencies {
-	api project(':matcher-core')
-	implementation "com.github.javaparser:javaparser-core:${javaparser_version}"
-	implementation "net.fabricmc:cfr:${fabric_cfr_version}"
-	implementation "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
+	api project(':matcher-cli')
+	api "com.github.javaparser:javaparser-core:${javaparser_version}"
+	api "net.fabricmc:cfr:${fabric_cfr_version}"
+	api "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
 	implementation "org.ow2.asm:asm-util:${asm_version}"
 	implementation "org.vineflower:vineflower:${vineflower_version}"
 	implementation ("io.github.skylot:jadx-core:${jadx_version}") {
@@ -44,8 +43,6 @@ dependencies {
 	implementation ("io.github.skylot:jadx-java-input:${jadx_version}") {
 		exclude group: 'io.github.skylot', module: 'raung-disasm'
 	}
-	runtimeOnly "org.tinylog:tinylog-impl:${tinylog_version}"
-	runtimeOnly "org.tinylog:slf4j-tinylog:${tinylog_version}"
 
 	// JavaFX for all platforms (required for cross-platform fat jar)
 	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:win"
@@ -65,29 +62,7 @@ dependencies {
 	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:linux"
 }
 
-extraJavaModuleInfo {
-	failOnMissingModuleInfo.set(false) // because of transitive dependencies
-
-	// CFR
-	automaticModule("net.fabricmc:cfr", "cfr")
-
-	// Vineflower
-	automaticModule("org.vineflower:vineflower", "org.vineflower.vineflower")
-
-	// Procyon
-	automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
-
-	// JADX
-	automaticModule("io.github.skylot:jadx-core", "jadx.core")
-	automaticModule("io.github.skylot:jadx-plugins-api", "jadx.plugins.api")
-	automaticModule("io.github.skylot:jadx-java-input", "jadx.plugins.java_input")
-}
-
 application {
 	mainModule = 'matcher.gui'
 	mainClass = 'matcher.gui.Main'
-}
-
-jar {
-	processResources.exclude('tinylog-dev.properties')
 }

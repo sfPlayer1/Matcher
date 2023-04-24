@@ -8,11 +8,11 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 
 import matcher.Matcher.MatchingStatus;
+import matcher.gui.MatcherGui;
 import matcher.type.MatchType;
-import matcher.gui.ui.Gui;
 
 public class MatchingMenu extends Menu {
-	MatchingMenu(Gui gui) {
+	MatchingMenu(MatcherGui gui) {
 		super("Matching");
 
 		this.gui = gui;
@@ -115,5 +115,5 @@ public class MatchingMenu extends Menu {
 						));
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 }

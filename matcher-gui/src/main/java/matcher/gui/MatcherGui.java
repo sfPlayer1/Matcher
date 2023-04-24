@@ -1,4 +1,4 @@
-package matcher.gui.ui;
+package matcher.gui;
 
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +49,13 @@ import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.config.Theme;
 import matcher.gui.srcprocess.BuiltinDecompiler;
+import matcher.gui.ui.BottomPane;
+import matcher.gui.ui.GuiConstants;
+import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.IGuiComponent.ViewChangeCause;
+import matcher.gui.ui.MatchPaneDst;
+import matcher.gui.ui.MatchPaneSrc;
+import matcher.gui.ui.Shortcuts;
 import matcher.gui.ui.menu.MainMenuBar;
 import matcher.gui.ui.menu.NewProjectPane;
 import matcher.mapping.MappingField;
@@ -57,7 +63,7 @@ import matcher.mapping.Mappings;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
 
-public class Gui extends Application {
+public class MatcherGui extends Application {
 	@Override
 	public void start(Stage stage) {
 		Matcher.init();
@@ -95,7 +101,7 @@ public class Gui extends Application {
 		scene = new Scene(border, 1400, 800);
 		Shortcuts.init(this);
 
-		for (Consumer<Gui> l : loadListeners) {
+		for (Consumer<MatcherGui> l : loadListeners) {
 			l.accept(this);
 		}
 
@@ -639,7 +645,7 @@ public class Gui extends Application {
 		Name, MappedName, MatchStatus, Similarity;
 	}
 
-	public static final List<Consumer<Gui>> loadListeners = new ArrayList<>();
+	public static final List<Consumer<MatcherGui>> loadListeners = new ArrayList<>();
 
 	private static final ExecutorService threadPool = Executors.newCachedThreadPool();
 

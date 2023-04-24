@@ -21,7 +21,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 
-import matcher.gui.ui.Gui;
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.GuiUtil;
 
@@ -56,7 +56,7 @@ public class LoadProjectPane extends VBox {
 		Button button = new Button("add");
 		footer.getChildren().add(button);
 		button.setOnAction(event -> {
-			Path path = Gui.requestDir("Select directory to add", window);
+			Path path = MatcherGui.requestDir("Select directory to add", window);
 			if (path != null && !list.getItems().contains(path)) list.getItems().add(path);
 		});
 

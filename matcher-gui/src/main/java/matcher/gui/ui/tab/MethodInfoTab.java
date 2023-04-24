@@ -22,13 +22,13 @@ import matcher.Util.AFElementType;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
-import matcher.gui.ui.Gui;
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
 
 public class MethodInfoTab extends Tab implements IGuiComponent {
-	public MethodInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
+	public MethodInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("method info");
 
 		this.gui = gui;
@@ -187,7 +187,7 @@ public class MethodInfoTab extends Tab implements IGuiComponent {
 		return c.stream().map(v -> getName(v.getCls(), nameType)).sorted().collect(Collectors.joining("\n"));
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final ISelectionProvider selectionProvider;
 	private final boolean unmatchedTmp;
 

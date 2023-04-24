@@ -26,6 +26,7 @@ import matcher.classifier.FieldClassifier;
 import matcher.classifier.MethodClassifier;
 import matcher.classifier.MethodVarClassifier;
 import matcher.classifier.RankResult;
+import matcher.gui.MatcherGui;
 import matcher.type.ClassEnv;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
@@ -37,7 +38,7 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelectionProvider {
-	public MatchPaneDst(Gui gui, MatchPaneSrc srcPane) {
+	public MatchPaneDst(MatcherGui gui, MatchPaneSrc srcPane) {
 		this.gui = gui;
 		this.srcPane = srcPane;
 
@@ -730,7 +731,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			final int cTaskId = ++taskId;
 
 			// update matches list
-			Gui.runAsyncTask(ranker).whenComplete((res, exc) -> {
+			MatcherGui.runAsyncTask(ranker).whenComplete((res, exc) -> {
 				if (exc != null) {
 					exc.printStackTrace();
 				} else if (taskId == cTaskId) {
@@ -772,7 +773,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 		private Matchable<?> oldDstSelection;
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final MatchPaneSrc srcPane;
 	private final Collection<IGuiComponent> components = new ArrayList<>();
 	private final ListView<RankResult<? extends Matchable<?>>> matchList = new ListView<>();

@@ -35,8 +35,8 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
 
 import matcher.config.ProjectConfig;
-import matcher.gui.ui.Gui;
-import matcher.gui.ui.Gui.SelectedFile;
+import matcher.gui.MatcherGui;
+import matcher.gui.MatcherGui.SelectedFile;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.GuiUtil;
 
@@ -209,7 +209,7 @@ public class NewProjectPane extends GridPane {
 		Button button = new Button("add");
 		footer.getChildren().add(button);
 		button.setOnAction(event -> {
-			List<SelectedFile> res = Gui.requestFiles("Select file to add", window, getInputLoadExtensionFilters());
+			List<SelectedFile> res = MatcherGui.requestFiles("Select file to add", window, getInputLoadExtensionFilters());
 
 			for (SelectedFile each : res) {
 				if (!list.getItems().contains(each.path)) list.getItems().add(each.path);
@@ -219,7 +219,7 @@ public class NewProjectPane extends GridPane {
 		Button addDirecotyButton = new Button("add dir");
 		footer.getChildren().add(addDirecotyButton);
 		addDirecotyButton.setOnAction(event -> {
-			Path res = Gui.requestDir("Select directory to add", window);
+			Path res = MatcherGui.requestDir("Select directory to add", window);
 
 			try (Stream<Path> stream = Files.walk(res, 128)) {
 				stream.filter(Files::isRegularFile)

@@ -16,6 +16,7 @@ import matcher.classifier.ClassifierLevel;
 import matcher.classifier.FieldClassifier;
 import matcher.classifier.MethodClassifier;
 import matcher.classifier.RankResult;
+import matcher.gui.MatcherGui;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MatchType;
@@ -24,7 +25,7 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class BottomPane extends StackPane implements IGuiComponent {
-	public BottomPane(Gui gui, MatchPaneSrc srcPane, MatchPaneDst dstPane) {
+	public BottomPane(MatcherGui gui, MatchPaneSrc srcPane, MatchPaneDst dstPane) {
 		super();
 
 		this.gui = gui;
@@ -399,7 +400,7 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		return unmatchVarButton;
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final MatchPaneSrc srcPane;
 	private final MatchPaneDst dstPane;
 	private final Button matchButton = new Button();

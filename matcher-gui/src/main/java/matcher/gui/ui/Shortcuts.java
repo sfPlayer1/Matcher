@@ -7,8 +7,10 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 
-class Shortcuts {
-	public static void init(Gui gui) {
+import matcher.gui.MatcherGui;
+
+public class Shortcuts {
+	public static void init(MatcherGui gui) {
 		Map<KeyCombination, Runnable> accelerators = gui.getScene().getAccelerators();
 
 		// M - match

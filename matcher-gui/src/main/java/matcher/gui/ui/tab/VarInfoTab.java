@@ -12,13 +12,13 @@ import javafx.scene.layout.GridPane;
 
 import matcher.NameType;
 import matcher.type.MethodVarInstance;
-import matcher.gui.ui.Gui;
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
 
 public class VarInfoTab extends Tab implements IGuiComponent {
-	public VarInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
+	public VarInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("var info");
 
 		this.gui = gui;
@@ -134,7 +134,7 @@ public class VarInfoTab extends Tab implements IGuiComponent {
 		}
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final ISelectionProvider selectionProvider;
 	private final boolean unmatchedTmp;
 

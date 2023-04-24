@@ -20,13 +20,13 @@ import matcher.Util;
 import matcher.Util.AFElementType;
 import matcher.type.ClassInstance;
 import matcher.type.Matchable;
-import matcher.gui.ui.Gui;
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
 
 public class ClassInfoTab extends Tab implements IGuiComponent {
-	public ClassInfoTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
+	public ClassInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
 		super("info");
 
 		this.gui = gui;
@@ -196,7 +196,7 @@ public class ClassInfoTab extends Tab implements IGuiComponent {
 		return s != null ? s : "-";
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 	private final ISelectionProvider selectionProvider;
 	private final boolean unmatchedTmp;
 

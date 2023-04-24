@@ -21,6 +21,7 @@ import javafx.scene.control.SeparatorMenuItem;
 import matcher.Matcher;
 import matcher.config.Config;
 import matcher.config.UidConfig;
+import matcher.gui.MatcherGui;
 import matcher.type.ClassEnv;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
@@ -30,10 +31,9 @@ import matcher.type.MatchType;
 import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
-import matcher.gui.ui.Gui;
 
 public class UidMenu extends Menu {
-	UidMenu(Gui gui) {
+	UidMenu(MatcherGui gui) {
 		super("UID");
 
 		this.gui = gui;
@@ -334,5 +334,5 @@ public class UidMenu extends Menu {
 	private static final byte TYPE_ARG = 3;
 	private static final byte TYPE_VAR = 4;
 
-	private final Gui gui;
+	private final MatcherGui gui;
 }

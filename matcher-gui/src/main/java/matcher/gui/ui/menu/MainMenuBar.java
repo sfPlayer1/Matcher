@@ -3,11 +3,11 @@ package matcher.gui.ui.menu;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 
-import matcher.gui.ui.Gui;
+import matcher.gui.MatcherGui;
 import matcher.gui.ui.IGuiComponent;
 
 public class MainMenuBar extends MenuBar implements IGuiComponent {
-	public MainMenuBar(Gui gui) {
+	public MainMenuBar(MatcherGui gui) {
 		this.gui = gui;
 
 		init();
@@ -51,7 +51,7 @@ public class MainMenuBar extends MenuBar implements IGuiComponent {
 		return viewMenu;
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 
 	private FileMenu fileMenu;
 	private MatchingMenu matchingMenu;

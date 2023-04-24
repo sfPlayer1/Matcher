@@ -29,18 +29,18 @@ import net.fabricmc.mappingio.format.MappingFormat;
 
 import matcher.Util;
 import matcher.config.Config;
+import matcher.gui.MatcherGui;
+import matcher.gui.MatcherGui.SelectedFile;
+import matcher.gui.ui.menu.LoadMappingsPane.MappingsLoadSettings;
+import matcher.gui.ui.menu.LoadProjectPane.ProjectLoadSettings;
+import matcher.gui.ui.menu.SaveMappingsPane.MappingsSaveSettings;
 import matcher.mapping.Mappings;
 import matcher.serdes.MatchesIo;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
-import matcher.gui.ui.Gui;
-import matcher.gui.ui.Gui.SelectedFile;
-import matcher.gui.ui.menu.LoadMappingsPane.MappingsLoadSettings;
-import matcher.gui.ui.menu.LoadProjectPane.ProjectLoadSettings;
-import matcher.gui.ui.menu.SaveMappingsPane.MappingsSaveSettings;
 
 public class FileMenu extends Menu {
-	FileMenu(Gui gui) {
+	FileMenu(MatcherGui gui) {
 		super("File");
 
 		this.gui = gui;
@@ -104,7 +104,7 @@ public class FileMenu extends Menu {
 	}
 
 	private void loadProject() {
-		SelectedFile res = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
+		SelectedFile res = MatcherGui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (res == null) return;
 
 		ProjectLoadSettings newConfig = requestProjectLoadSettings();
@@ -148,13 +148,13 @@ public class FileMenu extends Menu {
 		Path file;
 
 		if (format == null || format.hasSingleFile()) {
-			SelectedFile res = Gui.requestFile("Select mapping file", window, getMappingLoadExtensionFilters(), true); // TODO: pre-select format if non-null
+			SelectedFile res = MatcherGui.requestFile("Select mapping file", window, getMappingLoadExtensionFilters(), true); // TODO: pre-select format if non-null
 			if (res == null) return; // aborted
 
 			file = res.path;
 			format = getFormat(res.filter.getDescription());
 		} else {
-			file = Gui.requestDir("Select mapping dir", window);
+			file = MatcherGui.requestDir("Select mapping dir", window);
 		}
 
 		if (file == null) return;
@@ -235,7 +235,7 @@ public class FileMenu extends Menu {
 			path = file.toPath();
 			format = getFormat(fileChooser.getSelectedExtensionFilter().getDescription());
 		} else {
-			path = Gui.requestDir("Save mapping dir", window);
+			path = MatcherGui.requestDir("Save mapping dir", window);
 			if (path == null) return;
 
 			if (Files.exists(path) && !isDirEmpty(path)) { // reusing existing dir, clear out after confirmation
@@ -336,7 +336,7 @@ public class FileMenu extends Menu {
 	}
 
 	private void loadMatches() {
-		SelectedFile res = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
+		SelectedFile res = MatcherGui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (res == null) return;
 
 		MatchesIo.read(res.path, null, false, gui.getMatcher(), progress -> { });
@@ -348,7 +348,7 @@ public class FileMenu extends Menu {
 	}
 
 	private void saveMatches() {
-		SelectedFile res = Gui.requestFile("Save matches file", gui.getScene().getWindow(), Arrays.asList(new FileChooser.ExtensionFilter("Matches", "*.match")), false);
+		SelectedFile res = MatcherGui.requestFile("Save matches file", gui.getScene().getWindow(), Arrays.asList(new FileChooser.ExtensionFilter("Matches", "*.match")), false);
 		if (res == null) return;
 
 		Path path = res.path;
@@ -374,5 +374,5 @@ public class FileMenu extends Menu {
 		}
 	}
 
-	private final Gui gui;
+	private final MatcherGui gui;
 }

@@ -2,7 +2,6 @@ module matcher.gui {
 	requires cfr;
 	requires com.github.javaparser.core;
 	requires java.prefs;
-	requires matcher.core;
 	requires org.objectweb.asm.util;
 	requires org.vineflower.vineflower;
 	requires procyon.compilertools;
@@ -13,6 +12,7 @@ module matcher.gui {
 	requires transitive javafx.controls;
 	requires transitive javafx.graphics;
 	requires transitive javafx.web;
+	requires transitive matcher.cli;
 
 	uses matcher.Plugin;
 

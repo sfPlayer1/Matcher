@@ -13,8 +13,8 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 
 import matcher.NameType;
-import matcher.mapping.MappingsExportVerbosity;
 import matcher.gui.ui.GuiConstants;
+import matcher.mapping.MappingsExportVerbosity;
 
 class SaveMappingsPane extends GridPane {
 	SaveMappingsPane(boolean offerNamespaces) {
