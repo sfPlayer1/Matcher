@@ -7,7 +7,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -16,21 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class PluginLoader {
-	public static void run(String[] args) {
-		List<Path> pluginPaths = new ArrayList<>();
-		pluginPaths.add(Paths.get("plugins"));
-
-		for (int i = 0; i < args.length; i++) {
-			switch (args[i]) {
-			case "--additional-plugins":
-				while (i+1 < args.length && !args[i+1].startsWith("--")) {
-					pluginPaths.add(Path.of(args[++i]));
-				}
-
-				break;
-			}
-		}
-
+	public static void run(List<Path> pluginPaths) {
 		List<URL> urls = new ArrayList<>();
 
 		for (Path path : pluginPaths) {

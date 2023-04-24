@@ -4,6 +4,7 @@ package matcher.cli.provider.builtin;
  * All CLI parameters the CLI module handles by default.
  */
 public class BuiltinCliParameters {
+	public static final String ADDITIONAL_PLUGINS = "--additional-plugins";
 	public static final String INPUTS_A = "--inputs-a";
 	public static final String INPUTS_B = "--inputs-b";
 	public static final String CLASSPATH_A = "--classpath-a";

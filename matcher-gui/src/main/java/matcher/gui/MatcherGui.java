@@ -50,7 +50,6 @@ import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.config.Theme;
 import matcher.gui.cli.PostLaunchGuiCliParameterProvider;
-import matcher.gui.cli.PreLaunchGuiCliParameterProvider;
 import matcher.gui.srcprocess.BuiltinDecompiler;
 import matcher.gui.ui.BottomPane;
 import matcher.gui.ui.GuiConstants;
@@ -108,27 +107,20 @@ public class MatcherGui extends Application {
 			l.accept(this);
 		}
 
-		handleStartupArgs(true);
 		updateCss();
-
 		stage.setScene(scene);
 		stage.setTitle("Matcher");
 		stage.show();
 
 		border.requestFocus();
-		handleStartupArgs(false);
+		handlePostLaunchStartupArgs();
 	}
 
-	void handleStartupArgs(boolean preLaunch) {
+	void handlePostLaunchStartupArgs() {
 		String[] args = getParameters().getRaw().toArray(String[]::new);
 		MatcherCli cli = new MatcherCli(true);
 
-		if (preLaunch) {
-			cli.registerParameterProvider(new PreLaunchGuiCliParameterProvider());
-		} else {
-			cli.registerParameterProvider(new PostLaunchGuiCliParameterProvider(this));
-		}
-
+		cli.registerParameterProvider(new PostLaunchGuiCliParameterProvider(this));
 		cli.processArgs(args);
 	}
 

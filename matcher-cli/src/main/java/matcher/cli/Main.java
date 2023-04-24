@@ -1,5 +1,6 @@
 package matcher.cli;
 
+import matcher.cli.provider.builtin.AdditionalPluginsCliParameterProvider;
 import matcher.cli.provider.builtin.AutomatchCliCommandProvider;
 import matcher.config.Config;
 
@@ -13,6 +14,7 @@ public class Main {
 		MatcherCli matcherCli = new MatcherCli(false);
 
 		// Register all default providers.
+		matcherCli.registerParameterProvider(new AdditionalPluginsCliParameterProvider());
 		matcherCli.registerCommandProvider(new AutomatchCliCommandProvider());
 
 		// Parse, handle errors, delegate to the correct provider.
