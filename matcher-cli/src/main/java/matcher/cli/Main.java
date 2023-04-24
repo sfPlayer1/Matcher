@@ -5,7 +5,7 @@ import matcher.config.Config;
 
 public class Main {
 	public static void main(String[] args) {
-		Config.init(args);
+		Config.init();
 
 		// Instantiate the CLI handler. We don't accept unknown parameters,
 		// since this is the base implementation where only known

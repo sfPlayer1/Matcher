@@ -10,7 +10,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 public class Config {
-	public static void init(String[] args) {
+	public static void init() {
 		Preferences prefs = Preferences.userRoot(); // in ~/.java/.userPrefs
 
 		try {
@@ -25,22 +25,6 @@ public class Config {
 			}
 		} catch (BackingStoreException e) {
 			// ignored
-		}
-
-		for (int i = 0; i < args.length; i++) {
-			switch (args[i]) {
-			case "--theme":
-				String themeId = args[++i];
-				Theme theme = Theme.getById(themeId);
-
-				if (theme == null) {
-					System.err.println("Startup arg '--theme' couldn't be applied, as there exists no theme with ID " + themeId + "!");
-				} else {
-					setTheme(theme);
-				}
-
-				break;
-			}
 		}
 	}
 

@@ -45,9 +45,12 @@ import net.fabricmc.mappingio.MappingReader;
 
 import matcher.Matcher;
 import matcher.NameType;
+import matcher.cli.MatcherCli;
 import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.config.Theme;
+import matcher.gui.cli.PostLaunchGuiCliParameterProvider;
+import matcher.gui.cli.PreLaunchGuiCliParameterProvider;
 import matcher.gui.srcprocess.BuiltinDecompiler;
 import matcher.gui.ui.BottomPane;
 import matcher.gui.ui.GuiConstants;
@@ -105,6 +108,7 @@ public class MatcherGui extends Application {
 			l.accept(this);
 		}
 
+		handleStartupArgs(true);
 		updateCss();
 
 		stage.setScene(scene);
@@ -112,127 +116,25 @@ public class MatcherGui extends Application {
 		stage.show();
 
 		border.requestFocus();
-		handleStartupArgs(getParameters().getRaw());
+		handleStartupArgs(false);
+	}
+
+	void handleStartupArgs(boolean preLaunch) {
+		String[] args = getParameters().getRaw().toArray(String[]::new);
+		MatcherCli cli = new MatcherCli(true);
+
+		if (preLaunch) {
+			cli.registerParameterProvider(new PreLaunchGuiCliParameterProvider());
+		} else {
+			cli.registerParameterProvider(new PostLaunchGuiCliParameterProvider(this));
+		}
+
+		cli.processArgs(args);
 	}
 
 	@Override
 	public void stop() throws Exception {
 		threadPool.shutdown();
-	}
-
-	private void handleStartupArgs(List<String> args) {
-		List<Path> inputsA = new ArrayList<>();
-		List<Path> inputsB = new ArrayList<>();
-		List<Path> classPathA = new ArrayList<>();
-		List<Path> classPathB = new ArrayList<>();
-		List<Path> sharedClassPath = new ArrayList<>();
-		boolean inputsBeforeClassPath = false;
-		Path mappingsPathA = null;
-		Path mappingsPathB = null;
-		boolean saveUnmappedMatches = true;
-		String nonObfuscatedClassPatternA = "";
-		String nonObfuscatedClassPatternB = "";
-		String nonObfuscatedMemberPatternA = "";
-		String nonObfuscatedMemberPatternB = "";
-		boolean validProjectConfigArgPresent = false;
-
-		for (int i = 0; i < args.size(); i++) {
-			switch (args.get(i)) {
-			// ProjectConfig args
-
-			case "--inputs-a":
-				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
-					inputsA.add(Path.of(args.get(++i)));
-					validProjectConfigArgPresent = true;
-				}
-
-				break;
-			case "--inputs-b":
-				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
-					inputsB.add(Path.of(args.get(++i)));
-					validProjectConfigArgPresent = true;
-				}
-
-				break;
-			case "--classpath-a":
-				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
-					classPathA.add(Path.of(args.get(++i)));
-					validProjectConfigArgPresent = true;
-				}
-
-				break;
-			case "--classpath-b":
-				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
-					classPathB.add(Path.of(args.get(++i)));
-					validProjectConfigArgPresent = true;
-				}
-
-				break;
-			case "--shared-classpath":
-				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
-					sharedClassPath.add(Path.of(args.get(++i)));
-					validProjectConfigArgPresent = true;
-				}
-
-				break;
-			case "--mappings-a":
-				mappingsPathA = Path.of(args.get(++i));
-				validProjectConfigArgPresent = true;
-				break;
-			case "--mappings-b":
-				mappingsPathB = Path.of(args.get(++i));
-				validProjectConfigArgPresent = true;
-				break;
-			case "--dont-save-unmapped-matches":
-				saveUnmappedMatches = false;
-				validProjectConfigArgPresent = true;
-				break;
-			case "--inputs-before-classpath":
-				inputsBeforeClassPath = true;
-				validProjectConfigArgPresent = true;
-				break;
-			case "--non-obfuscated-class-pattern-a":
-				nonObfuscatedClassPatternA = args.get(++i);
-				validProjectConfigArgPresent = true;
-				break;
-			case "--non-obfuscated-class-pattern-b":
-				nonObfuscatedClassPatternB = args.get(++i);
-				validProjectConfigArgPresent = true;
-				break;
-			case "--non-obfuscated-member-pattern-a":
-				nonObfuscatedMemberPatternA = args.get(++i);
-				validProjectConfigArgPresent = true;
-				break;
-			case "--non-obfuscated-member-pattern-b":
-				nonObfuscatedMemberPatternB = args.get(++i);
-				validProjectConfigArgPresent = true;
-				break;
-
-			// GUI args
-
-			case "--hide-unmapped-a":
-				hideUnmappedA = true;
-				break;
-			}
-		}
-
-		if (!validProjectConfigArgPresent) return;
-
-		ProjectConfig config = new ProjectConfig.Builder(inputsA, inputsB)
-				.classPathA(new ArrayList<>(classPathA))
-				.classPathB(new ArrayList<>(classPathB))
-				.sharedClassPath(new ArrayList<>(sharedClassPath))
-				.inputsBeforeClassPath(inputsBeforeClassPath)
-				.mappingsPathA(mappingsPathA)
-				.mappingsPathB(mappingsPathB)
-				.saveUnmappedMatches(saveUnmappedMatches)
-				.nonObfuscatedClassPatternA(nonObfuscatedClassPatternA)
-				.nonObfuscatedClassPatternB(nonObfuscatedClassPatternB)
-				.nonObfuscatedMemberPatternA(nonObfuscatedMemberPatternA)
-				.nonObfuscatedMemberPatternB(nonObfuscatedMemberPatternB)
-				.build();
-
-		newProject(config, inputsA.isEmpty() || inputsB.isEmpty());
 	}
 
 	public CompletableFuture<Boolean> newProject(ProjectConfig config, boolean showConfigDialog) {

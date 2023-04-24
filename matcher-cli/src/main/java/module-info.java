@@ -6,4 +6,5 @@ module matcher.cli {
 
 	exports matcher.cli;
 	exports matcher.cli.provider;
+	exports matcher.cli.provider.builtin;
 }
