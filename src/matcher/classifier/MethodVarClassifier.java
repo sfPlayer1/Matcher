@@ -22,7 +22,7 @@ public class MethodVarClassifier {
 		addClassifier(usage, 8);
 	}
 
-	private static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
+	public static void addClassifier(AbstractClassifier classifier, double weight, ClassifierLevel... levels) {
 		if (levels.length == 0) levels = ClassifierLevel.ALL;
 
 		classifier.weight = weight;
@@ -114,8 +114,8 @@ public class MethodVarClassifier {
 		}
 	};
 
-	private abstract static class AbstractClassifier implements IClassifier<MethodVarInstance> {
-		AbstractClassifier(String name) {
+	public abstract static class AbstractClassifier implements IClassifier<MethodVarInstance> {
+		public AbstractClassifier(String name) {
 			this.name = name;
 		}
 
