@@ -365,7 +365,7 @@ public class MethodClassifier {
 	}
 
 	public abstract static class AbstractClassifier implements IClassifier<MethodInstance> {
-		AbstractClassifier(String name) {
+		public AbstractClassifier(String name) {
 			this.name = name;
 		}
 
