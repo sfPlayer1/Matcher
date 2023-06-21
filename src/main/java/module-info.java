@@ -20,8 +20,8 @@ module matcher {
 	requires transitive javafx.graphics;
 	requires transitive javafx.web;
 	requires transitive org.objectweb.asm;
-	requires org.objectweb.asm.commons;
 	requires transitive org.objectweb.asm.tree;
+	requires org.objectweb.asm.commons;
 	requires org.objectweb.asm.tree.analysis;
 	requires org.objectweb.asm.util;
 	requires procyon.compilertools;
