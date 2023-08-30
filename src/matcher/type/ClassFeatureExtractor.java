@@ -103,6 +103,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	}
 
 	public void process(Pattern nonObfuscatedMemberPattern) {
+		assert initStep == 0;
+
 		ClassInstance clo = getCreateClassInstance("Ljava/lang/Object;");
 		assert clo != null && clo.getAsmNodes() != null;
 
@@ -172,6 +174,7 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		}
 
 		pendingInitLoop: do {
+			assert steps.get(0).isEmpty();
 			steps.get(0).addAll(pendingInit);
 			pendingInit.clear();
 
@@ -204,6 +207,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 		classPathIndex.clear();
 		classes.clear();
 		arrayClasses.clear();
+		pendingInit.clear();
+		initStep = 0;
 	}
 
 	@Override
@@ -224,9 +229,13 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	 * All (known) classes and members are fully available at this point.
 	 */
 	private void processClassB(ClassInstance cls) {
+		assert cls.initStep == 1;
+
 		for (MethodInstance method : cls.methods) {
 			processMethodInsns(method);
 		}
+
+		cls.initStep = 2;
 	}
 
 	private void processMethodInsns(MethodInstance method) {
@@ -342,6 +351,9 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	 * 3rd processing pass, determine same hierarchy methods.
 	 */
 	private static void processClassC(ClassInstance cls) {
+		assert cls.initStep == 2;
+		cls.initStep = 3;
+
 		/* Determine which methods share the same hierarchy by grouping all methods within a
 		 * bottom-up class hierarchy by id.
 		 *
@@ -383,6 +395,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 						method.hierarchyData.addMember(method);
 					}
 				}
+
+				assert method.hierarchyData != null;
 			}
 
 			if (cls.superClass != null) toCheck.add(cls.superClass);
@@ -398,11 +412,15 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	 * 4th processing pass, child<->parent relation and in depth analysis.
 	 */
 	private void processClassD(ClassInstance cls, CommonClasses common) {
+		assert cls.initStep == 3;
+
 		Queue<ClassInstance> toCheck = new ArrayDeque<>();
 		Set<ClassInstance> checked = Util.newIdentityHashSet();
 		Set<MemberHierarchyData<MethodInstance>> nameObfChecked = Util.newIdentityHashSet();
 
 		for (MethodInstance method : cls.getMethods()) {
+			assert method.hierarchyData != null;
+
 			if (method.hierarchyData.hasMultipleMembers()) { // may have parent/child methods
 				determineMethodRelations(method, toCheck, checked);
 
@@ -428,6 +446,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 				Analysis.checkInitializer(field, this);
 			}
 		}
+
+		cls.initStep = 4;
 	}
 
 	private static void determineMethodRelations(MethodInstance method, Queue<ClassInstance> toCheck, Set<ClassInstance> checked) {
@@ -512,6 +532,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 	 * 5th processing pass, assign temporary names.
 	 */
 	private void processClassE(ClassInstance cls, int clsIndex, AtomicInteger vmIdx) {
+		assert cls.initStep == 4;
+
 		/* Assign each class+member a contextually unique name in the form <type><env><id>
 		 * where <type> is c for class, m for method, vm for virtual method and f for field,
 		 * <env> is a for envA and b for envB and <id> is an integer id.
@@ -553,6 +575,8 @@ public class ClassFeatureExtractor implements LocalClassEnv {
 			field.setTmpName("f"+envName+memberIndex);
 			memberIndex++;
 		}
+
+		cls.initStep = 5;
 	}
 
 	@Override

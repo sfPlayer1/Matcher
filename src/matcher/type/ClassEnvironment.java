@@ -482,6 +482,7 @@ public final class ClassEnvironment implements ClassEnv {
 	 * Only the (known) classes are fully available at this point.
 	 */
 	static void processClassA(ClassInstance cls, Pattern nonObfuscatedMemberPattern) {
+		assert cls.initStep == 0;
 		assert !cls.isInput() || !cls.isShared();
 
 		Set<String> strings = cls.strings;
@@ -537,6 +538,8 @@ public final class ClassEnvironment implements ClassEnv {
 				if (cls.interfaces.add(ifCls)) ifCls.implementers.add(cls);
 			}
 		}
+
+		cls.initStep = 1;
 	}
 
 	private static boolean isStandardEnumMethod(String clsName, MethodNode m) {

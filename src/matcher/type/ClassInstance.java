@@ -1205,4 +1205,6 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 
 	private boolean matchable = true;
 	private ClassInstance matchedClass;
+
+	byte initStep; // for init step asserts
 }
