@@ -81,8 +81,10 @@ public class NewProjectPane extends GridPane {
 		add(createFilesSelectionPane("Class path B", classPathB, window, true, false), 1, 1);
 
 		HBox hbox = new HBox(GuiConstants.padding);
-		Button swapButton = new Button("swap A ⇄ B");
+		Button swapButton = new Button("Swap A ⇄ B");
+		Button findShared = new Button("Share libraries");
 		hbox.getChildren().add(swapButton);
+		hbox.getChildren().add(findShared);
 		swapButton.setOnAction(event -> {
 			List<Path> paths = new ArrayList<>(pathsA);
 			pathsA.clear();
@@ -102,6 +104,34 @@ public class NewProjectPane extends GridPane {
 			tmp = nonObfuscatedMemberPatternA.getText();
 			nonObfuscatedMemberPatternA.setText(nonObfuscatedMemberPatternB.getText());
 			nonObfuscatedMemberPatternB.setText(tmp);
+		});
+		findShared.setOnAction(event -> {
+			List<Path> add = new ArrayList<>();
+			List<Path> removeA = new ArrayList<>();
+			List<Path> removeB = new ArrayList<>();
+
+			for (Path a : classPathA) {
+				for (Path b : classPathB) {
+					try {
+						// Follow symlinks
+						Path realA = a.toRealPath();
+						Path realB = b.toRealPath();
+
+						if (realA.equals(realB)) {
+							add.add(realA);
+							removeA.add(a);
+							removeB.add(b);
+						}
+					} catch (IOException exception) {
+						System.out.println("Could not read symbolic links");
+						exception.printStackTrace();
+					}
+				}
+			}
+
+			classPathA.removeAll(removeA);
+			classPathB.removeAll(removeB);
+			sharedClassPath.addAll(add);
 		});
 		add(hbox, 0, 2, 2, 1);
 
