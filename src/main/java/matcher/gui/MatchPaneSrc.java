@@ -124,7 +124,7 @@ public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelect
 		try {
 			css = parser.parse(Config.getTheme().getUrl().toURI().toURL());
 		} catch (IOException | URISyntaxException e) {
-			Matcher.LOGGER.error("CSS parsing failed");
+			Matcher.LOGGER.error("CSS parsing failed", e);
 			return;
 		}
 

@@ -285,7 +285,7 @@ public class SrcDecorator {
 
 		private void visitCls(TypeDeclaration<?> n, TypeResolver resolver) {
 			ClassInstance cls = resolver.getCls(n);
-			//Matcher.LOGGER.debug("cls "+n.getName().getIdentifier()+" = "+cls+" at "+n.getRange());
+			// Matcher.LOGGER.debug("cls {} = {} at {}", n.getName().getIdentifier(), cls, n.getRange());
 
 			if (cls != null) {
 				handleComment(cls.getMappedComment(), n);
@@ -297,7 +297,7 @@ public class SrcDecorator {
 		@Override
 		public void visit(ConstructorDeclaration n, TypeResolver resolver) {
 			MethodInstance m = resolver.getMethod(n);
-			//Matcher.LOGGER.debug("ctor "+n.getName().getIdentifier()+" = "+m+" at "+n.getRange());
+			// Matcher.LOGGER.debug("ctor {} = {} at {}", n.getName().getIdentifier(), m, n.getRange());
 
 			if (m != null) {
 				handleMethodComment(m, n, resolver);
@@ -317,7 +317,7 @@ public class SrcDecorator {
 		@Override
 		public void visit(MethodDeclaration n, TypeResolver resolver) {
 			MethodInstance m = resolver.getMethod(n);
-			//Matcher.LOGGER.debug("mth "+n.getName().getIdentifier()+" = "+m+" at "+n.getRange());
+			// Matcher.LOGGER.debug("mth {}, = {} at {}", n.getName().getIdentifier(), m, n.getRange());
 
 			if (m != null) {
 				handleMethodComment(m, n, resolver);
@@ -337,7 +337,7 @@ public class SrcDecorator {
 
 			for (VariableDeclarator var : n.getVariables()) {
 				FieldInstance f = resolver.getField(var);
-				//Matcher.LOGGER.debug("fld "+v.getName().getIdentifier()+" = "+f+" at "+v.getRange());
+				// Matcher.LOGGER.debug("fld {} = {} at {}", v.getName().getIdentifier(), f, v.getRange());
 
 				if (f != null) {
 					if (f.getMappedComment() != null) {

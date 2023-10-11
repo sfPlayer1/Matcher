@@ -378,7 +378,7 @@ public class ClassifierUtil {
 							implB.getOwner(), implB.getName(), implB.getDesc(), Util.isCallToInterface(implB),
 							env) ? COMPARED_SIMILAR : COMPARED_DISTINCT;
 				default:
-					Matcher.LOGGER.warn("Unexpected impl tag: "+implA.getTag());
+					Matcher.LOGGER.warn("Unexpected impl tag: {}", implA.getTag());
 				}
 			} else if (!Util.isIrrelevantBsm(a.bsm)) {
 				Matcher.LOGGER.warn("Unknown invokedynamic bsm: {}/{}{} (tag={} iif={})",

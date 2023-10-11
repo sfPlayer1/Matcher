@@ -517,7 +517,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 					ClassInstance cls = env.getClsByName((String) operand);
 
 					if (cls == null) {
-						Matcher.LOGGER.debug("Unknown class "+operand);
+						Matcher.LOGGER.debug("Unknown class {}", operand);
 						return null;
 					} else {
 						operand = cls;
