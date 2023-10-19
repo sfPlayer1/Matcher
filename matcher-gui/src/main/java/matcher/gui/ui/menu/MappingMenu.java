@@ -9,7 +9,7 @@ import javafx.scene.control.MenuItem;
 
 import matcher.gui.MatcherGui;
 import matcher.gui.ui.menu.FixRecordNamesPane.NamespaceSettings;
-import matcher.mapping.MappingPropagator;
+import matcher.model.mapping.MappingPropagator;
 
 public class MappingMenu extends Menu {
 	MappingMenu(MatcherGui gui) {

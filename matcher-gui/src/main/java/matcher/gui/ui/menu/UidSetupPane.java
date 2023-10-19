@@ -9,8 +9,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Window;
 
-import matcher.config.UidConfig;
 import matcher.gui.ui.GuiConstants;
+import matcher.model.config.UidConfig;
 
 public class UidSetupPane extends GridPane {
 	UidSetupPane(UidConfig config, Window window, Node okButton) {

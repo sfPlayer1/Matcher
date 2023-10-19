@@ -44,11 +44,7 @@ import javafx.stage.Window;
 import net.fabricmc.mappingio.MappingReader;
 
 import matcher.Matcher;
-import matcher.NameType;
 import matcher.cli.MatcherCli;
-import matcher.config.Config;
-import matcher.config.ProjectConfig;
-import matcher.config.Theme;
 import matcher.gui.cli.PostLaunchGuiCliParameterProvider;
 import matcher.gui.srcprocess.BuiltinDecompiler;
 import matcher.gui.ui.BottomPane;
@@ -60,10 +56,14 @@ import matcher.gui.ui.MatchPaneSrc;
 import matcher.gui.ui.Shortcuts;
 import matcher.gui.ui.menu.MainMenuBar;
 import matcher.gui.ui.menu.NewProjectPane;
-import matcher.mapping.MappingField;
-import matcher.mapping.Mappings;
-import matcher.type.ClassEnvironment;
-import matcher.type.MatchType;
+import matcher.model.NameType;
+import matcher.model.config.Config;
+import matcher.model.config.ProjectConfig;
+import matcher.model.config.Theme;
+import matcher.model.mapping.MappingField;
+import matcher.model.mapping.Mappings;
+import matcher.model.type.ClassEnvironment;
+import matcher.model.type.MatchType;
 
 public class MatcherGui extends Application {
 	@Override

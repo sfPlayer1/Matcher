@@ -1,9 +1,9 @@
 package matcher.gui.srcprocess;
 
-import matcher.NameType;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassFeatureExtractor;
-import matcher.type.ClassInstance;
+import matcher.model.NameType;
+import matcher.model.type.ClassEnvironment;
+import matcher.model.type.ClassFeatureExtractor;
+import matcher.model.type.ClassInstance;
 
 public interface Decompiler {
 	static String decompile(ClassEnvironment env, Decompiler decompiler, ClassInstance cls, NameType nameType) {

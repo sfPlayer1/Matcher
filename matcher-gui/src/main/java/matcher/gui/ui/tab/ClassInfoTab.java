@@ -15,15 +15,15 @@ import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
 import org.objectweb.asm.tree.ClassNode;
 
-import matcher.NameType;
-import matcher.Util;
-import matcher.Util.AFElementType;
-import matcher.type.ClassInstance;
-import matcher.type.Matchable;
 import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
+import matcher.model.NameType;
+import matcher.model.Util;
+import matcher.model.Util.AFElementType;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.Matchable;
 
 public class ClassInfoTab extends Tab implements IGuiComponent {
 	public ClassInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {

@@ -13,10 +13,10 @@ import jadx.api.plugins.input.data.IResourceData;
 import jadx.plugins.input.java.JavaClassReader;
 import jadx.plugins.input.java.data.JavaClassData;
 
-import matcher.NameType;
-import matcher.Util;
-import matcher.type.ClassFeatureExtractor;
-import matcher.type.ClassInstance;
+import matcher.model.Util;
+import matcher.model.NameType;
+import matcher.model.type.ClassFeatureExtractor;
+import matcher.model.type.ClassInstance;
 
 public class Jadx implements Decompiler {
 	@Override

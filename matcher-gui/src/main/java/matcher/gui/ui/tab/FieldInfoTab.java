@@ -13,14 +13,14 @@ import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
 import org.objectweb.asm.tree.FieldNode;
 
-import matcher.NameType;
-import matcher.Util;
-import matcher.Util.AFElementType;
-import matcher.type.FieldInstance;
 import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
+import matcher.model.NameType;
+import matcher.model.Util;
+import matcher.model.Util.AFElementType;
+import matcher.model.type.FieldInstance;
 
 public class FieldInfoTab extends Tab implements IGuiComponent {
 	public FieldInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {

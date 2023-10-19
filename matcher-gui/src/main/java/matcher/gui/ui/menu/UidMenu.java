@@ -19,18 +19,18 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 
 import matcher.Matcher;
-import matcher.config.Config;
-import matcher.config.UidConfig;
 import matcher.gui.MatcherGui;
-import matcher.type.ClassEnv;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.Matchable;
-import matcher.type.MatchType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.config.Config;
+import matcher.model.config.UidConfig;
+import matcher.model.type.ClassEnv;
+import matcher.model.type.ClassEnvironment;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.Matchable;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class UidMenu extends Menu {
 	UidMenu(MatcherGui gui) {

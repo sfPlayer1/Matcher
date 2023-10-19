@@ -12,17 +12,17 @@ import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 
-import matcher.classifier.ClassifierLevel;
-import matcher.classifier.FieldClassifier;
-import matcher.classifier.MethodClassifier;
-import matcher.classifier.RankResult;
 import matcher.gui.MatcherGui;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MatchType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.classifier.ClassifierLevel;
+import matcher.model.classifier.FieldClassifier;
+import matcher.model.classifier.MethodClassifier;
+import matcher.model.classifier.RankResult;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class BottomPane extends StackPane implements IGuiComponent {
 	public BottomPane(MatcherGui gui, MatchPaneSrc srcPane, MatchPaneDst dstPane) {

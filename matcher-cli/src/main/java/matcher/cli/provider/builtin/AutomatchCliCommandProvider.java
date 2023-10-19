@@ -15,12 +15,12 @@ import net.fabricmc.mappingio.MappingReader;
 import matcher.Matcher;
 import matcher.cli.MatcherCli;
 import matcher.cli.provider.CliCommandProvider;
-import matcher.config.Config;
-import matcher.config.ProjectConfig;
-import matcher.mapping.MappingField;
-import matcher.mapping.Mappings;
+import matcher.model.config.Config;
+import matcher.model.config.ProjectConfig;
+import matcher.model.mapping.MappingField;
+import matcher.model.mapping.Mappings;
+import matcher.model.type.ClassEnvironment;
 import matcher.serdes.MatchesIo;
-import matcher.type.ClassEnvironment;
 
 /**
  * Provides the default {@code automatch} command.

@@ -4,18 +4,18 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Set;
 
-import matcher.NameType;
-import matcher.gui.ui.ISelectionProvider;
 import matcher.gui.MatcherGui;
 import matcher.gui.srcprocess.Decompiler;
 import matcher.gui.srcprocess.HtmlUtil;
 import matcher.gui.srcprocess.SrcDecorator;
 import matcher.gui.srcprocess.SrcDecorator.SrcParseException;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MatchType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
+import matcher.gui.ui.ISelectionProvider;
+import matcher.model.NameType;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
 
 public class SourcecodeTab extends WebViewTab {
 	public SourcecodeTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {

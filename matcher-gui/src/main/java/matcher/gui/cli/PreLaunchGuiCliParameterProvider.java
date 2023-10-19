@@ -4,8 +4,8 @@ import com.beust.jcommander.Parameter;
 
 import matcher.Matcher;
 import matcher.cli.provider.CliParameterProvider;
-import matcher.config.Config;
-import matcher.config.Theme;
+import matcher.model.config.Config;
+import matcher.model.config.Theme;
 
 public class PreLaunchGuiCliParameterProvider implements CliParameterProvider {
 	@Parameter(names = {BuiltinGuiCliParameters.THEME})

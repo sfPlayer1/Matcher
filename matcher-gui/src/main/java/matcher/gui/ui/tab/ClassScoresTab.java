@@ -6,12 +6,12 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 
-import matcher.classifier.ClassifierResult;
-import matcher.classifier.RankResult;
-import matcher.type.ClassInstance;
-import matcher.type.MatchType;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
+import matcher.model.classifier.ClassifierResult;
+import matcher.model.classifier.RankResult;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.MatchType;
 
 public class ClassScoresTab extends Tab implements IGuiComponent {
 	public ClassScoresTab(ISelectionProvider selectionProvider) {

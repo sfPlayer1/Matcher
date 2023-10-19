@@ -1,12 +1,12 @@
 package matcher.gui.ui;
 
-import matcher.classifier.RankResult;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MatchType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.classifier.RankResult;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public interface ISelectionProvider {
 	ClassInstance getSelectedClass();

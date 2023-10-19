@@ -7,14 +7,14 @@ import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 
-import matcher.NameType;
-import matcher.config.Config;
-import matcher.config.Theme;
-import matcher.gui.ui.GuiUtil;
-import matcher.gui.ui.IGuiComponent;
 import matcher.gui.MatcherGui;
 import matcher.gui.MatcherGui.SortKey;
 import matcher.gui.srcprocess.BuiltinDecompiler;
+import matcher.gui.ui.GuiUtil;
+import matcher.gui.ui.IGuiComponent;
+import matcher.model.NameType;
+import matcher.model.config.Config;
+import matcher.model.config.Theme;
 
 public class ViewMenu extends Menu implements IGuiComponent {
 	ViewMenu(MatcherGui gui) {

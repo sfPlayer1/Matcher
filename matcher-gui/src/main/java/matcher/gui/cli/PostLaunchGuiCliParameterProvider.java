@@ -9,8 +9,8 @@ import com.beust.jcommander.Parameter;
 
 import matcher.cli.provider.CliParameterProvider;
 import matcher.cli.provider.builtin.BuiltinCliParameters;
-import matcher.config.ProjectConfig;
 import matcher.gui.MatcherGui;
+import matcher.model.config.ProjectConfig;
 
 public class PostLaunchGuiCliParameterProvider implements CliParameterProvider {
 	public PostLaunchGuiCliParameterProvider(MatcherGui gui) {

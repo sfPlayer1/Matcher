@@ -9,7 +9,7 @@ import javafx.scene.control.SeparatorMenuItem;
 
 import matcher.Matcher.MatchingStatus;
 import matcher.gui.MatcherGui;
-import matcher.type.MatchType;
+import matcher.model.type.MatchType;
 
 public class MatchingMenu extends Menu {
 	MatchingMenu(MatcherGui gui) {

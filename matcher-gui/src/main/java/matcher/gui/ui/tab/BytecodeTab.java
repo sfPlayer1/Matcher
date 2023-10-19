@@ -5,14 +5,14 @@ import java.io.StringWriter;
 
 import org.objectweb.asm.util.TraceClassVisitor;
 
-import matcher.NameType;
 import matcher.gui.MatcherGui;
 import matcher.gui.srcprocess.HtmlUtil;
 import matcher.gui.ui.ISelectionProvider;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
+import matcher.model.NameType;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
 
 public class BytecodeTab extends WebViewTab {
 	public BytecodeTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {

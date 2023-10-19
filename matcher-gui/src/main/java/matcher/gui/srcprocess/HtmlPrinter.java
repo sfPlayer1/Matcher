@@ -133,8 +133,8 @@ import com.github.javaparser.printer.configuration.Indentation;
 import com.github.javaparser.printer.configuration.Indentation.IndentType;
 import com.github.javaparser.utils.Utils;
 
-import matcher.type.FieldInstance;
-import matcher.type.MethodInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MethodInstance;
 
 public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 	public HtmlPrinter(TypeResolver typeResolver) {

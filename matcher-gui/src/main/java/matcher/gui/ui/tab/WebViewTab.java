@@ -15,9 +15,9 @@ import javafx.concurrent.Worker.State;
 import javafx.scene.control.Tab;
 import javafx.scene.web.WebView;
 
-import matcher.config.Config;
-import matcher.gui.ui.IGuiComponent;
 import matcher.gui.srcprocess.HtmlUtil;
+import matcher.gui.ui.IGuiComponent;
+import matcher.model.config.Config;
 
 abstract class WebViewTab extends Tab implements IGuiComponent.Selectable {
 	protected WebViewTab(String text, String templatePath) {

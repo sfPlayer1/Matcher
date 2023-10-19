@@ -3,14 +3,14 @@ package matcher.gui.ui.tab;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableView;
 
-import matcher.classifier.ClassifierResult;
-import matcher.classifier.RankResult;
-import matcher.type.FieldInstance;
-import matcher.type.MatchType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
+import matcher.model.classifier.ClassifierResult;
+import matcher.model.classifier.RankResult;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
 
 public class MemberScoresTab extends Tab implements IGuiComponent {
 	public MemberScoresTab(ISelectionProvider selectionProvider) {

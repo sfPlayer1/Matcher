@@ -15,7 +15,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 
 import matcher.gui.ui.GuiConstants;
-import matcher.mapping.MappingField;
+import matcher.model.mapping.MappingField;
 
 class LoadMappingsPane extends GridPane {
 	LoadMappingsPane(List<String> namespaces) {

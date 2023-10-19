@@ -16,8 +16,8 @@ import javafx.scene.control.TreeView;
 import javafx.scene.layout.VBox;
 import javafx.util.Callback;
 
-import matcher.type.ClassInstance;
 import matcher.gui.ui.IGuiComponent;
+import matcher.model.type.ClassInstance;
 
 public class HierarchyTab extends Tab implements IGuiComponent {
 	public HierarchyTab() {

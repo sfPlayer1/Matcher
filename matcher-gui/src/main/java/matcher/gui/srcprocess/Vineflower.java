@@ -19,9 +19,9 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.main.extern.IResultSaver;
 
 import matcher.Matcher;
-import matcher.NameType;
-import matcher.type.ClassFeatureExtractor;
-import matcher.type.ClassInstance;
+import matcher.model.NameType;
+import matcher.model.type.ClassFeatureExtractor;
+import matcher.model.type.ClassInstance;
 
 public class Vineflower implements Decompiler {
 	@Override

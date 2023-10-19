@@ -2,7 +2,7 @@ package matcher.cli;
 
 import matcher.cli.provider.builtin.AdditionalPluginsCliParameterProvider;
 import matcher.cli.provider.builtin.AutomatchCliCommandProvider;
-import matcher.config.Config;
+import matcher.model.config.Config;
 
 public class Main {
 	public static void main(String[] args) {

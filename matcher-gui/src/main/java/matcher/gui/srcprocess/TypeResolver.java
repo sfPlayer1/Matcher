@@ -24,12 +24,12 @@ import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.type.VoidType;
 
-import matcher.NameType;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.ClassEnv;
-import matcher.type.Matchable;
-import matcher.type.MethodInstance;
+import matcher.model.NameType;
+import matcher.model.type.ClassEnv;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.Matchable;
+import matcher.model.type.MethodInstance;
 
 class TypeResolver {
 	public void setup(ClassInstance rootCls, NameType nameType, CompilationUnit cu) {

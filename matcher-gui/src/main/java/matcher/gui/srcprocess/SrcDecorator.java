@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.JavaToken;
+import com.github.javaparser.JavaToken.Kind;
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.ParserConfiguration.LanguageLevel;
@@ -15,7 +16,6 @@ import com.github.javaparser.Position;
 import com.github.javaparser.Problem;
 import com.github.javaparser.Range;
 import com.github.javaparser.TokenRange;
-import com.github.javaparser.JavaToken.Kind;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -30,11 +30,11 @@ import com.github.javaparser.ast.comments.JavadocComment;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 import matcher.Matcher;
-import matcher.NameType;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.NameType;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class SrcDecorator {
 	public static String decorate(String src, ClassInstance cls, NameType nameType) {

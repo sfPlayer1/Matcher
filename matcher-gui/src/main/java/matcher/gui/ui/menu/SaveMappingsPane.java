@@ -12,9 +12,9 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 
-import matcher.NameType;
 import matcher.gui.ui.GuiConstants;
-import matcher.mapping.MappingsExportVerbosity;
+import matcher.model.NameType;
+import matcher.model.mapping.MappingsExportVerbosity;
 
 class SaveMappingsPane extends GridPane {
 	SaveMappingsPane(boolean offerNamespaces) {

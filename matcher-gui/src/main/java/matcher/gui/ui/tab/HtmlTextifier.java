@@ -53,11 +53,11 @@ import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TextifierSupport;
 import org.objectweb.asm.util.TraceSignatureVisitor;
 
-import matcher.NameType;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MethodInstance;
 import matcher.gui.srcprocess.HtmlUtil;
+import matcher.model.NameType;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MethodInstance;
 
 final class HtmlTextifier extends Textifier {
 	HtmlTextifier(ClassInstance cls, NameType nameType) {

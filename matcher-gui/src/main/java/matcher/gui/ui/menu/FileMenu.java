@@ -27,17 +27,17 @@ import javafx.stage.Window;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.format.MappingFormat;
 
-import matcher.Util;
-import matcher.config.Config;
 import matcher.gui.MatcherGui;
 import matcher.gui.MatcherGui.SelectedFile;
 import matcher.gui.ui.menu.LoadMappingsPane.MappingsLoadSettings;
 import matcher.gui.ui.menu.LoadProjectPane.ProjectLoadSettings;
 import matcher.gui.ui.menu.SaveMappingsPane.MappingsSaveSettings;
-import matcher.mapping.Mappings;
+import matcher.model.Util;
+import matcher.model.config.Config;
+import matcher.model.mapping.Mappings;
+import matcher.model.type.ClassEnvironment;
+import matcher.model.type.MatchType;
 import matcher.serdes.MatchesIo;
-import matcher.type.ClassEnvironment;
-import matcher.type.MatchType;
 
 public class FileMenu extends Menu {
 	FileMenu(MatcherGui gui) {

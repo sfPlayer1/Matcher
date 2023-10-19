@@ -16,16 +16,16 @@ import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
 import org.objectweb.asm.tree.MethodNode;
 
-import matcher.NameType;
-import matcher.Util;
-import matcher.Util.AFElementType;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
 import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
+import matcher.model.NameType;
+import matcher.model.Util;
+import matcher.model.Util.AFElementType;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class MethodInfoTab extends Tab implements IGuiComponent {
 	public MethodInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {

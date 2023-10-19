@@ -19,23 +19,23 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import matcher.Matcher;
-import matcher.NameType;
-import matcher.classifier.ClassClassifier;
-import matcher.classifier.ClassifierLevel;
-import matcher.classifier.FieldClassifier;
-import matcher.classifier.MethodClassifier;
-import matcher.classifier.MethodVarClassifier;
-import matcher.classifier.RankResult;
 import matcher.gui.MatcherGui;
-import matcher.type.ClassEnv;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MatchType;
-import matcher.type.Matchable;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.NameType;
+import matcher.model.classifier.ClassClassifier;
+import matcher.model.classifier.ClassifierLevel;
+import matcher.model.classifier.FieldClassifier;
+import matcher.model.classifier.MethodClassifier;
+import matcher.model.classifier.MethodVarClassifier;
+import matcher.model.classifier.RankResult;
+import matcher.model.type.ClassEnv;
+import matcher.model.type.ClassEnvironment;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.Matchable;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelectionProvider {
 	public MatchPaneDst(MatcherGui gui, MatchPaneSrc srcPane) {

@@ -9,8 +9,8 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 
-import matcher.NameType;
 import matcher.gui.ui.GuiConstants;
+import matcher.model.NameType;
 
 class FixRecordNamesPane extends GridPane {
 	FixRecordNamesPane() {

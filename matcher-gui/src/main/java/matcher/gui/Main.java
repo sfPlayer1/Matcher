@@ -8,7 +8,7 @@ import javafx.application.Application;
 import matcher.PluginLoader;
 import matcher.cli.MatcherCli;
 import matcher.cli.provider.builtin.AdditionalPluginsCliParameterProvider;
-import matcher.config.Config;
+import matcher.model.config.Config;
 import matcher.gui.cli.PreLaunchGuiCliParameterProvider;
 
 public class Main {

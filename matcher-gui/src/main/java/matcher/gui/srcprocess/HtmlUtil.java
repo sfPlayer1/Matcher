@@ -2,8 +2,8 @@ package matcher.gui.srcprocess;
 
 import java.util.regex.Pattern;
 
-import matcher.type.FieldInstance;
-import matcher.type.MethodInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MethodInstance;
 
 public class HtmlUtil {
 	public static String getId(MethodInstance method) {

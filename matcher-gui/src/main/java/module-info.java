@@ -1,7 +1,6 @@
 module matcher.gui {
 	requires cfr;
 	requires com.github.javaparser.core;
-	requires java.prefs;
 	requires org.objectweb.asm.util;
 	requires org.vineflower.vineflower;
 	requires procyon.compilertools;

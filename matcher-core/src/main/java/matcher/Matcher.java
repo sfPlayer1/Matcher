@@ -29,23 +29,24 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import matcher.classifier.ClassClassifier;
-import matcher.classifier.ClassifierLevel;
-import matcher.classifier.FieldClassifier;
-import matcher.classifier.IRanker;
-import matcher.classifier.MethodClassifier;
-import matcher.classifier.MethodVarClassifier;
-import matcher.classifier.RankResult;
-import matcher.config.Config;
-import matcher.config.ProjectConfig;
-import matcher.type.ClassEnv;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.InputFile;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.NameType;
+import matcher.model.classifier.ClassClassifier;
+import matcher.model.classifier.ClassifierLevel;
+import matcher.model.classifier.FieldClassifier;
+import matcher.model.classifier.IRanker;
+import matcher.model.classifier.MethodClassifier;
+import matcher.model.classifier.MethodVarClassifier;
+import matcher.model.classifier.RankResult;
+import matcher.model.config.Config;
+import matcher.model.config.ProjectConfig;
+import matcher.model.type.ClassEnv;
+import matcher.model.type.ClassEnvironment;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.InputFile;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class Matcher {
 	public static void init() {

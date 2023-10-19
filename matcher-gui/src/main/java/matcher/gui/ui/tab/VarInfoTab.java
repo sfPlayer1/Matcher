@@ -10,12 +10,12 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.GridPane;
 
-import matcher.NameType;
-import matcher.type.MethodVarInstance;
 import matcher.gui.MatcherGui;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.IGuiComponent;
 import matcher.gui.ui.ISelectionProvider;
+import matcher.model.NameType;
+import matcher.model.type.MethodVarInstance;
 
 public class VarInfoTab extends Tab implements IGuiComponent {
 	public VarInfoTab(MatcherGui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {

@@ -14,9 +14,9 @@ import org.benf.cfr.reader.api.OutputSinkFactory;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
 
 import matcher.Matcher;
-import matcher.NameType;
-import matcher.type.ClassFeatureExtractor;
-import matcher.type.ClassInstance;
+import matcher.model.NameType;
+import matcher.model.type.ClassFeatureExtractor;
+import matcher.model.type.ClassInstance;
 
 public class Cfr implements Decompiler {
 	@Override

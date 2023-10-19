@@ -2,11 +2,11 @@ package matcher.gui.ui;
 
 import java.util.Set;
 
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MatchType;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public interface IGuiComponent {
 	default void onProjectChange() { }

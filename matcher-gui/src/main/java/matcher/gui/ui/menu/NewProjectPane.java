@@ -34,11 +34,11 @@ import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Window;
 
-import matcher.config.ProjectConfig;
 import matcher.gui.MatcherGui;
 import matcher.gui.MatcherGui.SelectedFile;
 import matcher.gui.ui.GuiConstants;
 import matcher.gui.ui.GuiUtil;
+import matcher.model.config.ProjectConfig;
 
 public class NewProjectPane extends GridPane {
 	public NewProjectPane(ProjectConfig config, Window window, Node okButton) {

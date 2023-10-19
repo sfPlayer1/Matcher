@@ -16,16 +16,16 @@ import java.util.List;
 import java.util.function.DoubleConsumer;
 
 import matcher.Matcher;
-import matcher.config.Config;
-import matcher.type.ClassEnvironment;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.InputFile;
-import matcher.type.InputFile.HashType;
-import matcher.type.LocalClassEnv;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.config.Config;
+import matcher.model.type.ClassEnvironment;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.InputFile;
+import matcher.model.type.InputFile.HashType;
+import matcher.model.type.LocalClassEnv;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class MatchesIo {
 	public static void read(Path path, List<Path> inputDirs, boolean verifyInputs, Matcher matcher, DoubleConsumer progressReceiver) {

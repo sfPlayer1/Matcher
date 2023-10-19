@@ -30,18 +30,18 @@ import javafx.scene.control.TreeView;
 import javafx.scene.paint.Color;
 
 import matcher.Matcher;
-import matcher.NameType;
-import matcher.Util;
-import matcher.config.Config;
 import matcher.gui.MatcherGui;
 import matcher.gui.MatcherGui.SortKey;
-import matcher.type.ClassInstance;
-import matcher.type.FieldInstance;
-import matcher.type.MatchType;
-import matcher.type.Matchable;
-import matcher.type.MemberInstance;
-import matcher.type.MethodInstance;
-import matcher.type.MethodVarInstance;
+import matcher.model.NameType;
+import matcher.model.Util;
+import matcher.model.config.Config;
+import matcher.model.type.ClassInstance;
+import matcher.model.type.FieldInstance;
+import matcher.model.type.MatchType;
+import matcher.model.type.Matchable;
+import matcher.model.type.MemberInstance;
+import matcher.model.type.MethodInstance;
+import matcher.model.type.MethodVarInstance;
 
 public class MatchPaneSrc extends SplitPane implements IFwdGuiComponent, ISelectionProvider {
 	public MatchPaneSrc(MatcherGui gui) {
