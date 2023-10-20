@@ -62,7 +62,7 @@ dependencies {
 	implementation "org.ow2.asm:asm-util:${asm_version}"
 	implementation "com.github.javaparser:javaparser-core:${javaparser_version}"
 	implementation "net.fabricmc:cfr:${fabric_cfr_version}"
-	implementation "net.fabricmc:fabric-fernflower:${fabric_fernflower_version}"
+	implementation "org.vineflower:vineflower:${vineflower_version}"
 	implementation "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
 
 	// JavaFX for all platforms (needed for cross-platform fat jar)
@@ -92,8 +92,8 @@ extraJavaModuleInfo {
 	// CFR
 	automaticModule("net.fabricmc:cfr", "cfr")
 
-	// Fernflower
-	automaticModule("net.fabricmc:fabric-fernflower", "intellij.fernflower")
+	// Vineflower
+	automaticModule("org.vineflower:vineflower", "org.vineflower.vineflower")
 
 	// Procyon
 	automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
