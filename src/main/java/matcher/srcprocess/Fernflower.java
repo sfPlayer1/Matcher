@@ -147,7 +147,7 @@ public class Fernflower implements Decompiler {
 			if (ret != null) return ret;
 
 			ClassInstance cls = env.getClsByName(name, nameType);
-			if (cls == null) return null;
+			if (cls == null || !cls.isReal()) return null;
 
 			try {
 				return addStructClass(cls, false);
