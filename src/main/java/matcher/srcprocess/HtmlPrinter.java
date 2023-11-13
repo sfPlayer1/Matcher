@@ -404,7 +404,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printOrphanCommentsBeforeThisChildNode(n);
 
 		if (getOption(ConfigOption.PRINT_COMMENTS).isPresent() && getOption(ConfigOption.PRINT_JAVADOC).isPresent()) {
-			printer.print("<span class=\"comment\">")
+			printer.print("<span class=\"comment\">");
 			printer.println(n.getHeader());
 			final String commentContent = Utils.normalizeEolInTextBlock(HtmlUtil.escape(n.getContent()), getOption(ConfigOption.END_OF_LINE_CHARACTER).get().asString());
 			String[] lines = commentContent.split("\\R");
