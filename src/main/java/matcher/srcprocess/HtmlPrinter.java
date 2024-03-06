@@ -1,5 +1,5 @@
 /*
- * Most of this file is copied from DefaultPrettyPrinterVisitor,
+ * Most of this file is copied from DefaultPrettyPrinterVisitor (commit 19e0559),
  * tweaked to output HTML instead of plain text. Original license:
  *
  * Copyright (C) 2011, 2013-2021 The JavaParser Team.
@@ -27,13 +27,12 @@ import static com.github.javaparser.utils.PositionUtils.sortByBeginPosition;
 import static com.github.javaparser.utils.Utils.isNullOrEmpty;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 import com.github.javaparser.ast.ArrayCreationLevel;
 import com.github.javaparser.ast.ImportDeclaration;
@@ -216,7 +215,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		NodeList<Type> typeArguments = nodeWithTypeArguments.getTypeArguments().orElse(null);
 
 		if (!isNullOrEmpty(typeArguments)) {
-			printer.print("&lt;");
+			printer.print("&lt;"); // <
 
 			for (final Iterator<Type> i = typeArguments.iterator(); i.hasNext(); ) {
 				final Type t = i.next();
@@ -227,14 +226,14 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 				}
 			}
 
-			printer.print("&gt;");
+			printer.print("&gt;"); // >
 		}
 	}
 
 	@Override
 	protected void printTypeParameters(final NodeList<TypeParameter> args, final Void arg) {
 		if (!isNullOrEmpty(args)) {
-			printer.print("&lt;");
+			printer.print("&lt;"); // <
 
 			for (final Iterator<TypeParameter> i = args.iterator(); i.hasNext(); ) {
 				final TypeParameter t = i.next();
@@ -245,7 +244,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 				}
 			}
 
-			printer.print("&gt;");
+			printer.print("&gt;"); // >
 		}
 	}
 
@@ -318,6 +317,19 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 			}
 		}
 
+		if (!n.getPermittedTypes().isEmpty()) {
+			printer.print(" <span class=\"keyword\">permits</span> ");
+
+			for (final Iterator<ClassOrInterfaceType> i = n.getPermittedTypes().iterator(); i.hasNext(); ) {
+				final ClassOrInterfaceType c = i.next();
+				c.accept(this, arg);
+
+				if (i.hasNext()) {
+					printer.print(", ");
+				}
+			}
+		}
+
 		printer.println(" {");
 		printer.indent();
 
@@ -344,6 +356,8 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		n.getName().accept(this, arg);
 		printer.print("</span>");
 
+		printTypeParameters(n.getTypeParameters(), arg);
+
 		printer.print("(");
 
 		if (!isNullOrEmpty(n.getParameters())) {
@@ -358,7 +372,6 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		}
 
 		printer.print(")");
-		printTypeParameters(n.getTypeParameters(), arg);
 
 		if (!n.getImplementedTypes().isEmpty()) {
 			printer.print(" <span class=\"keyword\">implements</span> ");
@@ -391,12 +404,11 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printOrphanCommentsBeforeThisChildNode(n);
 
 		if (getOption(ConfigOption.PRINT_COMMENTS).isPresent() && getOption(ConfigOption.PRINT_JAVADOC).isPresent()) {
-			printer.println("<span class=\"comment\">/**");
+			printer.print("<span class=\"comment\">");
+			printer.println(n.getHeader());
 			final String commentContent = Utils.normalizeEolInTextBlock(HtmlUtil.escape(n.getContent()), getOption(ConfigOption.END_OF_LINE_CHARACTER).get().asString());
 			String[] lines = commentContent.split("\\R");
-			boolean skippingLeadingEmptyLines = true;
-			boolean prependEmptyLine = false;
-			boolean prependSpace = Arrays.stream(lines).anyMatch(line -> !line.isEmpty() && !line.startsWith(" "));
+			List<String> strippedLines = new ArrayList<>();
 
 			for (String line : lines) {
 				final String trimmedLine = line.trim();
@@ -406,7 +418,14 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 				}
 
 				line = Utils.trimTrailingSpaces(line);
+				strippedLines.add(line);
+			}
 
+			boolean skippingLeadingEmptyLines = true;
+			boolean prependEmptyLine = false;
+			boolean prependSpace = strippedLines.stream().anyMatch(line -> !line.isEmpty() && !line.startsWith(" "));
+
+			for (String line : strippedLines) {
 				if (line.isEmpty()) {
 					if (!skippingLeadingEmptyLines) {
 						prependEmptyLine = true;
@@ -429,7 +448,9 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 				}
 			}
 
-			printer.println(" */</span>");
+			printer.print(" ")
+					.print(n.getFooter())
+					.println("</span>");
 		}
 	}
 
@@ -678,11 +699,11 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printComment(n.getComment(), arg);
 		n.getExpression().accept(this, arg);
 		printer.print(" <span class=\"keyword\">instanceof</span> ");
-		n.getType().accept(this, arg);
 
-		if (n.getName().isPresent()) {
-			printer.print(" ");
-			n.getName().get().accept(this, arg);
+		if (n.getPattern().isPresent()) {
+			n.getPattern().get().accept(this, arg);
+		} else {
+			n.getType().accept(this, arg);
 		}
 	}
 
@@ -983,6 +1004,13 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.print("</span>");
 
 		printer.print("(");
+		n.getReceiverParameter().ifPresent(rp -> {
+			rp.accept(this, arg);
+
+			if (!isNullOrEmpty(n.getParameters())) {
+				printer.print(", ");
+			}
+		});
 
 		if (!n.getParameters().isEmpty()) {
 			for (final Iterator<Parameter> i = n.getParameters().iterator(); i.hasNext(); ) {
@@ -1024,7 +1052,6 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printComment(n.getComment(), arg);
 		printMemberAnnotations(n.getAnnotations(), arg);
 		printModifiers(n.getModifiers());
-
 		printTypeParameters(n.getTypeParameters(), arg);
 
 		if (n.isGeneric()) {
@@ -1065,7 +1092,6 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		}
 
 		printOrphanCommentsBeforeThisChildNode(n);
-
 		printComment(n.getComment(), arg);
 		printMemberAnnotations(n.getAnnotations(), arg);
 		printModifiers(n.getModifiers());
@@ -1209,13 +1235,13 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		printer.println(") {");
 
 		if (n.getEntries() != null) {
-			if (getOption(ConfigOption.INDENT_CASE_IN_SWITCH).isPresent()) printer.indent();
+			indentIf(getOption(ConfigOption.INDENT_CASE_IN_SWITCH).isPresent());
 
 			for (final SwitchEntry e : n.getEntries()) {
 				e.accept(this, arg);
 			}
 
-			if (getOption(ConfigOption.INDENT_CASE_IN_SWITCH).isPresent()) printer.indent();
+			unindentIf(getOption(ConfigOption.INDENT_CASE_IN_SWITCH).isPresent());
 		}
 
 		printer.print("}");
@@ -1748,8 +1774,9 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		}
 
 		printer.print("<span class=\"comment\">");
-		printer.print("// ")
-				.println(Utils.normalizeEolInTextBlock(HtmlUtil.escape(n.getContent()), "").trim());
+		printer.print(n.getHeader())
+				.print(" ")
+				.println(Utils.normalizeEolInTextBlock(HtmlUtil.escape(RTRIM.matcher(n.getContent()).replaceAll("")), ""));
 		printer.println("</span>");
 	}
 
@@ -1761,15 +1788,17 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 
 		final String commentContent = Utils.normalizeEolInTextBlock(n.getContent(), getOption(ConfigOption.END_OF_LINE_CHARACTER).get().asString());
 		String[] lines = commentContent.split("\\R", -1); // as BlockComment should not be formatted, -1 to preserve any trailing empty line if present
-		printer.print("<span class=\"comment\">/*");
+		printer.print("<span class=\"comment\">");
+		printer.print(n.getHeader());
 
 		for (int i = 0; i < (lines.length - 1); i++) {
 			printer.print(lines[i]);
 			printer.print(getOption(ConfigOption.END_OF_LINE_CHARACTER).get().asString()); // Avoids introducing indentation in blockcomments. ie: do not use println() as it would trigger indentation at the next print call.
 		}
 
-		printer.print(lines[lines.length - 1]); // last line is not followed by a newline, and simply terminated with `*/`
-		printer.println("*/</span>");
+		printer.print(lines[lines.length - 1]) // last line is not followed by a newline, and simply terminated with `*/`
+				.print(n.getFooter())
+				.println("</span>");
 	}
 
 	@Override
@@ -1893,8 +1922,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 	private void printOrphanCommentsEnding(final Node node) {
 		if (!getOption(ConfigOption.PRINT_COMMENTS).isPresent()) return;
 
-		// extract all nodes for which the position/range is indicated to avoid to skip orphan comments
-		List<Node> everything = node.getChildNodes().stream().filter(n -> n.getRange().isPresent()).collect(Collectors.toList());
+		List<Node> everything = new ArrayList<>(node.getChildNodes());
 		sortByBeginPosition(everything);
 
 		if (everything.isEmpty()) {
@@ -1917,6 +1945,20 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 			everything.get(everything.size() - commentsAtEnd + i).accept(this, null);
 		}
 	}
+
+	private void indentIf(boolean expr) {
+		if (expr) printer.indent();
+	}
+
+	private void unindentIf(boolean expr) {
+		if (expr) printer.unindent();
+	}
+
+	private Optional<ConfigurationOption> getOption(ConfigOption option) {
+		return configuration.get(new DefaultConfigurationOption(option));
+	}
+
+	// Matcher-introduced methods
 
 	private static boolean canAddNewLine(Node n) {
 		Node prev = getPrev(n);
@@ -1955,10 +1997,7 @@ public class HtmlPrinter extends DefaultPrettyPrinterVisitor {
 		return parent.getChildNodes().get(idx + 1);
 	}
 
-	private Optional<ConfigurationOption> getOption(ConfigOption option) {
-		return configuration.get(new DefaultConfigurationOption(option));
-	}
-
+	private static Pattern RTRIM = Pattern.compile("\\s+$");
 	protected final TypeResolver typeResolver;
 	protected boolean instantiationAhead;
 	protected int recursionCounter;

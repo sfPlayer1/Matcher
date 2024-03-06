@@ -86,9 +86,6 @@ dependencies {
 extraJavaModuleInfo {
 	failOnMissingModuleInfo.set(false) // because of transitive dependencies
 
-	// Mapping-IO
-	automaticModule("net.fabricmc:mapping-io", "net.fabricmc.mappingio")
-
 	// CFR
 	automaticModule("net.fabricmc:cfr", "cfr")
 
