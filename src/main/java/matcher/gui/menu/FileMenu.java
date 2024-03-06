@@ -65,21 +65,17 @@ public class FileMenu extends Menu {
 		getItems().add(menuItem);
 		menuItem.setOnAction(event -> loadMappings(null));
 
-		menuItem = new MenuItem("Load mappings (Enigma)");
+		menuItem = new MenuItem("Load mappings (Enigma dir)");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> loadMappings(MappingFormat.ENIGMA));
-
-		menuItem = new MenuItem("Load mappings (MCP dir)");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> loadMappings(MappingFormat.MCP));
+		menuItem.setOnAction(event -> loadMappings(MappingFormat.ENIGMA_DIR));
 
 		menuItem = new MenuItem("Save mappings");
 		getItems().add(menuItem);
 		menuItem.setOnAction(event -> saveMappings(null));
 
-		menuItem = new MenuItem("Save mappings (Enigma)");
+		menuItem = new MenuItem("Save mappings (Enigma dir)");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMappings(MappingFormat.ENIGMA));
+		menuItem.setOnAction(event -> saveMappings(MappingFormat.ENIGMA_DIR));
 
 		menuItem = new MenuItem("Clear mappings");
 		getItems().add(menuItem);
@@ -361,7 +357,7 @@ public class FileMenu extends Menu {
 	}
 
 	private static MappingFormat getFormat(Path file) {
-		if (Files.isDirectory(file)) return MappingFormat.ENIGMA;
+		if (Files.isDirectory(file)) return MappingFormat.ENIGMA_DIR;
 
 		String name = file.getFileName().toString().toLowerCase(Locale.ENGLISH);
 
