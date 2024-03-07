@@ -14,7 +14,7 @@ module matcher {
 	requires transitive org.slf4j;
 	requires cfr;
 	requires com.github.javaparser.core;
-	requires intellij.fernflower;
+	requires org.vineflower.vineflower;
 	requires java.prefs;
 	requires transitive javafx.base;
 	requires transitive javafx.controls;

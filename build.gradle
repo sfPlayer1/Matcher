@@ -63,7 +63,7 @@ dependencies {
 	implementation "org.ow2.asm:asm-util:${asm_version}"
 	implementation "com.github.javaparser:javaparser-core:${javaparser_version}"
 	implementation "net.fabricmc:cfr:${fabric_cfr_version}"
-	implementation "net.fabricmc:fabric-fernflower:${fabric_fernflower_version}"
+	implementation "org.vineflower:vineflower:${vineflower_version}"
 	implementation "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
 	runtimeOnly "org.tinylog:tinylog-impl:${tinylog_version}"
 	runtimeOnly "org.tinylog:slf4j-tinylog:${tinylog_version}"
@@ -89,14 +89,11 @@ dependencies {
 extraJavaModuleInfo {
 	failOnMissingModuleInfo.set(false) // because of transitive dependencies
 
-	// Mapping-IO
-	automaticModule("net.fabricmc:mapping-io", "net.fabricmc.mappingio")
-
 	// CFR
 	automaticModule("net.fabricmc:cfr", "cfr")
 
-	// Fernflower
-	automaticModule("net.fabricmc:fabric-fernflower", "intellij.fernflower")
+	// Vineflower
+	automaticModule("org.vineflower:vineflower", "org.vineflower.vineflower")
 
 	// Procyon
 	automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
