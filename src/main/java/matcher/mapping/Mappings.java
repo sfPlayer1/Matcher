@@ -1,8 +1,6 @@
 package matcher.mapping;
 
-import java.io.Closeable;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -120,7 +118,7 @@ public class Mappings {
 				}
 
 				@Override
-				public boolean visitMethodVar(int asmIndex, int lvIndex, int startOpIdx, String srcArgName) {
+				public boolean visitMethodVar(int asmIndex, int lvIndex, int startOpIdx, int endOpIdx, String srcArgName) {
 					arg = null;
 
 					cur = var = getMethodVar(-1, lvIndex, startOpIdx, asmIndex, false);
@@ -507,67 +505,61 @@ public class Mappings {
 		List<MethodVarInstance> vars = new ArrayList<>();
 		Set<Set<MethodInstance>> exportedHierarchies = verbosity == MappingsExportVerbosity.MINIMAL ? Util.newIdentityHashSet() : null;
 
-		try (Closeable closable = format == MappingFormat.TINY_2 || format == MappingFormat.ENIGMA ? MappingWriter.create(file, format) : new MappingWriterImpl(file, format)) {
-			FlatMappingVisitor writer = closable instanceof FlatMappingVisitor ? (FlatMappingVisitor) closable : new RegularAsFlatMappingVisitor((MappingVisitor) closable);
+		FlatMappingVisitor writer = new RegularAsFlatMappingVisitor(MappingWriter.create(file, format));
+		writer.visitNamespaces(nsNames.get(0), nsNames.subList(1, nsNames.size()));
 
-			writer.visitNamespaces(nsNames.get(0), nsNames.subList(1, nsNames.size()));
+		for (ClassInstance cls : classes) {
+			String srcClsName = cls.getName(nsTypes.get(0));
+			if (srcClsName == null) continue;
+			boolean hasAnyDstName = false;
 
-			for (ClassInstance cls : classes) {
-				String srcClsName = cls.getName(nsTypes.get(0));
-				if (srcClsName == null) continue;
-				boolean hasAnyDstName = false;
+			for (int i = 1; i < nsTypes.size(); i++) {
+				NameType dstType = nsTypes.get(i);
+				String dstName = cls.getName(dstType); // FIXME: this may actually not be unique, record exported and suffix conflicting?
 
-				for (int i = 1; i < nsTypes.size(); i++) {
-					NameType dstType = nsTypes.get(i);
-					String dstName = cls.getName(dstType); // FIXME: this may actually not be unique, record exported and suffix conflicting?
-
-					if (dstName != null && (dstName.equals(srcClsName) || dstType != dstType.withMapped(false) && cls.hasNoFullyMappedName())) {
-						// don't save no-op or partial mappings (partial = only outer class is mapped)
-						dstName = null;
-					}
-
-					hasAnyDstName |= dstName != null;
-					dstClassNames[i - 1] = dstName;
+				if (dstName != null && (dstName.equals(srcClsName) || dstType != dstType.withMapped(false) && cls.hasNoFullyMappedName())) {
+					// don't save no-op or partial mappings (partial = only outer class is mapped)
+					dstName = null;
 				}
 
-				if (!hasAnyDstName
-						&& (!format.supportsComments || cls.getMappedComment() == null)
-						&& !shouldExportAny(cls.getMethods(), format, nsTypes, verbosity, forAnyInput, exportedHierarchies)
-						&& !shouldExportAny(cls.getFields(), format, nsTypes)) {
-					continue; // no data for the class, skip
-				}
-
-				if (!writer.visitClass(srcClsName, dstClassNames)) {
-					continue;
-				}
-
-				// comment
-
-				if (cls.getMappedComment() != null) writer.visitClassComment(srcClsName, dstClassNames, cls.getMappedComment());
-
-				if (fieldsFirst) {
-					exportFields(cls, srcClsName, dstClassNames, format, nsTypes,
-							dstMemberNames, dstMemberDescs, fields, memberCmp, writer);
-				}
-
-				exportMethods(cls, srcClsName, dstClassNames,
-						format, nsTypes, verbosity, forAnyInput,
-						dstMemberNames, dstMemberDescs, dstVarNames,
-						methods, vars, exportedHierarchies,
-						memberCmp, methodArgCmp, methodVarCmp,
-						writer);
-
-				if (!fieldsFirst) {
-					exportFields(cls, srcClsName, dstClassNames, format, nsTypes,
-							dstMemberNames, dstMemberDescs, fields, memberCmp, writer);
-				}
+				hasAnyDstName |= dstName != null;
+				dstClassNames[i - 1] = dstName;
 			}
 
-			writer.visitEnd();
-		} catch (UncheckedIOException e) {
-			throw e.getCause();
+			if (!hasAnyDstName
+					&& (!format.supportsComments || cls.getMappedComment() == null)
+					&& !shouldExportAny(cls.getMethods(), format, nsTypes, verbosity, forAnyInput, exportedHierarchies)
+					&& !shouldExportAny(cls.getFields(), format, nsTypes)) {
+				continue; // no data for the class, skip
+			}
+
+			if (!writer.visitClass(srcClsName, dstClassNames)) {
+				continue;
+			}
+
+			// comment
+
+			if (cls.getMappedComment() != null) writer.visitClassComment(srcClsName, dstClassNames, cls.getMappedComment());
+
+			if (fieldsFirst) {
+				exportFields(cls, srcClsName, dstClassNames, format, nsTypes,
+						dstMemberNames, dstMemberDescs, fields, memberCmp, writer);
+			}
+
+			exportMethods(cls, srcClsName, dstClassNames,
+					format, nsTypes, verbosity, forAnyInput,
+					dstMemberNames, dstMemberDescs, dstVarNames,
+					methods, vars, exportedHierarchies,
+					memberCmp, methodArgCmp, methodVarCmp,
+					writer);
+
+			if (!fieldsFirst) {
+				exportFields(cls, srcClsName, dstClassNames, format, nsTypes,
+						dstMemberNames, dstMemberDescs, fields, memberCmp, writer);
+			}
 		}
 
+		writer.visitEnd();
 		return true;
 	}
 
@@ -668,7 +660,7 @@ public class Mappings {
 										dstClassNames, dstMethodNames, dstMemberDescs, dstVarNames);
 							} else {
 								writer.visitMethodVar(srcClsName, srcName, desc,
-										var.getAsmIndex(), var.getLvIndex(), var.getStartOpIdx(), srcVarName,
+										var.getAsmIndex(), var.getLvIndex(), var.getStartOpIdx(), -1, srcVarName,
 										dstClassNames, dstMethodNames, dstMemberDescs, dstVarNames);
 							}
 						}
@@ -683,7 +675,7 @@ public class Mappings {
 											comment);
 								} else {
 									writer.visitMethodVarComment(srcClsName, srcName, desc,
-											var.getAsmIndex(), var.getLvIndex(), var.getStartOpIdx(), srcVarName,
+											var.getAsmIndex(), var.getLvIndex(), var.getStartOpIdx(), -1, srcVarName,
 											dstClassNames, dstMethodNames, dstMemberDescs, dstVarNames,
 											comment);
 								}
