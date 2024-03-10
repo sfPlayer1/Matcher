@@ -168,12 +168,12 @@ public class MatchesIo {
 						ClassInstance target;
 
 						if (currentClass == null) {
-							System.err.println("Unknown a class "+idA);
+							Matcher.LOGGER.warn("Unknown a class {}", idA);
 						} else if ((target = env.getLocalClsByIdB(idB)) == null) {
-							System.err.println("Unknown b class "+idA);
+							Matcher.LOGGER.warn("Unknown b class {}", idA);
 							currentClass = null;
 						} else if (!currentClass.isMatchable() || !target.isMatchable()) {
-							System.err.println("Unmatchable a/b class "+idA+"/"+idB);
+							Matcher.LOGGER.warn("Unmatchable a/b class {}/{}", idA, idB);
 							currentClass = null;
 						} else {
 							currentClass.setMatchable(true);
@@ -190,7 +190,7 @@ public class MatchesIo {
 						currentMethod = null;
 
 						if (cls == null) {
-							System.err.println("Unknown "+side+" class "+id);
+							Matcher.LOGGER.warn("Unknown {} class {}", side, id);
 						} else {
 							if (cls.hasMatch()) matcher.unmatch(cls);
 							cls.setMatchable(false);
@@ -209,11 +209,11 @@ public class MatchesIo {
 							MethodInstance b;
 
 							if (a == null) {
-								System.err.println("Unknown a method "+idA+" in class "+currentClass);
+								Matcher.LOGGER.warn("Unknown a method {} in class {}", idA, currentClass);
 							} else if ((b = currentClass.getMatch().getMethod(idB)) == null) {
-								System.err.println("Unknown b method "+idB+" in class "+currentClass.getMatch());
+								Matcher.LOGGER.warn("Unknown b method {} in class {}", idB, currentClass.getMatch());
 							} else if (!a.isMatchable() || !b.isMatchable()) {
-								System.err.println("Unmatchable a/b method "+idA+"/"+idB);
+								Matcher.LOGGER.warn("Unmatchable a/b method {}/{}", idA, idB);
 								currentMethod = null;
 							} else {
 								a.setMatchable(true);
@@ -225,11 +225,11 @@ public class MatchesIo {
 							FieldInstance b;
 
 							if (a == null) {
-								System.err.println("Unknown a field "+idA+" in class "+currentClass);
+								Matcher.LOGGER.warn("Unknown a field {} in class {}", idA, currentClass);
 							} else if ((b = currentClass.getMatch().getField(idB)) == null) {
-								System.err.println("Unknown b field "+idB+" in class "+currentClass.getMatch());
+								Matcher.LOGGER.warn("Unknown b field {} in class {}", idB, currentClass.getMatch());
 							} else if (!a.isMatchable() || !b.isMatchable()) {
-								System.err.println("Unmatchable a/b field "+idA+"/"+idB);
+								Matcher.LOGGER.warn("Unmatchable a/b field {}/{}", idA, idB);
 							} else {
 								a.setMatchable(true);
 								b.setMatchable(true);
@@ -249,12 +249,12 @@ public class MatchesIo {
 						MemberInstance<?> member = line.charAt(1) == 'm' ? cls.getMethod(id) : cls.getField(id);
 
 						if (member == null) {
-							System.err.println("Unknown member "+id+" in class "+cls);
+							Matcher.LOGGER.warn("Unknown member {} in class {}", id, cls);
 						} else {
 							if (member.hasMatch()) matcher.unmatch(member);
 
 							if (!member.setMatchable(false)) {
-								System.err.printf("can't mark %s as unmatchable, already matched?%n", member);
+								Matcher.LOGGER.warn("Can't mark {} as unmatchable, already matched?", member);
 							}
 						}
 					} else if (line.startsWith("\t\tma\t") || line.startsWith("\t\tmv\t")) { // method arg or method var
@@ -281,11 +281,12 @@ public class MatchesIo {
 						}
 
 						if (idxA < 0 || idxA >= varsA.length) {
-							System.err.println("Unknown a method "+type+" "+idxA+" in method "+currentMethod);
+							Matcher.LOGGER.warn("Unknown a method {} {} in method {}", type, idxA, currentMethod);
 						} else if (idxB < 0 || idxB >= varsB.length) {
-							System.err.println("Unknown b method "+type+" "+idxB+" in method "+matchedMethod);
+							Matcher.LOGGER.warn("Unknown b method {} {} in method {}", type, idxB, matchedMethod);
 						} else if (!varsA[idxA].isMatchable() || !varsB[idxB].isMatchable()) {
-							System.err.println("Unmatchable a/b method "+type+" "+idxA+"/"+idxB+" in method "+currentMethod+"/"+matchedMethod);
+							Matcher.LOGGER.warn("Unmatchable a/b method {} {}/{} in method {}/{}",
+									type, idxA, idxB, currentMethod, matchedMethod);
 							currentMethod = null;
 						} else {
 							varsA[idxA].setMatchable(true);
@@ -315,7 +316,7 @@ public class MatchesIo {
 						}
 
 						if (idx < 0 || idx >= vars.length) {
-							System.err.println("Unknown a method "+type+" "+idx+" in method "+method);
+							Matcher.LOGGER.warn("Unknown a method {} {} in method {}", type, idx, method);
 							continue;
 						} else {
 							MethodVarInstance var = vars[idx];

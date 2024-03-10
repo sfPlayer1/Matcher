@@ -420,7 +420,7 @@ public class ClassClassifier {
 		@Override
 		public double getScore(ClassInstance clsA, ClassInstance clsB, ClassEnvironment env) {
 			/*if (clsA.getName().equals("agl") && clsB.getName().equals("aht")) {
-				System.out.println();
+				Matcher.LOGGER.info();
 			}*/
 
 			final double absThreshold = 0.8;

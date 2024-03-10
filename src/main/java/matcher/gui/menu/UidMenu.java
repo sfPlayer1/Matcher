@@ -318,7 +318,7 @@ public class UidMenu extends Menu {
 			}
 		}
 
-		System.out.printf("uids assigned: %d class, %d method, %d field%n",
+		Matcher.LOGGER.info("UIDs assigned: {} class, {} method, {} field",
 				nextClassUid - env.nextClassUid,
 				nextMethodUid - env.nextMethodUid,
 				nextFieldUid - env.nextFieldUid);

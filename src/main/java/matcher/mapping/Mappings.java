@@ -17,6 +17,7 @@ import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.adapter.RegularAsFlatMappingVisitor;
 import net.fabricmc.mappingio.format.MappingFormat;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.Util;
 import matcher.type.ClassEnv;
@@ -80,7 +81,7 @@ public class Mappings {
 					cur = cls = findClass(srcName, fieldSource, env);
 
 					if (cls == null) {
-						if (warnedClasses.add(srcName)) System.out.println("can't find mapped class "+srcName);
+						if (warnedClasses.add(srcName)) Matcher.LOGGER.warn("Can't find mapped class {}", srcName);
 						return false;
 					}
 
@@ -96,7 +97,7 @@ public class Mappings {
 					cur = method = cls.getMethod(srcName, srcDesc, fieldSource.type);
 
 					if (method == null || !method.isReal()) {
-						System.out.printf("can't find mapped method %s/%s%s%n",
+						Matcher.LOGGER.warn("Can't find mapped method {}/{}{}",
 								cls.getName(fieldSource.type), srcName, srcDesc);
 						return false;
 					}
@@ -132,28 +133,28 @@ public class Mappings {
 
 				private MethodVarInstance getMethodVar(int varIndex, int lvIndex, int startOpIdx, int asmIndex, boolean isArg) {
 					if (isArg && varIndex < -1 || varIndex >= method.getArgs().length) {
-						System.out.println("invalid var index "+varIndex+" for method "+method);
+						Matcher.LOGGER.warn("Invalid var index {} for method {}", varIndex, method);
 					} else if (lvIndex < -1 || lvIndex >= (isArg ? method.getArgs() : method.getVars()).length * 2 + 1) {
-						System.out.println("invalid lv index "+lvIndex+" for method "+method);
+						Matcher.LOGGER.warn("Invalid lv index {} for method {}", lvIndex, method);
 					} else if (asmIndex < -1) {
-						System.out.println("invalid lv asm index "+asmIndex+" for method "+method);
+						Matcher.LOGGER.warn("Invalid lv asm index {} for method {}", asmIndex, method);
 					} else {
 						if (!isArg || varIndex == -1) {
 							if (asmIndex >= 0) {
 								varIndex = findVarIndexByAsm(isArg ? method.getArgs() : method.getVars(), asmIndex);
 
 								if (varIndex == -1) {
-									System.out.println("invalid lv asm index "+asmIndex+" for method "+method);
+									Matcher.LOGGER.warn("Invalid lv asm index {} for method {}", asmIndex, method);
 									return null;
 								}
 							} else if (lvIndex <= -1) {
-								System.out.println("missing arg+lvt index "+lvIndex+" for method "+method);
+								Matcher.LOGGER.warn("Missing arg+lvt index {} for method {}", lvIndex, method);
 								return null;
 							} else {
 								varIndex = findVarIndexByLv(isArg ? method.getArgs() : method.getVars(), lvIndex, startOpIdx);
 
 								if (varIndex == -1) {
-									System.out.println("invalid lv index "+lvIndex+" for method "+method);
+									Matcher.LOGGER.warn("Invalid lv index {} for method {}", lvIndex, method);
 									return null;
 								}
 							}
@@ -162,12 +163,12 @@ public class Mappings {
 						MethodVarInstance var = isArg ? method.getArg(varIndex) : method.getVar(varIndex);
 
 						if (lvIndex != -1 && var.getLvIndex() != lvIndex) {
-							System.out.println("mismatched lv index "+lvIndex+" for method "+method);
+							Matcher.LOGGER.warn("Mismatched lv index {} for method {}", lvIndex, method);
 							return null;
 						}
 
 						if (asmIndex != -1 && var.getAsmIndex() != asmIndex) {
-							System.out.println("mismatched lv asm index "+asmIndex+" for method "+method);
+							Matcher.LOGGER.warn("Mismatched lv asm index {} for method {}", asmIndex, method);
 							return null;
 						}
 
@@ -186,7 +187,7 @@ public class Mappings {
 					cur = field = cls.getField(srcName, srcDesc, fieldSource.type);
 
 					if (field == null || !field.isReal()) {
-						System.out.println("can't find mapped field "+cls.getName(fieldSource.type)+"/"+srcName);
+						Matcher.LOGGER.warn("Can't find mapped field {}/{}", cls.getName(fieldSource.type), srcName);
 						return false;
 					}
 
@@ -225,7 +226,7 @@ public class Mappings {
 							String prefix = env.getGlobal().classUidPrefix;
 
 							if (!name.startsWith(prefix)) {
-								System.out.println("Invalid uid class name "+name);
+								Matcher.LOGGER.warn("Invalid uid class name {}", name);
 								return;
 							} else {
 								int innerNameStart = name.lastIndexOf('$') + 1;
@@ -235,7 +236,7 @@ public class Mappings {
 									int subPrefixStart = prefix.lastIndexOf('/') + 1;
 
 									if (!name.startsWith(prefix.substring(subPrefixStart), innerNameStart)) {
-										System.out.println("Invalid uid class name "+name);
+										Matcher.LOGGER.warn("Invalid uid class name {}", name);
 										return;
 									} else {
 										uidStr = name.substring(innerNameStart + prefix.length() - subPrefixStart);
@@ -247,7 +248,7 @@ public class Mappings {
 								int uid = Integer.parseInt(uidStr);
 
 								if (uid < 0) {
-									System.out.println("Invalid class uid "+uid);
+									Matcher.LOGGER.warn("Invalid class uid {}", uid);
 									return;
 								} else if (cls.getUid() < 0 || cls.getUid() > uid || replace) {
 									cls.setUid(uid);
@@ -283,13 +284,13 @@ public class Mappings {
 							String prefix = env.getGlobal().fieldUidPrefix;
 
 							if (!name.startsWith(prefix)) {
-								System.out.println("Invalid uid field name "+name);
+								Matcher.LOGGER.warn("Invalid uid field name {}", name);
 								return;
 							} else {
 								int uid = Integer.parseInt(name.substring(prefix.length()));
 
 								if (uid < 0) {
-									System.out.println("Invalid field uid "+uid);
+									Matcher.LOGGER.warn("Invalid field uid {}", uid);
 									return;
 								} else if (field.getUid() < 0 || field.getUid() > uid || replace) {
 									for (FieldInstance f : field.getAllHierarchyMembers()) {
@@ -327,13 +328,13 @@ public class Mappings {
 							String prefix = env.getGlobal().methodUidPrefix;
 
 							if (!name.startsWith(prefix)) {
-								System.out.println("Invalid uid method name "+name);
+								Matcher.LOGGER.warn("Invalid uid method name {}", name);
 								return;
 							} else {
 								int uid = Integer.parseInt(name.substring(prefix.length()));
 
 								if (uid < 0) {
-									System.out.println("Invalid method uid "+uid);
+									Matcher.LOGGER.warn("Invalid method uid {}", uid);
 									return;
 								} else if (method.getUid() < 0 || method.getUid() > uid || replace) {
 									for (MethodInstance m : method.getAllHierarchyMembers()) {
@@ -410,7 +411,7 @@ public class Mappings {
 			throw t;
 		}
 
-		System.out.printf("Loaded mappings for %d classes, %d methods (%d args, %d vars) and %d fields (comments: %d/%d/%d).%n",
+		Matcher.LOGGER.info("Loaded mappings for {} classes, {} methods ({} args, {} vars) and {} fields (comments: {}/{}/{}).",
 				dstNameCounts[MatchableKind.CLASS.ordinal()],
 				dstNameCounts[MatchableKind.METHOD.ordinal()],
 				dstNameCounts[MatchableKind.METHOD_ARG.ordinal()],

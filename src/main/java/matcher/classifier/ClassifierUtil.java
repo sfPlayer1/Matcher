@@ -37,6 +37,7 @@ import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 
+import matcher.Matcher;
 import matcher.Util;
 import matcher.classifier.MatchingCache.CacheToken;
 import matcher.type.ClassEnvironment;
@@ -377,10 +378,11 @@ public class ClassifierUtil {
 							implB.getOwner(), implB.getName(), implB.getDesc(), Util.isCallToInterface(implB),
 							env) ? COMPARED_SIMILAR : COMPARED_DISTINCT;
 				default:
-					System.out.println("unexpected impl tag: "+implA.getTag());
+					Matcher.LOGGER.warn("Unexpected impl tag: {}", implA.getTag());
 				}
 			} else if (!Util.isIrrelevantBsm(a.bsm)) {
-				System.out.printf("unknown invokedynamic bsm: %s/%s%s (tag=%d iif=%b)%n", a.bsm.getOwner(), a.bsm.getName(), a.bsm.getDesc(), a.bsm.getTag(), a.bsm.isInterface());
+				Matcher.LOGGER.warn("Unknown invokedynamic bsm: {}/{}{} (tag={} iif={})",
+						a.bsm.getOwner(), a.bsm.getName(), a.bsm.getDesc(), a.bsm.getTag(), a.bsm.isInterface());
 			}
 
 			// TODO: implement
@@ -622,10 +624,10 @@ public class ClassifierUtil {
 
 		/*for (int j = 0; j <= sizeB; j++) {
 			for (int i = 0; i <= sizeA; i++) {
-				System.out.printf("%2d ", v[i + j * size]);
+				Matcher.LOGGER.debug("%2d ", v[i + j * size]);
 			}
 
-			System.out.println();
+			Matcher.LOGGER.debug("");
 		}*/
 
 		int i = sizeA;
@@ -641,10 +643,10 @@ public class ClassifierUtil {
 			if (keepCost <= delCost && keepCost <= insCost) {
 				if (c - keepCost >= COMPARED_DISTINCT) {
 					assert c - keepCost == COMPARED_DISTINCT;
-					//System.out.printf("%d/%d rep %s -> %s%n", i-1, j-1, toString(elementRetriever.apply(listA, i - 1)), toString(elementRetriever.apply(listB, j - 1)));
+					//Matcher.LOGGER.debug("{}/{} rep {} -> {}", i-1, j-1, toString(elementRetriever.apply(listA, i - 1)), toString(elementRetriever.apply(listB, j - 1)));
 					ret[i - 1] = -1;
 				} else {
-					//System.out.printf("%d/%d eq %s - %s%n", i-1, j-1, toString(elementRetriever.apply(listA, i - 1)), toString(elementRetriever.apply(listB, j - 1)));
+					//Matcher.LOGGER.debug("{}/{} eq {} - {}", i-1, j-1, toString(elementRetriever.apply(listA, i - 1)), toString(elementRetriever.apply(listB, j - 1)));
 					ret[i - 1] = j - 1;
 
 					/*U e = elementRetriever.apply(listA, i - 1);
@@ -658,11 +660,11 @@ public class ClassifierUtil {
 				i--;
 				j--;
 			} else if (delCost < insCost) {
-				//System.out.printf("%d/%d del %s%n", i-1, j-1, toString(elementRetriever.apply(listA, i - 1)));
+				//Matcher.LOGGER.debug("{}/{} del {}", i-1, j-1, toString(elementRetriever.apply(listA, i - 1)));
 				ret[i - 1] = -1;
 				i--;
 			} else {
-				//System.out.printf("%d/%d ins %s%n", i-1, j-1, toString(elementRetriever.apply(listB, j - 1)));
+				//Matcher.LOGGER.debug("{}/{} ins {}", i-1, j-1, toString(elementRetriever.apply(listB, j - 1)));
 				j--;
 			}
 		}

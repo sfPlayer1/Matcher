@@ -13,6 +13,7 @@ import org.benf.cfr.reader.api.ClassFileSource;
 import org.benf.cfr.reader.api.OutputSinkFactory;
 import org.benf.cfr.reader.bytecode.analysis.parse.utils.Pair;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
@@ -43,12 +44,12 @@ public class Cfr implements Decompiler {
 
 		@Override
 		public void informAnalysisRelativePathDetail(String usePath, String classFilePath) {
-			//System.out.printf("informAnalysisRelativePathDetail %s %s%n", usePath, classFilePath);
+			//Matcher.LOGGER.debug("informAnalysisRelativePathDetail {} {}", usePath, classFilePath);
 		}
 
 		@Override
 		public Collection<String> addJar(String jarPath) {
-			System.out.printf("addJar %s%n", jarPath);
+			Matcher.LOGGER.debug("addJar {}", jarPath);
 
 			throw new UnsupportedOperationException();
 		}
@@ -61,7 +62,7 @@ public class Cfr implements Decompiler {
 		@Override
 		public Pair<byte[], String> getClassFileContent(String path) throws IOException {
 			if (!path.endsWith(fileSuffix)) {
-				System.out.printf("getClassFileContent invalid path: %s%n", path);
+				Matcher.LOGGER.debug("getClassFileContent invalid path: {}", path);
 				throw new NoSuchFileException(path);
 			}
 
@@ -69,12 +70,12 @@ public class Cfr implements Decompiler {
 			ClassInstance cls = env.getClsByName(clsName, nameType);
 
 			if (cls == null) {
-				System.out.printf("getClassFileContent missing cls: %s%n", clsName);
+				Matcher.LOGGER.debug("getClassFileContent missing cls: {}", clsName);
 				throw new NoSuchFileException(path);
 			}
 
 			if (cls.getAsmNodes() == null) {
-				System.out.printf("getClassFileContent unknown cls: %s%n", clsName);
+				Matcher.LOGGER.debug("getClassFileContent unknown cls: {}", clsName);
 				throw new NoSuchFileException(path);
 			}
 
@@ -97,16 +98,16 @@ public class Cfr implements Decompiler {
 		public <T> OutputSinkFactory.Sink<T> getSink(SinkType sinkType, SinkClass sinkClass) {
 			switch (sinkType) {
 			case EXCEPTION:
-				return str -> System.out.println("e "+str);
+				return str -> Matcher.LOGGER.error("CFR exception: {}", str);
 			case JAVA:
 				return sb::append;
 			case PROGRESS:
-				return str -> System.out.println("p "+str);
+				return str -> Matcher.LOGGER.debug("CFR progress: {}", str);
 			case SUMMARY:
-				return str -> System.out.println("s "+str);
+				return str -> Matcher.LOGGER.debug("CFR summary: {}", str);
 			default:
-				System.out.println("unknown sink type: "+sinkType);
-				return str -> System.out.println("* "+str);
+				Matcher.LOGGER.debug("Unknown CFR sink type: {}", sinkType);
+				return str -> Matcher.LOGGER.debug("{}", str);
 			}
 		}
 

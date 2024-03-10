@@ -18,6 +18,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.classifier.ClassClassifier;
 import matcher.classifier.ClassifierLevel;
@@ -422,7 +423,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 
 		for (String part : parts) {
 			String op = part.toLowerCase(Locale.ENGLISH);
-			//System.out.printf("stack: %s, op: %s%n", stack, op);
+			//Matcher.LOGGER.debug("stack: {}, op: {}", stack, op);
 			byte opTypeA = OP_TYPE_NONE;
 			byte opTypeB = OP_TYPE_NONE;
 
@@ -489,7 +490,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				if (type == OP_TYPE_NONE) continue;
 
 				if (stack.isEmpty()) {
-					System.err.println("stack underflow");
+					Matcher.LOGGER.error("Stack underflow");
 					return null;
 				}
 
@@ -504,7 +505,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 						|| type == OP_TYPE_COMPARABLE && operand instanceof Comparable<?>;
 
 				if (!valid) {
-					System.err.println("invalid operand type");
+					Matcher.LOGGER.debug("Invalid operand type");
 					return null;
 				}
 
@@ -516,7 +517,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 					ClassInstance cls = env.getClsByName((String) operand);
 
 					if (cls == null) {
-						System.err.println("unknown class "+operand);
+						Matcher.LOGGER.debug("Unknown class {}", operand);
 						return null;
 					} else {
 						operand = cls;
@@ -530,7 +531,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 				}
 			}
 
-			//System.out.printf("opA: %s, opB: %s%n", opA, opB);
+			//Matcher.LOGGER.debug("opA: {}, opB: {}", opA, opB);
 
 			switch (op) {
 			case "a":
@@ -609,16 +610,16 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			}
 		}
 
-		//System.out.printf("res stack: %s%n", stack);
+		//Matcher.LOGGER.debug("Res stack: {}", stack);
 
 		if (stack.isEmpty() || stack.size() > 2) {
-			System.err.println("no result");
+			Matcher.LOGGER.info("No result found");
 			return null;
 		} else if (stack.size() == 1) {
 			if (stack.get(0) instanceof Boolean) {
 				return (Boolean) stack.get(0);
 			} else {
-				System.err.println("invalid result");
+				Matcher.LOGGER.error("Invalid result");
 				return null;
 			}
 		} else { // 2 elements on the stack, use equals

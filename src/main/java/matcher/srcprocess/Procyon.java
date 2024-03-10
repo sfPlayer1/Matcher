@@ -10,6 +10,7 @@ import com.strobel.assembler.metadata.ITypeLoader;
 import com.strobel.decompiler.DecompilerSettings;
 import com.strobel.decompiler.PlainTextOutput;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
@@ -42,7 +43,7 @@ public class Procyon implements Decompiler {
 
 			if (cls == null) {
 				if (checkWarn(internalName)) {
-					System.out.printf("missing cls: %s%n", internalName);
+					Matcher.LOGGER.debug("Missing cls: {}", internalName);
 				}
 
 				return false;
@@ -50,7 +51,7 @@ public class Procyon implements Decompiler {
 
 			if (cls.getAsmNodes() == null) {
 				if (checkWarn(internalName)) {
-					System.out.printf("unknown cls: %s%n", internalName);
+					Matcher.LOGGER.debug("Unknown cls: {}", internalName);
 				}
 
 				return false;
