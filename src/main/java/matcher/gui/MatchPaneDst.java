@@ -276,7 +276,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 	@Override
 	public void onViewChange(ViewChangeCause cause) {
 		switch (cause) {
-		case SHOW_NON_INPUTS_TOGGLED:
+		case DISPLAY_CLASSES_CHANGED:
 			cmpClasses = gui.getEnv().getDisplayClassesB(!gui.isShowNonInputs());
 			break;
 

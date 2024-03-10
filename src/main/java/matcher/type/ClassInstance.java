@@ -27,7 +27,7 @@ import matcher.bcremap.AsmRemapper;
 import matcher.classifier.ClassifierUtil;
 import matcher.type.Signature.ClassSignature;
 
-public final class ClassInstance implements Matchable<ClassInstance> {
+public final class ClassInstance implements ParentInstance, Matchable<ClassInstance> {
 	/**
 	 * Create a shared unknown class.
 	 */
@@ -915,6 +915,19 @@ public final class ClassInstance implements Matchable<ClassInstance> {
 		assert mappedName == null || !hasOuterName(mappedName);
 
 		this.mappedName = mappedName;
+	}
+
+	@Override
+	public boolean hasMappedChildren() {
+		for (MethodInstance mth : methods) {
+			if (mth.hasNonInheritedMappedName() || mth.hasMappedChildren()) return true;
+		}
+
+		for (FieldInstance fld : fields) {
+			if (fld.hasMappedName()) return true;
+		}
+
+		return false;
 	}
 
 	@Override

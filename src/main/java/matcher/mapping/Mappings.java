@@ -1,16 +1,12 @@
 package matcher.mapping;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import org.objectweb.asm.tree.MethodNode;
 
 import net.fabricmc.mappingio.FlatMappingVisitor;
 import net.fabricmc.mappingio.MappedElementKind;
@@ -827,60 +823,8 @@ public class Mappings {
 	private static boolean shouldExportName(MethodInstance method, MappingsExportVerbosity verbosity, boolean forAnyInput, Set<Set<MethodInstance>> exportedHierarchies) {
 		return verbosity == MappingsExportVerbosity.FULL
 				|| method.getAllHierarchyMembers().size() == 1
-				|| (method.getParents().isEmpty() || forAnyInput && isAnyInputRoot(method))
+				|| (method.getParents().isEmpty() || forAnyInput && method.isAnyInputRoot())
 				&& (verbosity == MappingsExportVerbosity.ROOTS || !exportedHierarchies.contains(method.getAllHierarchyMembers())); // FIXME: forAnyInput + minimal needs to use an exportedHierarchies set per origin
-	}
-
-	private static boolean isAnyInputRoot(MethodInstance method) {
-		ClassInstance cls = method.getCls();
-		String name = method.getName();
-		String desc = method.getDesc();
-
-		// check if each origin that supplies this method has a parent within the same origin
-
-		for (int i = 0; i < cls.getAsmNodes().length; i++) {
-			for (MethodNode m : cls.getAsmNodes()[i].methods) {
-				if (m.name.equals(method.getName())
-						&& m.desc.equals(method.getDesc())) {
-					if (!hasParentMethod(name, desc, method.getParents(), cls.getAsmNodeOrigin(i))) {
-						return true;
-					} else {
-						break;
-					}
-				}
-			}
-		}
-
-		return false;
-	}
-
-	private static boolean hasParentMethod(String name, String desc, Collection<MethodInstance> parents, URI reqOrigin) {
-		// check direct parents (must supply the method from the required origin)
-
-		for (MethodInstance parent : parents) {
-			ClassInstance parentCls = parent.getCls();
-
-			for (int i = 0; i < parentCls.getAsmNodes().length; i++) {
-				if (parentCls.getAsmNodeOrigin(i).equals(reqOrigin)) {
-					for (MethodNode m : parentCls.getAsmNodes()[i].methods) {
-						if (m.name.equals(name)
-								&& m.desc.equals(desc)) {
-							return true;
-						}
-					}
-				}
-			}
-		}
-
-		// check indirect parents recursively
-
-		for (MethodInstance parent : parents) {
-			if (!parent.getParents().isEmpty() && hasParentMethod(name, desc, parent.getParents(), reqOrigin)) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	public static void clear(ClassEnv env) {
