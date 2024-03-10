@@ -8,7 +8,6 @@ import matcher.NameType;
 import matcher.gui.Gui;
 import matcher.gui.ISelectionProvider;
 import matcher.srcprocess.HtmlUtil;
-import matcher.srcprocess.Jadx;
 import matcher.srcprocess.SrcDecorator;
 import matcher.srcprocess.SrcDecorator.SrcParseException;
 import matcher.type.ClassInstance;
@@ -89,7 +88,7 @@ public class SourcecodeTab extends WebViewTab {
 		NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
 
 		//Gui.runAsyncTask(() -> gui.getEnv().decompile(selectedClass, true))
-		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), selectedClass, nameType), selectedClass, nameType, gui.getDecompiler().get() instanceof Jadx))
+		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), selectedClass, nameType), selectedClass, nameType))
 				.whenComplete((res, exc) -> {
 					if (cDecompId == decompId) {
 						if (exc != null) {

@@ -68,6 +68,7 @@ public class Jadx implements Decompiler {
 		jadxArgs.setInlineAnonymousClasses(false);
 		jadxArgs.setInlineMethods(false);
 		jadxArgs.setSkipResources(true);
+		jadxArgs.setRenameValid(false);
 		jadxArgs.setRespectBytecodeAccModifiers(true);
 		jadxArgs.setCommentsLevel(CommentsLevel.INFO);
 	}

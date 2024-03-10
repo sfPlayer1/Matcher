@@ -37,7 +37,7 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class SrcDecorator {
-	public static String decorate(String src, ClassInstance cls, NameType nameType, boolean decompiledByJadx) {
+	public static String decorate(String src, ClassInstance cls, NameType nameType) {
 		String name = cls.getName(nameType);
 
 		if (cls.getOuterClass() != null && name.contains("$")) {
@@ -93,7 +93,7 @@ public class SrcDecorator {
 			}
 		}
 
-		TypeResolver resolver = new TypeResolver(decompiledByJadx);
+		TypeResolver resolver = new TypeResolver();
 		resolver.setup(cls, nameType, cu);
 
 		cu.accept(remapVisitor, resolver);

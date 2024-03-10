@@ -32,10 +32,6 @@ import matcher.type.Matchable;
 import matcher.type.MethodInstance;
 
 class TypeResolver {
-	TypeResolver(boolean decmpiledByJadx) {
-		this.decompiledByJadx = decmpiledByJadx;
-	}
-
 	public void setup(ClassInstance rootCls, NameType nameType, CompilationUnit cu) {
 		this.rootCls = rootCls;
 		this.env = rootCls.getEnv();
@@ -65,19 +61,11 @@ class TypeResolver {
 		}
 	}
 
-	// TODO: Clean up once you can disable JADX repackaging orphaned classes
 	public ClassInstance getCls(Node node) {
 		StringBuilder sb = new StringBuilder();
-		String jadxDefaultPackage = jadx.core.Consts.DEFAULT_PACKAGE_NAME;
 
-		if (pkg != null && (!decompiledByJadx || !pkg.equals(jadxDefaultPackage))) {
-			String pkgCleaned = pkg;
-
-			if (decompiledByJadx && pkg.startsWith(jadxDefaultPackage)) {
-				pkgCleaned = pkg.substring(jadxDefaultPackage.length() + 1);
-			}
-
-			sb.append(pkgCleaned);
+		if (pkg != null) {
+			sb.append(pkg);
 			sb.append('/');
 		}
 
@@ -279,5 +267,4 @@ class TypeResolver {
 	private String pkg;
 	private final Map<String, String> imports = new HashMap<>();
 	private final List<String> wildcardImports = new ArrayList<>();
-	private final boolean decompiledByJadx;
 }
