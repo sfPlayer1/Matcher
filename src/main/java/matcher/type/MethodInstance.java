@@ -1,6 +1,8 @@
 package matcher.type;
 
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -18,7 +20,7 @@ import matcher.Util;
 import matcher.classifier.ClassifierUtil;
 import matcher.type.Signature.MethodSignature;
 
-public final class MethodInstance extends MemberInstance<MethodInstance> {
+public final class MethodInstance extends MemberInstance<MethodInstance> implements ParentInstance {
 	/**
 	 * Create a shared unknown method.
 	 */
@@ -341,6 +343,94 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 		return true;
 	}
 
+	@Override
+	public boolean hasMappedChildren() {
+		for (MethodVarInstance arg : args) {
+			if (arg.hasMappedName()) return true;
+		}
+
+		for (MethodVarInstance var : vars) {
+			if (var.hasMappedName()) return true;
+		}
+
+		return false;
+	}
+
+	public boolean hasNonInheritedMappedName() {
+		return !hasParentMethod() && hasMappedName();
+	}
+
+	public boolean hasParentMethod() {
+		if (hasParentMethod != null) return hasParentMethod;
+
+		return hasParentMethod = checkAncestry(AncestryCheck.HAS_PARENT_METHOD);
+	}
+
+	public boolean isAnyInputRoot() {
+		if (anyInputRoot != null) return anyInputRoot;
+
+		return anyInputRoot = checkAncestry(AncestryCheck.IS_ANY_INPUT_ROOT);
+	}
+
+	enum AncestryCheck {
+		HAS_PARENT_METHOD,
+		IS_ANY_INPUT_ROOT
+	}
+
+	private boolean checkAncestry(AncestryCheck checkType) {
+		// check if each origin that supplies this method has a parent within the same origin
+
+		for (int i = 0; i < cls.getAsmNodes().length; i++) {
+			for (MethodNode m : cls.getAsmNodes()[i].methods) {
+				if (m.name.equals(getName()) && m.desc.equals(getDesc())) {
+					boolean parentFound = hasParentMethod(getParents(), cls.getAsmNodeOrigin(i));
+
+					if (parentFound && checkType == AncestryCheck.HAS_PARENT_METHOD) {
+						return true;
+					} else if (parentFound && checkType == AncestryCheck.IS_ANY_INPUT_ROOT) {
+						break;
+					} else if (!parentFound && checkType == AncestryCheck.IS_ANY_INPUT_ROOT) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
+	private boolean hasParentMethod(Collection<MethodInstance> parents, URI reqOrigin) {
+		// check direct parents (must supply the method from the required origin)
+
+		for (MethodInstance parent : parents) {
+			ClassInstance parentCls = parent.getCls();
+
+			if (parentCls.getAsmNodes() == null) {
+				continue;
+			}
+
+			for (int i = 0; i < parentCls.getAsmNodes().length; i++) {
+				if (parentCls.getAsmNodeOrigin(i).equals(reqOrigin)) {
+					for (MethodNode m : parentCls.getAsmNodes()[i].methods) {
+						if (m.name.equals(getName()) && m.desc.equals(getDesc())) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+
+		// check indirect parents recursively
+
+		for (MethodInstance parent : parents) {
+			if (!parent.getParents().isEmpty() && hasParentMethod(parent.getParents(), reqOrigin)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public ClassInstance getRetType() {
 		return retType;
 	}
@@ -490,6 +580,8 @@ public final class MethodInstance extends MemberInstance<MethodInstance> {
 	final MethodSignature signature;
 	private final MethodNode asmNode;
 
+	Boolean hasParentMethod;
+	Boolean anyInputRoot;
 	MethodType type = MethodType.UNKNOWN;
 
 	final Set<MethodInstance> refsIn = Util.newIdentityHashSet();

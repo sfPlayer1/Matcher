@@ -29,6 +29,7 @@ import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.comments.JavadocComment;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
@@ -174,7 +175,7 @@ public class SrcDecorator {
 	}
 
 	private static String moveStatement(String source, Range slice, Position to) {
-		System.out.println("Shifting " + slice + " to " + to);
+		Matcher.LOGGER.debug("Shifting " + slice + " to " + to);
 
 		//Remember that lines are counted from 1 not 0, so the indexes have to be offset backwards
 		List<String> lines = new BufferedReader(new StringReader(source)).lines().collect(Collectors.toList());
@@ -284,7 +285,7 @@ public class SrcDecorator {
 
 		private void visitCls(TypeDeclaration<?> n, TypeResolver resolver) {
 			ClassInstance cls = resolver.getCls(n);
-			//System.out.println("cls "+n.getName().getIdentifier()+" = "+cls+" at "+n.getRange());
+			// Matcher.LOGGER.debug("cls {} = {} at {}", n.getName().getIdentifier(), cls, n.getRange());
 
 			if (cls != null) {
 				handleComment(cls.getMappedComment(), n);
@@ -296,7 +297,7 @@ public class SrcDecorator {
 		@Override
 		public void visit(ConstructorDeclaration n, TypeResolver resolver) {
 			MethodInstance m = resolver.getMethod(n);
-			//System.out.println("ctor "+n.getName().getIdentifier()+" = "+m+" at "+n.getRange());
+			// Matcher.LOGGER.debug("ctor {} = {} at {}", n.getName().getIdentifier(), m, n.getRange());
 
 			if (m != null) {
 				handleMethodComment(m, n, resolver);
@@ -316,7 +317,7 @@ public class SrcDecorator {
 		@Override
 		public void visit(MethodDeclaration n, TypeResolver resolver) {
 			MethodInstance m = resolver.getMethod(n);
-			//System.out.println("mth "+n.getName().getIdentifier()+" = "+m+" at "+n.getRange());
+			// Matcher.LOGGER.debug("mth {}, = {} at {}", n.getName().getIdentifier(), m, n.getRange());
 
 			if (m != null) {
 				handleMethodComment(m, n, resolver);
@@ -336,7 +337,7 @@ public class SrcDecorator {
 
 			for (VariableDeclarator var : n.getVariables()) {
 				FieldInstance f = resolver.getField(var);
-				//System.out.println("fld "+v.getName().getIdentifier()+" = "+f+" at "+v.getRange());
+				// Matcher.LOGGER.debug("fld {} = {} at {}", v.getName().getIdentifier(), f, v.getRange());
 
 				if (f != null) {
 					if (f.getMappedComment() != null) {

@@ -46,7 +46,7 @@ abstract class WebViewTab extends Tab implements IGuiComponent.Selectable {
 		html = template.replace("%text%", html)
 				.replace("%theme_path%", Config.getTheme().getUrl().toExternalForm());
 
-		// System.out.println(html);
+		//Matcher.LOGGER.debug(html);
 		webView.getEngine().loadContent(html);
 	}
 

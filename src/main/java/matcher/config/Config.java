@@ -10,14 +10,14 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 public class Config {
-	public static void init() {
+	public static void init(String[] args) {
 		Preferences prefs = Preferences.userRoot(); // in ~/.java/.userPrefs
 
 		try {
 			if (prefs.nodeExists(userPrefFolder)) {
 				prefs = prefs.node(userPrefFolder);
 
-				if (prefs.nodeExists(lastProjectSetupKey)) setProjectConfig(new ProjectConfig(prefs.node(lastProjectSetupKey)));
+				if (prefs.nodeExists(lastProjectSetupKey)) setProjectConfig(new ProjectConfig.Builder(prefs.node(lastProjectSetupKey)).build());
 				setInputDirs(loadList(prefs, lastInputDirsKey, Config::deserializePath));
 				setVerifyInputFiles(prefs.getBoolean(lastVerifyInputFilesKey, true));
 				setUidConfig(new UidConfig(prefs));
@@ -25,6 +25,22 @@ public class Config {
 			}
 		} catch (BackingStoreException e) {
 			// ignored
+		}
+
+		for (int i = 0; i < args.length; i++) {
+			switch (args[i]) {
+			case "--theme":
+				String themeId = args[++i];
+				Theme theme = Theme.getById(themeId);
+
+				if (theme == null) {
+					System.err.println("Startup arg '--theme' couldn't be applied, as there exists no theme with ID " + themeId + "!");
+				} else {
+					setTheme(theme);
+				}
+
+				break;
+			}
 		}
 	}
 
@@ -78,11 +94,10 @@ public class Config {
 	public static void setTheme(Theme value) {
 		if (value != null) {
 			theme = value;
-			saveTheme();
 		}
 	}
 
-	private static void saveTheme() {
+	public static void saveTheme() {
 		Preferences root = Preferences.userRoot().node(userPrefFolder);
 
 		try {
@@ -140,7 +155,7 @@ public class Config {
 	private static final String lastVerifyInputFilesKey = "last-verify-input-files";
 	private static final String themeKey = "theme";
 
-	private static ProjectConfig projectConfig = new ProjectConfig();
+	private static ProjectConfig projectConfig = ProjectConfig.EMPTY;
 	private static final List<Path> inputDirs = new ArrayList<>();
 	private static boolean verifyInputFiles = true;
 	private static UidConfig uidConfig = new UidConfig();

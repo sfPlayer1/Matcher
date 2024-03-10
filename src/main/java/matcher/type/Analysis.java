@@ -1,6 +1,5 @@
 package matcher.type;
 
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayDeque;
@@ -48,6 +47,7 @@ import org.objectweb.asm.util.Printer;
 import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.Util;
 
@@ -56,7 +56,7 @@ class Analysis {
 		MethodNode asmNode = method.getAsmNode();
 		if (asmNode == null || (asmNode.access & Opcodes.ACC_ABSTRACT) != 0 || asmNode.instructions.size() == 0) return;
 
-		System.out.println(method.getDisplayName(NameType.MAPPED_PLAIN, true));
+		Matcher.LOGGER.debug(method.getDisplayName(NameType.MAPPED_PLAIN, true));
 		dump(asmNode);
 
 		StateRecorder rec = new StateRecorder(method, common);
@@ -737,14 +737,14 @@ class Analysis {
 			}
 		}
 
-		rec.dump(il, System.out);
+		rec.dump(il);
 
 		BitSet entryPoints = getEntryPoints(asmNode, exitPoints);
 		applyTryCatchExits(asmNode, entryPoints, exitPoints);
 		addDirectExits(il, entryPoints, exitPoints);
 		purgeLocals(il, rec, entryPoints, exitPoints);
 
-		rec.dump(il, System.out);
+		rec.dump(il);
 
 		createLocalVariables(il, rec, entryPoints, exitPoints, asmNode.localVariables);
 	}
@@ -1144,12 +1144,12 @@ class Analysis {
 
 		lvToVar = null;
 
-		System.out.println("Local vars raw:");
+		Matcher.LOGGER.debug("Local vars raw:");
 
 		for (int i = 0; i < varCount; i++) {
 			ExecState state = rec.getState(startIndices[i]);
 
-			System.out.printf("  %d: LV %d @ %d - %d: %s\t\t(%s)%n",
+			Matcher.LOGGER.debug("  {}: LV {} @ {} - {}: {}\t\t({})",
 					i, varToLv[i], startIndices[i], endIndices[i], state.locals[varToLv[i]].toString(), rec.varSources[state.localVarIds[varToLv[i]] - 1].name());
 		}
 
@@ -1255,12 +1255,12 @@ class Analysis {
 			}
 		}
 
-		System.out.println("Local vars:");
+		Matcher.LOGGER.debug("Local vars:");
 
 		for (int i = 0; i < varCount; i++) {
 			ExecState state = rec.getState(startIndices[i]);
 
-			System.out.printf("  %d: LV %d @ %d - %d: %s\t\t(%s)%n",
+			Matcher.LOGGER.debug("  {}: LV {} @ {} - {}: {}\t\t({})",
 					i, varToLv[i], startIndices[i], endIndices[i], state.locals[varToLv[i]].toString(), rec.varSources[state.localVarIds[varToLv[i]] - 1].name());
 		}
 
@@ -1282,14 +1282,15 @@ class Analysis {
 			}
 
 			if (!mismatch) {
-				System.out.println("Existing vars matched!");
+				Matcher.LOGGER.debug("Existing vars matched!");
 			} else {
-				System.out.println("Existing vars mismatch:");
+				Matcher.LOGGER.debug("Existing vars mismatch:");
 
 				for (int i = 0; i < orig.size(); i++) {
 					LocalVariableNode lvn = orig.get(i);
 
-					System.out.printf("  %d: LV %d @ %d - %d: %s%n", i, lvn.index, il.indexOf(lvn.start), il.indexOf(lvn.end) - 1, lvn.desc);
+					Matcher.LOGGER.debug("  {}: LV {} @ {} - {}: {}",
+							i, lvn.index, il.indexOf(lvn.start), il.indexOf(lvn.end) - 1, lvn.desc);
 				}
 			}
 		}
@@ -1717,70 +1718,72 @@ class Analysis {
 			return ++nextVarId;
 		}
 
-		public void dump(InsnList il, PrintStream ps) {
+		public void dump(InsnList il) {
+			StringBuilder sb = new StringBuilder();
+
 			for (int i = 0; i < states.length; i++) {
 				ExecState state = states[i];
 
-				ps.print(i);
-				ps.print(": ");
+				sb.append(i);
+				sb.append(": ");
 
 				if (state != null) {
-					dumpVars(state.locals, state.localVarIds, ps);
-					ps.print(" | ");
-					dumpVars(state.stack, state.stackVarIds, ps);
+					dumpVars(state.locals, state.localVarIds, sb);
+					sb.append(" | ");
+					dumpVars(state.stack, state.stackVarIds, sb);
 				} else {
-					ps.print("<no state>");
+					sb.append("<no state>");
 				}
 
-				ps.print(" ");
+				sb.append(' ');
 
 				AbstractInsnNode ain = il.get(i);
 				int op = ain.getOpcode();
 
 				if (op != -1) {
-					ps.print(Printer.OPCODES[ain.getOpcode()]);
+					sb.append(Printer.OPCODES[ain.getOpcode()]);
 				}
 
 				switch (ain.getType()) {
 				case AbstractInsnNode.INSN:
 					break;
 				case AbstractInsnNode.INT_INSN:
-					ps.print(' ');
+					sb.append(' ');
 
 					if (op == Opcodes.BIPUSH || op == Opcodes.SIPUSH) {
-						ps.print(((IntInsnNode) ain).operand);
+						sb.append(((IntInsnNode) ain).operand);
 					} else {
-						ps.print(Printer.TYPES[((IntInsnNode) ain).operand]);
+						sb.append(Printer.TYPES[((IntInsnNode) ain).operand]);
 					}
 
 					break;
 				case AbstractInsnNode.VAR_INSN:
-					ps.print(' ');
-					ps.print(((VarInsnNode) ain).var);
+					sb.append(' ');
+					sb.append(((VarInsnNode) ain).var);
 					break;
 				case AbstractInsnNode.TYPE_INSN:
-					ps.print(' ');
-					ps.print(((TypeInsnNode) ain).desc);
+					sb.append(' ');
+					sb.append(((TypeInsnNode) ain).desc);
 					break;
 				case AbstractInsnNode.FIELD_INSN: {
 					FieldInsnNode in = (FieldInsnNode) ain;
-					ps.print(' ');
-					ps.print(in.owner);
-					ps.print('/');
-					ps.print(in.name);
-					ps.print(' ');
-					ps.print(in.desc);
+					sb.append(' ');
+					sb.append(in.owner);
+					sb.append('/');
+					sb.append(in.name);
+					sb.append(' ');
+					sb.append(in.desc);
 					break;
 				}
 				case AbstractInsnNode.METHOD_INSN: {
 					MethodInsnNode in = (MethodInsnNode) ain;
-					ps.print(' ');
-					ps.print(in.owner);
-					ps.print('/');
-					ps.print(in.name);
-					ps.print(in.desc);
-					ps.print(" itf=");
-					ps.print(in.itf);
+					sb.append(' ');
+					sb.append(in.owner);
+					sb.append('/');
+					sb.append(in.name);
+					sb.append(in.desc);
+					sb.append(" itf=");
+					sb.append(in.itf);
 					break;
 				}
 				case AbstractInsnNode.INVOKE_DYNAMIC_INSN: {
@@ -1789,108 +1792,111 @@ class Analysis {
 					break;
 				}
 				case AbstractInsnNode.JUMP_INSN:
-					ps.print(' ');
-					ps.print(il.indexOf(((JumpInsnNode) ain).label));
+					sb.append(' ');
+					sb.append(il.indexOf(((JumpInsnNode) ain).label));
 					break;
 				case AbstractInsnNode.LDC_INSN:
-					ps.print(' ');
-					ps.print(((LdcInsnNode) ain).cst);
+					sb.append(' ');
+					sb.append(((LdcInsnNode) ain).cst);
 					break;
 				case AbstractInsnNode.IINC_INSN:
-					ps.print(' ');
-					ps.print(((IincInsnNode) ain).var);
-					ps.print(' ');
-					ps.print(((IincInsnNode) ain).incr);
+					sb.append(' ');
+					sb.append(((IincInsnNode) ain).var);
+					sb.append(' ');
+					sb.append(((IincInsnNode) ain).incr);
 					break;
 				case AbstractInsnNode.TABLESWITCH_INSN: {
 					TableSwitchInsnNode in = (TableSwitchInsnNode) ain;
-					ps.print(" min=");
-					ps.print(in.min);
-					ps.print(" max=");
-					ps.print(in.max);
-					ps.print(" def=");
-					ps.print(il.indexOf(in.dflt));
+					sb.append(" min=");
+					sb.append(in.min);
+					sb.append(" max=");
+					sb.append(in.max);
+					sb.append(" def=");
+					sb.append(il.indexOf(in.dflt));
 
 					for (int j = 0; j < in.labels.size(); j++) {
-						ps.print(' ');
-						ps.print(il.indexOf(in.labels.get(j)));
+						sb.append(' ');
+						sb.append(il.indexOf(in.labels.get(j)));
 					}
 
 					break;
 				}
 				case AbstractInsnNode.LOOKUPSWITCH_INSN: {
 					LookupSwitchInsnNode in = (LookupSwitchInsnNode) ain;
-					ps.print(" def=");
-					ps.print(il.indexOf(in.dflt));
+					sb.append(" def=");
+					sb.append(il.indexOf(in.dflt));
 
 					for (int j = 0; j < in.keys.size(); j++) {
-						ps.print(' ');
-						ps.print(in.keys.get(j));
-						ps.print('=');
-						ps.print(il.indexOf(in.labels.get(j)));
+						sb.append(' ');
+						sb.append(in.keys.get(j));
+						sb.append('=');
+						sb.append(il.indexOf(in.labels.get(j)));
 					}
 
 					break;
 				}
 				case AbstractInsnNode.MULTIANEWARRAY_INSN: {
 					MultiANewArrayInsnNode in = (MultiANewArrayInsnNode) ain;
-					ps.print(' ');
-					ps.print(in.desc);
-					ps.print(" dims=");
-					ps.print(in.dims);
+					sb.append(' ');
+					sb.append(in.desc);
+					sb.append(" dims=");
+					sb.append(in.dims);
 					break;
 				}
 				case AbstractInsnNode.LABEL:
-					ps.print("LABEL ");
-					ps.print(i);
+					sb.append("LABEL ");
+					sb.append(i);
 					break;
 				case AbstractInsnNode.FRAME:
-					ps.print("FRAME");
+					sb.append("FRAME");
 					break;
 				case AbstractInsnNode.LINE:
-					ps.print("LINE ");
-					ps.print(((LineNumberNode) ain).line);
+					sb.append("LINE ");
+					sb.append(((LineNumberNode) ain).line);
 					break;
 				default:
 					throw new UnsupportedOperationException("unknown insn: "+ain);
 				}
 
-				ps.println();
+				sb.append('\n');
 			}
+
+			Matcher.LOGGER.debug(sb.toString());
 		}
 
-		private void dumpVars(ClassInstance[] types, int[] ids, PrintStream ps) {
-			ps.print('[');
+		private void dumpVars(ClassInstance[] types, int[] ids, StringBuilder sb) {
+			sb.append('[');
 
 			for (int i = 0; i < types.length; i++) {
-				if (i != 0) ps.print(", ");
+				if (i != 0) sb.append(", ");
 
 				ClassInstance type = types[i];
 				int id = ids[i];
 
 				if (id == 0) {
 					if (type == common.TOP) {
-						ps.print("TOP");
+						sb.append("TOP");
 					} else {
 						assert type == null;
-						ps.print("X");
+						sb.append("X");
 					}
 				} else {
 					assert type != null;
 					assert type != common.TOP;
 
-					ps.print(getMappedVarId(id));
-					ps.print(':');
+					sb.append(getMappedVarId(id));
+					sb.append(':');
 
 					if (type != common.NULL) {
-						ps.print(type.toString());
+						sb.append(type.toString());
 					} else {
-						ps.print("null");
+						sb.append("null");
 					}
 				}
 			}
 
-			ps.print(']');
+			sb.append(']');
+			Matcher.LOGGER.debug(sb.toString());
 		}
 
 		final ExecState[] states; // state at the start of every instruction index
@@ -1974,7 +1980,7 @@ class Analysis {
 		AbstractInsnNode fieldWrite = null;
 
 		//dump(method.asmNode);
-		//System.out.println("\n------------------------\n");
+		//Matcher.LOGGER.debug("\n------------------------\n");
 
 		for (Iterator<AbstractInsnNode> it = il.iterator(); it.hasNext(); ) {
 			AbstractInsnNode aInsn = it.next();
@@ -2078,10 +2084,10 @@ class Analysis {
 			in = il.get(pos);
 			initIl.add(in);
 
-			/*System.out.print(pos+": ");
+			/*Matcher.LOGGER.debug(pos+": ");
 
 			il.get(pos).accept(visitor);
-			System.out.print(textifier.getText().get(0));
+			Matcher.LOGGER.debug(textifier.getText().get(0));
 			textifier.getText().clear();*/
 
 			pos++;
@@ -2092,7 +2098,7 @@ class Analysis {
 		/*		int pos = fieldWritePos;
 
 		for (int i = 0; i < 100; i++) {
-			System.out.println(i+" ("+pos+"):");
+			Matcher.LOGGER.debug(i+" ("+pos+"):");
 
 			Frame<SourceValue> frame = frames[pos];
 			Frame<SourceValue> nextFrame = frames[pos + 1];
@@ -2102,24 +2108,24 @@ class Analysis {
 			SourceValue value = frame.getStack(frame.getStackSize() - 1);
 
 			if (value.insns.isEmpty()) {
-				System.out.println("empty");
+				Matcher.LOGGER.debug("empty");
 				break;
 			}
 
 			for (AbstractInsnNode ain : value.insns) {
 				ain.accept(visitor);
-				System.out.print(textifier.getText().get(0));
+				Matcher.LOGGER.debug(textifier.getText().get(0));
 				textifier.getText().clear();
 			}
 
 			pos = method.asmNode.instructions.indexOf(value.insns.iterator().next());
 		}*/
 
-		/*System.out.println(frame);
-		System.out.println("\n------------------------\n");
+		/*Matcher.LOGGER.debug(frame);
+		Matcher.LOGGER.debug("\n------------------------\n");
 
 		dump(frame.getStack(frame.getStackSize() - 1).insns);*/
-		//System.out.println();
+		//Matcher.LOGGER.debug();
 	}
 
 	private static int getStackDemand(AbstractInsnNode ain, Frame<?> frame) {
@@ -2386,7 +2392,7 @@ class Analysis {
 			textifier.print(pw);
 		}
 
-		System.out.println(writer.toString());
+		Matcher.LOGGER.debug(writer.toString());
 	}
 
 	private static void dump(Iterable<AbstractInsnNode> il) {
@@ -2404,6 +2410,6 @@ class Analysis {
 			textifier.print(pw);
 		}
 
-		System.out.println(writer.toString());
+		Matcher.LOGGER.debug(writer.toString());
 	}
 }

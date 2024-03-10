@@ -51,6 +51,7 @@ javafx {
 dependencies {
 	api "org.ow2.asm:asm:${asm_version}"
 	api "org.ow2.asm:asm-tree:${asm_version}"
+	api "org.slf4j:slf4j-api:${slf4j_version}"
 	api "net.fabricmc:mapping-io:${mappingio_version}"
 	implementation "org.ow2.asm:asm-commons:${asm_version}"
 	implementation "org.ow2.asm:asm-util:${asm_version}"
@@ -58,6 +59,8 @@ dependencies {
 	implementation "net.fabricmc:cfr:${fabric_cfr_version}"
 	implementation "org.vineflower:vineflower:${vineflower_version}"
 	implementation "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
+	runtimeOnly "org.tinylog:tinylog-impl:${tinylog_version}"
+	runtimeOnly "org.tinylog:slf4j-tinylog:${tinylog_version}"
 
 	// JavaFX for all platforms (needed for cross-platform fat jar)
 	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:win"
@@ -90,6 +93,10 @@ jar {
 	manifest {
 		attributes 'Automatic-Module-Name': 'matcher'
 	}
+}
+
+jar {
+	processResources.exclude('tinylog-dev.properties')
 }
 
 publishing {

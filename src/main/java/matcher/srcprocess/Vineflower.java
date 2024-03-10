@@ -18,6 +18,7 @@ import org.jetbrains.java.decompiler.main.extern.IFernflowerLogger;
 import org.jetbrains.java.decompiler.main.extern.IFernflowerPreferences;
 import org.jetbrains.java.decompiler.main.extern.IResultSaver;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
@@ -124,7 +125,7 @@ public class Vineflower implements Decompiler {
 
 		@Override
 		public void acceptClass(String qualifiedName, String fileName, String content, int[] mapping) {
-			if (DEBUG) System.out.printf("acceptClass(%s, %s, %s, %s)%n", qualifiedName, fileName, content, Arrays.toString(mapping));
+			if (DEBUG) Matcher.LOGGER.debug("acceptClass({}, {}, {}, {})", qualifiedName, fileName, content, Arrays.toString(mapping));
 
 			results.put(qualifiedName, content);
 		}

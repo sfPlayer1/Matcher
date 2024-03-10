@@ -1,6 +1,7 @@
 package matcher.gui;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,10 +20,12 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.ColumnConstraints;
@@ -38,12 +41,18 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
+import net.fabricmc.mappingio.MappingReader;
+
 import matcher.Matcher;
 import matcher.NameType;
 import matcher.config.Config;
+import matcher.config.ProjectConfig;
 import matcher.config.Theme;
 import matcher.gui.IGuiComponent.ViewChangeCause;
 import matcher.gui.menu.MainMenuBar;
+import matcher.gui.menu.NewProjectPane;
+import matcher.mapping.MappingField;
+import matcher.mapping.Mappings;
 import matcher.srcprocess.BuiltinDecompiler;
 import matcher.type.ClassEnvironment;
 import matcher.type.MatchType;
@@ -97,11 +106,201 @@ public class Gui extends Application {
 		stage.show();
 
 		border.requestFocus();
+		handleStartupArgs(getParameters().getRaw());
 	}
 
 	@Override
 	public void stop() throws Exception {
 		threadPool.shutdown();
+	}
+
+	private void handleStartupArgs(List<String> args) {
+		List<Path> inputsA = new ArrayList<>();
+		List<Path> inputsB = new ArrayList<>();
+		List<Path> classPathA = new ArrayList<>();
+		List<Path> classPathB = new ArrayList<>();
+		List<Path> sharedClassPath = new ArrayList<>();
+		boolean inputsBeforeClassPath = false;
+		Path mappingsPathA = null;
+		Path mappingsPathB = null;
+		boolean saveUnmappedMatches = true;
+		String nonObfuscatedClassPatternA = "";
+		String nonObfuscatedClassPatternB = "";
+		String nonObfuscatedMemberPatternA = "";
+		String nonObfuscatedMemberPatternB = "";
+		boolean validProjectConfigArgPresent = false;
+
+		for (int i = 0; i < args.size(); i++) {
+			switch (args.get(i)) {
+			// ProjectConfig args
+
+			case "--inputs-a":
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
+					inputsA.add(Path.of(args.get(++i)));
+					validProjectConfigArgPresent = true;
+				}
+
+				break;
+			case "--inputs-b":
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
+					inputsB.add(Path.of(args.get(++i)));
+					validProjectConfigArgPresent = true;
+				}
+
+				break;
+			case "--classpath-a":
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
+					classPathA.add(Path.of(args.get(++i)));
+					validProjectConfigArgPresent = true;
+				}
+
+				break;
+			case "--classpath-b":
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
+					classPathB.add(Path.of(args.get(++i)));
+					validProjectConfigArgPresent = true;
+				}
+
+				break;
+			case "--shared-classpath":
+				while (i+1 < args.size() && !args.get(i+1).startsWith("--")) {
+					sharedClassPath.add(Path.of(args.get(++i)));
+					validProjectConfigArgPresent = true;
+				}
+
+				break;
+			case "--mappings-a":
+				mappingsPathA = Path.of(args.get(++i));
+				validProjectConfigArgPresent = true;
+				break;
+			case "--mappings-b":
+				mappingsPathB = Path.of(args.get(++i));
+				validProjectConfigArgPresent = true;
+				break;
+			case "--dont-save-unmapped-matches":
+				saveUnmappedMatches = false;
+				validProjectConfigArgPresent = true;
+				break;
+			case "--inputs-before-classpath":
+				inputsBeforeClassPath = true;
+				validProjectConfigArgPresent = true;
+				break;
+			case "--non-obfuscated-class-pattern-a":
+				nonObfuscatedClassPatternA = args.get(++i);
+				validProjectConfigArgPresent = true;
+				break;
+			case "--non-obfuscated-class-pattern-b":
+				nonObfuscatedClassPatternB = args.get(++i);
+				validProjectConfigArgPresent = true;
+				break;
+			case "--non-obfuscated-member-pattern-a":
+				nonObfuscatedMemberPatternA = args.get(++i);
+				validProjectConfigArgPresent = true;
+				break;
+			case "--non-obfuscated-member-pattern-b":
+				nonObfuscatedMemberPatternB = args.get(++i);
+				validProjectConfigArgPresent = true;
+				break;
+
+			// GUI args
+
+			case "--hide-unmapped-a":
+				hideUnmappedA = true;
+				break;
+			}
+		}
+
+		if (!validProjectConfigArgPresent) return;
+
+		ProjectConfig config = new ProjectConfig.Builder(inputsA, inputsB)
+				.classPathA(new ArrayList<>(classPathA))
+				.classPathB(new ArrayList<>(classPathB))
+				.sharedClassPath(new ArrayList<>(sharedClassPath))
+				.inputsBeforeClassPath(inputsBeforeClassPath)
+				.mappingsPathA(mappingsPathA)
+				.mappingsPathB(mappingsPathB)
+				.saveUnmappedMatches(saveUnmappedMatches)
+				.nonObfuscatedClassPatternA(nonObfuscatedClassPatternA)
+				.nonObfuscatedClassPatternB(nonObfuscatedClassPatternB)
+				.nonObfuscatedMemberPatternA(nonObfuscatedMemberPatternA)
+				.nonObfuscatedMemberPatternB(nonObfuscatedMemberPatternB)
+				.build();
+
+		newProject(config, inputsA.isEmpty() || inputsB.isEmpty());
+	}
+
+	public CompletableFuture<Boolean> newProject(ProjectConfig config, boolean showConfigDialog) {
+		ProjectConfig newConfig;
+
+		if (showConfigDialog) {
+			Dialog<ProjectConfig> dialog = new Dialog<>();
+			//dialog.initModality(Modality.APPLICATION_MODAL);
+			dialog.setResizable(true);
+			dialog.setTitle("Project configuration");
+			dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+			Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
+			NewProjectPane content = new NewProjectPane(config, dialog.getOwner(), okButton);
+
+			dialog.getDialogPane().setContent(content);
+			dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
+
+			newConfig = dialog.showAndWait().orElse(null);
+			if (newConfig == null || !newConfig.isValid()) return CompletableFuture.completedFuture(false);
+		} else {
+			newConfig = config;
+		}
+
+		Config.setProjectConfig(newConfig);
+		Config.saveAsLast();
+
+		matcher.reset();
+		onProjectChange();
+
+		CompletableFuture<Boolean> ret = new CompletableFuture<>();
+
+		runProgressTask("Initializing files...",
+				progressReceiver -> {
+					matcher.init(newConfig, progressReceiver);
+					ret.complete(true);
+				},
+				() -> {
+					if (newConfig.getMappingsPathA() != null) {
+						Path mappingsPath = newConfig.getMappingsPathA();
+
+						try {
+							List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
+							Mappings.load(mappingsPath, null,
+									namespaces.get(0), namespaces.get(1),
+									MappingField.PLAIN, MappingField.MAPPED,
+									env.getEnvA(), true);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+
+					if (newConfig.getMappingsPathB() != null) {
+						Path mappingsPath = newConfig.getMappingsPathB();
+
+						try {
+							List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
+							Mappings.load(mappingsPath, null,
+									namespaces.get(0), namespaces.get(1),
+									MappingField.PLAIN, MappingField.MAPPED,
+									env.getEnvB(), true);
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+
+					onProjectChange();
+				},
+				exc -> {
+					exc.printStackTrace();
+					ret.completeExceptionally(exc);
+				});
+
+		return ret;
 	}
 
 	public ClassEnvironment getEnv() {
@@ -189,7 +388,21 @@ public class Gui extends Application {
 		this.showNonInputs = showNonInputs;
 
 		for (IGuiComponent c : components) {
-			c.onViewChange(ViewChangeCause.SHOW_NON_INPUTS_TOGGLED);
+			c.onViewChange(ViewChangeCause.DISPLAY_CLASSES_CHANGED);
+		}
+	}
+
+	public boolean isHideUnmappedA() {
+		return hideUnmappedA;
+	}
+
+	public void setHideUnmappedA(boolean hideUnmappedA) {
+		if (this.hideUnmappedA == hideUnmappedA) return;
+
+		this.hideUnmappedA = hideUnmappedA;
+
+		for (IGuiComponent c : components) {
+			c.onViewChange(ViewChangeCause.DISPLAY_CLASSES_CHANGED);
 		}
 	}
 
@@ -445,6 +658,7 @@ public class Gui extends Application {
 	private boolean sortMatchesAlphabetically;
 	private boolean useClassTreeView;
 	private boolean showNonInputs;
+	private boolean hideUnmappedA;
 	private boolean useDiffColors;
 	private Theme lastSwitchedToTheme;
 

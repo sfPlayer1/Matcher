@@ -33,6 +33,7 @@ import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InnerClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
+import matcher.Matcher;
 import matcher.NameType;
 import matcher.Util;
 import matcher.classifier.ClassifierUtil;
@@ -267,19 +268,23 @@ public final class ClassEnvironment implements ClassEnv {
 		return extractorB.getClasses();
 	}
 
-	public List<ClassInstance> getDisplayClassesA(boolean inputsOnly) {
-		return getDisplayClasses(extractorA, inputsOnly);
+	public List<ClassInstance> getDisplayClassesA(boolean inputsOnly, boolean mappedOnly) {
+		return getDisplayClasses(extractorA, inputsOnly, mappedOnly);
 	}
 
 	public List<ClassInstance> getDisplayClassesB(boolean inputsOnly) {
-		return getDisplayClasses(extractorB, inputsOnly);
+		return getDisplayClasses(extractorB, inputsOnly, false);
 	}
 
-	private static List<ClassInstance> getDisplayClasses(ClassFeatureExtractor extractor, boolean inputsOnly) {
+	private static List<ClassInstance> getDisplayClasses(ClassFeatureExtractor extractor, boolean inputsOnly, boolean mappedOnly) {
 		List<ClassInstance> ret = new ArrayList<>();
 
 		for (ClassInstance cls : extractor.getClasses()) {
-			if (!cls.isReal() || inputsOnly && !cls.isInput()) continue;
+			if (!cls.isReal()
+					|| (inputsOnly && !cls.isInput())
+					|| (mappedOnly && !cls.hasMappedName() && !cls.hasMappedChildren())) {
+				continue;
+			}
 
 			ret.add(cls);
 		}
@@ -582,7 +587,7 @@ public final class ClassEnvironment implements ClassEnv {
 			outerClass = cls.getEnv().getCreateClassInstance(ClassInstance.getId(name), createUnknown);
 
 			if (outerClass == null) {
-				System.err.println("missing outer cls: "+name+" for "+cls);
+				Matcher.LOGGER.trace("Missing outer cls: {} for {}", name, cls);
 				return;
 			}
 		}

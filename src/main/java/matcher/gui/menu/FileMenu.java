@@ -10,7 +10,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import javafx.application.Platform;
@@ -30,7 +29,6 @@ import net.fabricmc.mappingio.format.MappingFormat;
 
 import matcher.Util;
 import matcher.config.Config;
-import matcher.config.ProjectConfig;
 import matcher.gui.Gui;
 import matcher.gui.Gui.SelectedFile;
 import matcher.gui.menu.LoadMappingsPane.MappingsLoadSettings;
@@ -102,51 +100,7 @@ public class FileMenu extends Menu {
 	}
 
 	private void newProject() {
-		newProject(Config.getProjectConfig(), true);
-	}
-
-	public CompletableFuture<Boolean> newProject(ProjectConfig config, boolean showConfigDialog) {
-		ProjectConfig newConfig;
-
-		if (showConfigDialog) {
-			Dialog<ProjectConfig> dialog = new Dialog<>();
-			//dialog.initModality(Modality.APPLICATION_MODAL);
-			dialog.setResizable(true);
-			dialog.setTitle("Project configuration");
-			dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-			Node okButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
-			NewProjectPane content = new NewProjectPane(config, dialog.getOwner(), okButton);
-
-			dialog.getDialogPane().setContent(content);
-			dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
-
-			newConfig = dialog.showAndWait().orElse(null);
-			if (newConfig == null || !newConfig.isValid()) return CompletableFuture.completedFuture(false);
-		} else {
-			newConfig = config;
-		}
-
-		Config.setProjectConfig(newConfig);
-		Config.saveAsLast();
-
-		gui.getMatcher().reset();
-		gui.onProjectChange();
-
-		CompletableFuture<Boolean> ret = new CompletableFuture<>();
-
-		gui.runProgressTask("Initializing files...",
-				progressReceiver -> {
-					gui.getMatcher().init(newConfig, progressReceiver);
-					ret.complete(true);
-				},
-				() -> gui.onProjectChange(),
-				exc -> {
-					exc.printStackTrace();
-					ret.completeExceptionally(exc);
-				});
-
-		return ret;
+		gui.newProject(Config.getProjectConfig(), true);
 	}
 
 	private void loadProject() {
