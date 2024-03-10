@@ -1,7 +1,6 @@
 package matcher.srcprocess;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import jadx.api.CommentsLevel;
@@ -11,11 +10,11 @@ import jadx.api.impl.NoOpCodeCache;
 import jadx.api.plugins.input.data.IClassData;
 import jadx.api.plugins.input.data.ILoadResult;
 import jadx.api.plugins.input.data.IResourceData;
-import jadx.core.utils.Utils;
 import jadx.plugins.input.java.JavaClassReader;
 import jadx.plugins.input.java.data.JavaClassData;
 
 import matcher.NameType;
+import matcher.Util;
 import matcher.type.ClassFeatureExtractor;
 import matcher.type.ClassInstance;
 
@@ -28,20 +27,16 @@ public class Jadx implements Decompiler {
 		try (JadxDecompiler jadx = new JadxDecompiler(jadxArgs)) {
 			jadx.addCustomLoad(new ILoadResult() {
 				@Override
-				public void close() throws IOException {
-					return;
-				}
+				public void close() throws IOException { }
 
 				@Override
 				public void visitClasses(Consumer<IClassData> consumer) {
-					consumer.accept(new JavaClassData(new JavaClassReader(idGenerator.getAndIncrement(),
+					consumer.accept(new JavaClassData(new JavaClassReader(0,
 							fullClassName + ".class", cls.serialize(nameType))));
 				}
 
 				@Override
-				public void visitResources(Consumer<IResourceData> consumer) {
-					return;
-				}
+				public void visitResources(Consumer<IResourceData> consumer) { }
 
 				@Override
 				public boolean isEmpty() {
@@ -53,14 +48,13 @@ public class Jadx implements Decompiler {
 			assert jadx.getClassesWithInners().size() == 1;
 			return jadx.getClassesWithInners().get(0).getCode();
 		} catch (Exception e) {
-			errorMessage = Utils.getStackTrace(e);
+			errorMessage = Util.getStackTrace(e);
 		}
 
 		throw new RuntimeException(errorMessage != null ? errorMessage : "JADX couldn't find the requested class");
 	}
 
 	private static final JadxArgs jadxArgs;
-	private static final AtomicInteger idGenerator = new AtomicInteger();
 
 	static {
 		jadxArgs = new JadxArgs() {

@@ -32,6 +32,10 @@ import matcher.type.Matchable;
 import matcher.type.MethodInstance;
 
 class TypeResolver {
+	TypeResolver(boolean decmpiledByJadx) {
+		this.decompiledByJadx = decmpiledByJadx;
+	}
+
 	public void setup(ClassInstance rootCls, NameType nameType, CompilationUnit cu) {
 		this.rootCls = rootCls;
 		this.env = rootCls.getEnv();
@@ -66,10 +70,10 @@ class TypeResolver {
 		StringBuilder sb = new StringBuilder();
 		String jadxDefaultPackage = jadx.core.Consts.DEFAULT_PACKAGE_NAME;
 
-		if (pkg != null && !pkg.equals(jadxDefaultPackage)) {
+		if (pkg != null && (!decompiledByJadx || !pkg.equals(jadxDefaultPackage))) {
 			String pkgCleaned = pkg;
 
-			if (pkg.startsWith(jadxDefaultPackage)) {
+			if (decompiledByJadx && pkg.startsWith(jadxDefaultPackage)) {
 				pkgCleaned = pkg.substring(jadxDefaultPackage.length() + 1);
 			}
 
@@ -275,4 +279,5 @@ class TypeResolver {
 	private String pkg;
 	private final Map<String, String> imports = new HashMap<>();
 	private final List<String> wildcardImports = new ArrayList<>();
+	private final boolean decompiledByJadx;
 }
