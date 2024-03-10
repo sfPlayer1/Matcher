@@ -68,7 +68,9 @@ dependencies {
 	implementation ("io.github.skylot:jadx-core:${jadx_version}") {
 		exclude group: 'com.android.tools.build', module: 'aapt2-proto'
 	}
-	implementation "io.github.skylot:jadx-java-input:${jadx_version}"
+	implementation ("io.github.skylot:jadx-java-input:${jadx_version}") {
+		exclude group: 'io.github.skylot', module: 'raung-disasm'
+	}
 	runtimeOnly "org.tinylog:tinylog-impl:${tinylog_version}"
 	runtimeOnly "org.tinylog:slf4j-tinylog:${tinylog_version}"
 
@@ -104,7 +106,8 @@ extraJavaModuleInfo {
 
 	// JADX
 	automaticModule("io.github.skylot:jadx-core", "jadx.core")
-	automaticModule("io.github.skylot:jadx-java-input", "jadx.java_input")
+	automaticModule("io.github.skylot:jadx-plugins-api", "jadx.plugins.api")
+	automaticModule("io.github.skylot:jadx-java-input", "jadx.plugins.java_input")
 }
 
 application {
