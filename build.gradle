@@ -65,6 +65,12 @@ dependencies {
 	implementation "net.fabricmc:cfr:${fabric_cfr_version}"
 	implementation "org.vineflower:vineflower:${vineflower_version}"
 	implementation "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
+	implementation ("io.github.skylot:jadx-core:${jadx_version}") {
+		exclude group: 'com.android.tools.build', module: 'aapt2-proto'
+	}
+	implementation ("io.github.skylot:jadx-java-input:${jadx_version}") {
+		exclude group: 'io.github.skylot', module: 'raung-disasm'
+	}
 	runtimeOnly "org.tinylog:tinylog-impl:${tinylog_version}"
 	runtimeOnly "org.tinylog:slf4j-tinylog:${tinylog_version}"
 
@@ -97,6 +103,11 @@ extraJavaModuleInfo {
 
 	// Procyon
 	automaticModule("org.bitbucket.mstrobel:procyon-compilertools", "procyon.compilertools")
+
+	// JADX
+	automaticModule("io.github.skylot:jadx-core", "jadx.core")
+	automaticModule("io.github.skylot:jadx-plugins-api", "jadx.plugins.api")
+	automaticModule("io.github.skylot:jadx-java-input", "jadx.plugins.java_input")
 }
 
 application {

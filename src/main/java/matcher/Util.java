@@ -2,6 +2,8 @@ package matcher;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -46,6 +48,15 @@ public class Util {
 		} else {
 			return newIdentityHashSet(set);
 		}
+	}
+
+	public static String getStackTrace(Throwable t) {
+		if (t == null) return null;
+
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		t.printStackTrace(pw);
+		return sw.toString();
 	}
 
 	public static FileSystem iterateJar(Path archive, boolean autoClose, Consumer<Path> handler) {
