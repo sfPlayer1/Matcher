@@ -1,0 +1,68 @@
+plugins {
+	id 'application'
+	id 'org.openjfx.javafxplugin'
+}
+
+archivesBaseName = 'matcher-gui'
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
+
+	if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(17)
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 17
+}
+
+javafx {
+	version = javafx_version
+	modules = [ 'javafx.controls', 'javafx.web' ]
+
+	// Don't bundle native binaries via the plugin,
+	// since it will only include those for the current OS.
+	// The full set of native libraries gets shaded a few lines beneath.
+	configuration = 'compileOnly'
+}
+
+dependencies {
+	api project(':matcher-cli')
+	api "com.github.javaparser:javaparser-core:${javaparser_version}"
+	api "net.fabricmc:cfr:${fabric_cfr_version}"
+	api "org.bitbucket.mstrobel:procyon-compilertools:${procyon_version}"
+	implementation "org.ow2.asm:asm-util:${asm_version}"
+	implementation "org.vineflower:vineflower:${vineflower_version}"
+	implementation ("io.github.skylot:jadx-core:${jadx_version}") {
+		exclude group: 'com.android.tools.build', module: 'aapt2-proto'
+	}
+	implementation ("io.github.skylot:jadx-java-input:${jadx_version}") {
+		exclude group: 'io.github.skylot', module: 'raung-disasm'
+	}
+
+	// JavaFX for all platforms (required for cross-platform fat jar)
+	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-base:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-graphics:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-controls:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-web:${javafx_version}:linux"
+	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:win"
+	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:mac"
+	runtimeOnly "org.openjfx:javafx-media:${javafx_version}:linux"
+}
+
+application {
+	mainModule = 'matcher.gui'
+	mainClass = 'matcher.gui.Main'
+}
