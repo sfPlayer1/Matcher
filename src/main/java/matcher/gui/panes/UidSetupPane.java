@@ -1,4 +1,4 @@
-package matcher.gui.menu;
+package matcher.gui.panes;
 
 import java.net.InetSocketAddress;
 
@@ -13,7 +13,7 @@ import matcher.config.UidConfig;
 import matcher.gui.GuiConstants;
 
 public class UidSetupPane extends GridPane {
-	UidSetupPane(UidConfig config, Window window, Node okButton) {
+	public UidSetupPane(UidConfig config, Window window, Node okButton) {
 		//this.window = window;
 		this.okButton = okButton;
 
@@ -67,7 +67,7 @@ public class UidSetupPane extends GridPane {
 		changeListener.changed(null, null, null);
 	}
 
-	UidConfig createConfig() {
+	public UidConfig createConfig() {
 		int port;
 
 		try {

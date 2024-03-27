@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.DoubleConsumer;
 
 import matcher.Matcher;
 import matcher.config.Config;
@@ -28,7 +27,7 @@ import matcher.type.MethodInstance;
 import matcher.type.MethodVarInstance;
 
 public class MatchesIo {
-	public static void read(Path path, List<Path> inputDirs, boolean verifyInputs, Matcher matcher, DoubleConsumer progressReceiver) {
+	public static void read(Path path, List<Path> inputDirs, boolean verifyInputs, Matcher matcher) {
 		ClassEnvironment env = matcher.getEnv();
 
 		try (BufferedReader reader = Files.newBufferedReader(path)) {
@@ -152,8 +151,7 @@ public class MatchesIo {
 
 						if (inputDirs != null) {
 							matcher.initFromMatches(inputDirs, inputFilesA, inputFilesB, cpFiles, cpFilesA, cpFilesB,
-									nonObfuscatedClassPatternA, nonObfuscatedClassPatternB, nonObfuscatedMemberPatternA, nonObfuscatedMemberPatternB,
-									progressReceiver);
+									nonObfuscatedClassPatternA, nonObfuscatedClassPatternB, nonObfuscatedMemberPatternA, nonObfuscatedMemberPatternB);
 							inputDirs = null;
 						}
 					}

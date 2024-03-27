@@ -10,6 +10,7 @@ module matcher {
 	exports matcher;
 	exports matcher.bcremap;
 	exports matcher.serdes;
+	exports job4j;
 
 	requires transitive org.slf4j;
 	requires cfr;
@@ -20,6 +21,7 @@ module matcher {
 	requires transitive javafx.controls;
 	requires transitive javafx.graphics;
 	requires transitive javafx.web;
+	requires transitive org.controlsfx.controls;
 	requires transitive org.objectweb.asm;
 	requires transitive org.objectweb.asm.tree;
 	requires org.objectweb.asm.commons;

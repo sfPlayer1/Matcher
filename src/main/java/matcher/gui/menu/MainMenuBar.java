@@ -19,6 +19,8 @@ public class MainMenuBar extends MenuBar implements IGuiComponent {
 		mappingMenu = addMenu(new MappingMenu(gui));
 		uidMenu = addMenu(new UidMenu(gui));
 		viewMenu = addMenu(new ViewMenu(gui));
+
+		updateMenus(true, false);
 	}
 
 	private <T extends Menu> T addMenu(T menu) {
@@ -49,6 +51,13 @@ public class MainMenuBar extends MenuBar implements IGuiComponent {
 
 	public ViewMenu getViewMenu() {
 		return viewMenu;
+	}
+
+	public void updateMenus(boolean empty, boolean initializing) {
+		fileMenu.updateMenus(empty, initializing);
+		matchingMenu.setDisable(empty || initializing);
+		mappingMenu.setDisable(empty || initializing);
+		uidMenu.setDisable(empty || initializing);
 	}
 
 	private final Gui gui;

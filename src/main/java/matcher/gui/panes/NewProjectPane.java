@@ -1,4 +1,4 @@
-package matcher.gui.menu;
+package matcher.gui.panes;
 
 import java.io.IOException;
 import java.nio.file.FileSystems;

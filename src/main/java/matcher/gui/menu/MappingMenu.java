@@ -1,6 +1,7 @@
 package matcher.gui.menu;
 
 import java.util.Optional;
+import java.util.function.DoubleConsumer;
 
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
@@ -8,7 +9,10 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 
 import matcher.gui.Gui;
-import matcher.gui.menu.FixRecordNamesPane.NamespaceSettings;
+import matcher.gui.panes.FixRecordNamesPane;
+import matcher.gui.panes.FixRecordNamesPane.NamespaceSettings;
+import matcher.jobs.JobCategories;
+import matcher.jobs.MatcherJob;
 import matcher.mapping.MappingPropagator;
 
 public class MappingMenu extends Menu {
@@ -23,11 +27,16 @@ public class MappingMenu extends Menu {
 	private void init() {
 		MenuItem menuItem = new MenuItem("Propagate names");
 		getItems().add(menuItem);
-		menuItem.setOnAction(event -> gui.runProgressTask(
-				"Propagating method names/args...",
-				progressReceiver -> MappingPropagator.propagateNames(gui.getEnv(), progressReceiver),
-				() -> { },
-				Throwable::printStackTrace));
+
+		var job = new MatcherJob<Void>(JobCategories.PROPAGATE_METHOD_NAMES) {
+			@Override
+			protected Void execute(DoubleConsumer progressReceiver) {
+				MappingPropagator.propagateNames(gui.getEnv(), progressReceiver);
+				return null;
+			}
+		};
+
+		menuItem.setOnAction(event -> job.run());
 
 		menuItem = new MenuItem("Fix record member names");
 		getItems().add(menuItem);

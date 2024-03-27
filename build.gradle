@@ -26,6 +26,10 @@ checkstyle {
 	toolVersion = project.checkstyle_version
 }
 
+tasks.withType(Checkstyle) {
+    exclude 'job4j/'
+}
+
 java {
 	sourceCompatibility = JavaVersion.VERSION_17
 	targetCompatibility = JavaVersion.VERSION_17
@@ -71,6 +75,7 @@ dependencies {
 	implementation ("io.github.skylot:jadx-java-input:${jadx_version}") {
 		exclude group: 'io.github.skylot', module: 'raung-disasm'
 	}
+	implementation "org.controlsfx:controlsfx:${controlsfx_version}"
 	runtimeOnly "org.tinylog:tinylog-impl:${tinylog_version}"
 	runtimeOnly "org.tinylog:slf4j-tinylog:${tinylog_version}"
 

@@ -1,4 +1,4 @@
-package matcher.gui.menu;
+package matcher.gui.panes;
 
 import java.util.List;
 
@@ -17,8 +17,8 @@ import javafx.scene.layout.HBox;
 import matcher.gui.GuiConstants;
 import matcher.mapping.MappingField;
 
-class LoadMappingsPane extends GridPane {
-	LoadMappingsPane(List<String> namespaces) {
+public class LoadMappingsPane extends GridPane {
+	public LoadMappingsPane(List<String> namespaces) {
 		init(namespaces);
 	}
 

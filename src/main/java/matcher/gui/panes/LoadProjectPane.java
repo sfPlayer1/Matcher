@@ -1,4 +1,4 @@
-package matcher.gui.menu;
+package matcher.gui.panes;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ import matcher.gui.GuiConstants;
 import matcher.gui.GuiUtil;
 
 public class LoadProjectPane extends VBox {
-	LoadProjectPane(List<Path> paths, boolean verifyFiles, Window window, Node okButton) {
+	public LoadProjectPane(List<Path> paths, boolean verifyFiles, Window window, Node okButton) {
 		super(GuiConstants.padding);
 
 		this.paths = FXCollections.observableArrayList(paths);

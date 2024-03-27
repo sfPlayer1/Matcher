@@ -10,11 +10,13 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.DoubleConsumer;
 import java.util.stream.Stream;
 
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Menu;
@@ -31,9 +33,15 @@ import matcher.Util;
 import matcher.config.Config;
 import matcher.gui.Gui;
 import matcher.gui.Gui.SelectedFile;
-import matcher.gui.menu.LoadMappingsPane.MappingsLoadSettings;
-import matcher.gui.menu.LoadProjectPane.ProjectLoadSettings;
-import matcher.gui.menu.SaveMappingsPane.MappingsSaveSettings;
+import matcher.gui.panes.LoadMappingsPane;
+import matcher.gui.panes.LoadProjectPane;
+import matcher.gui.panes.PreferencesPane;
+import matcher.gui.panes.SaveMappingsPane;
+import matcher.gui.panes.LoadMappingsPane.MappingsLoadSettings;
+import matcher.gui.panes.LoadProjectPane.ProjectLoadSettings;
+import matcher.gui.panes.SaveMappingsPane.MappingsSaveSettings;
+import matcher.jobs.JobCategories;
+import matcher.jobs.MatcherJob;
 import matcher.mapping.Mappings;
 import matcher.serdes.MatchesIo;
 import matcher.type.ClassEnvironment;
@@ -45,58 +53,60 @@ public class FileMenu extends Menu {
 
 		this.gui = gui;
 
-		init();
-	}
+		newProject = new MenuItem("New project");
+		getItems().add(newProject);
+		newProject.setOnAction(event -> newProject());
 
-	private void init() {
-		MenuItem menuItem = new MenuItem("New project");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> newProject());
-
-		menuItem = new MenuItem("Load project");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> loadProject());
+		loadProject = new MenuItem("Load project");
+		getItems().add(loadProject);
+		loadProject.setOnAction(event -> loadProject());
 
 		getItems().add(new SeparatorMenuItem());
 
-		menuItem = new MenuItem("Load mappings");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> loadMappings(null));
+		loadMappings = new MenuItem("Load mappings");
+		getItems().add(loadMappings);
+		loadMappings.setOnAction(event -> loadMappings(null));
 
-		menuItem = new MenuItem("Load mappings (Enigma dir)");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> loadMappings(MappingFormat.ENIGMA_DIR));
+		loadMappingsEnigmaDir = new MenuItem("Load mappings (Enigma dir)");
+		getItems().add(loadMappingsEnigmaDir);
+		loadMappingsEnigmaDir.setOnAction(event -> loadMappings(MappingFormat.ENIGMA_DIR));
 
-		menuItem = new MenuItem("Save mappings");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMappings(null));
+		saveMappings = new MenuItem("Save mappings");
+		getItems().add(saveMappings);
+		saveMappings.setOnAction(event -> saveMappings(null));
 
-		menuItem = new MenuItem("Save mappings (Enigma dir)");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMappings(MappingFormat.ENIGMA_DIR));
+		saveMappingsEnigmaDir = new MenuItem("Save mappings (Enigma dir)");
+		getItems().add(saveMappingsEnigmaDir);
+		saveMappingsEnigmaDir.setOnAction(event -> saveMappings(MappingFormat.ENIGMA_DIR));
 
-		menuItem = new MenuItem("Clear mappings");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> {
+		clearMappings = new MenuItem("Clear mappings");
+		getItems().add(clearMappings);
+		clearMappings.setOnAction(event -> {
 			Mappings.clear(gui.getMatcher().getEnv());
 			gui.onMappingChange();
 		});
 
 		getItems().add(new SeparatorMenuItem());
 
-		menuItem = new MenuItem("Load matches");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> loadMatches());
+		loadMatches = new MenuItem("Load matches");
+		getItems().add(loadMatches);
+		loadMatches.setOnAction(event -> loadMatches());
 
-		menuItem = new MenuItem("Save matches");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> saveMatches());
+		saveMatches = new MenuItem("Save matches");
+		getItems().add(saveMatches);
+		saveMatches.setOnAction(event -> saveMatches());
 
 		getItems().add(new SeparatorMenuItem());
 
-		menuItem = new MenuItem("Exit");
-		getItems().add(menuItem);
-		menuItem.setOnAction(event -> Platform.exit());
+		preferences = new MenuItem("Preferences");
+		getItems().add(preferences);
+		preferences.setOnAction(event -> openPreferences());
+
+		getItems().add(new SeparatorMenuItem());
+
+		exit = new MenuItem("Exit");
+		getItems().add(exit);
+		exit.setOnAction(event -> Platform.exit());
 	}
 
 	private void newProject() {
@@ -113,10 +123,15 @@ public class FileMenu extends Menu {
 		gui.getMatcher().reset();
 		gui.onProjectChange();
 
-		gui.runProgressTask("Initializing files...",
-				progressReceiver -> MatchesIo.read(res.path, newConfig.paths, newConfig.verifyFiles, gui.getMatcher(), progressReceiver),
-				() -> gui.onProjectChange(),
-				Throwable::printStackTrace);
+		var job = new MatcherJob<Void>(JobCategories.LOAD_PROJECT) {
+			@Override
+			protected Void execute(DoubleConsumer progressReceiver) {
+				MatchesIo.read(res.path, newConfig.paths, newConfig.verifyFiles, gui.getMatcher());
+				return null;
+			}
+		};
+		job.addCompletionListener((result, error) -> Platform.runLater(() -> gui.onProjectChange()));
+		job.run();
 	}
 
 	public ProjectLoadSettings requestProjectLoadSettings() {
@@ -339,7 +354,7 @@ public class FileMenu extends Menu {
 		SelectedFile res = Gui.requestFile("Select matches file", gui.getScene().getWindow(), getMatchesLoadExtensionFilters(), true);
 		if (res == null) return;
 
-		MatchesIo.read(res.path, null, false, gui.getMatcher(), progress -> { });
+		MatchesIo.read(res.path, null, false, gui.getMatcher());
 		gui.onMatchChange(EnumSet.allOf(MatchType.class));
 	}
 
@@ -374,5 +389,42 @@ public class FileMenu extends Menu {
 		}
 	}
 
+	private void openPreferences() {
+		Dialog<?> dialog = new Dialog<>();
+		//dialog.initModality(Modality.APPLICATION_MODAL);
+		dialog.setResizable(true);
+		dialog.setTitle("Preferences");
+		dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+		Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+
+		PreferencesPane content = new PreferencesPane(okButton);
+		dialog.getDialogPane().setContent(content);
+		dialog.showAndWait();
+	}
+
+	public void updateMenus(boolean empty, boolean initializing) {
+		newProject.setDisable(initializing);
+		loadProject.setDisable(initializing);
+		loadMappings.setDisable(empty || initializing);
+		loadMappingsEnigmaDir.setDisable(empty || initializing);
+		saveMappings.setDisable(empty || initializing);
+		saveMappingsEnigmaDir.setDisable(empty || initializing);
+		clearMappings.setDisable(empty || initializing);
+		loadMatches.setDisable(empty || initializing);
+		saveMatches.setDisable(empty || initializing);
+	}
+
 	private final Gui gui;
+	private final MenuItem newProject;
+	private final MenuItem loadProject;
+	private final MenuItem loadMappings;
+	private final MenuItem loadMappingsEnigmaDir;
+	private final MenuItem saveMappings;
+	private final MenuItem saveMappingsEnigmaDir;
+	private final MenuItem clearMappings;
+	private final MenuItem loadMatches;
+	private final MenuItem saveMatches;
+	private final MenuItem preferences;
+	private final MenuItem exit;
 }

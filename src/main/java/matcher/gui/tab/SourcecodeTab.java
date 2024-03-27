@@ -1,12 +1,18 @@
 package matcher.gui.tab;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Set;
+import java.util.function.DoubleConsumer;
+
+import javafx.application.Platform;
+import job4j.JobState;
+import job4j.JobSettings.MutableJobSettings;
 
 import matcher.NameType;
+import matcher.Util;
 import matcher.gui.Gui;
 import matcher.gui.ISelectionProvider;
+import matcher.jobs.JobCategories;
+import matcher.jobs.MatcherJob;
 import matcher.srcprocess.HtmlUtil;
 import matcher.srcprocess.SrcDecorator;
 import matcher.srcprocess.SrcDecorator.SrcParseException;
@@ -17,12 +23,12 @@ import matcher.type.MemberInstance;
 import matcher.type.MethodInstance;
 
 public class SourcecodeTab extends WebViewTab {
-	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean unmatchedTmp) {
+	public SourcecodeTab(Gui gui, ISelectionProvider selectionProvider, boolean isSource) {
 		super("source", "ui/templates/CodeViewTemplate.htm");
 
 		this.gui = gui;
 		this.selectionProvider = selectionProvider;
-		this.unmatchedTmp = unmatchedTmp;
+		this.isSource = isSource;
 
 		update();
 	}
@@ -85,39 +91,46 @@ public class SourcecodeTab extends WebViewTab {
 
 		displayText("decompiling...");
 
-		NameType nameType = gui.getNameType().withUnmatchedTmp(unmatchedTmp);
+		NameType nameType = gui.getNameType().withUnmatchedTmp(isSource);
 
-		//Gui.runAsyncTask(() -> gui.getEnv().decompile(selectedClass, true))
-		Gui.runAsyncTask(() -> SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), selectedClass, nameType), selectedClass, nameType))
-				.whenComplete((res, exc) -> {
-					if (cDecompId == decompId) {
-						if (exc != null) {
-							exc.printStackTrace();
+		var decompileJob = new MatcherJob<String>(isSource ? JobCategories.DECOMPILE_SOURCE : JobCategories.DECOMPILE_DEST) {
+			@Override
+			protected void changeDefaultSettings(MutableJobSettings settings) {
+				settings.dontPrintStacktraceOnError();
+				settings.cancelPreviousJobsWithSameId();
+			}
 
-							StringWriter sw = new StringWriter();
-							exc.printStackTrace(new PrintWriter(sw));
+			@Override
+			protected String execute(DoubleConsumer progressReceiver) {
+				return SrcDecorator.decorate(gui.getEnv().decompile(gui.getDecompiler().get(), selectedClass, nameType), selectedClass, nameType);
+			}
+		};
+		decompileJob.addCompletionListener((code, error) -> Platform.runLater(() -> {
+			if (cDecompId == decompId) {
+				if (code.isEmpty() && decompileJob.getState() == JobState.CANCELED) {
+					// The job got canceled before any code was generated. Ignore any errors.
+					return;
+				}
 
-							if (exc instanceof SrcParseException) {
-								SrcParseException parseExc = (SrcParseException) exc;
-								displayText("parse error: "+parseExc.problems+"\ndecompiled source:\n"+parseExc.source);
-							} else {
-								displayText("decompile error: "+sw.toString());
-							}
-						} else {
-							double prevScroll = updateNeeded == 2 ? getScrollTop() : 0;
-
-							displayHtml(res);
-
-							if (updateNeeded == 2 && prevScroll > 0) {
-								setScrollTop(prevScroll);
-							}
-						}
-					} else if (exc != null) {
-						exc.printStackTrace();
+				if (error.isPresent()) {
+					if (error.get() instanceof SrcParseException) {
+						SrcParseException parseExc = (SrcParseException) error.get();
+						displayText("parse error: " + parseExc.problems + "\ndecompiled source:\n" + parseExc.source);
+					} else {
+						displayText("decompile error: " + Util.getStacktrace(error.get()));
 					}
+				} else if (code.isPresent()) {
+					double prevScroll = updateNeeded == 2 ? getScrollTop() : 0;
 
-					updateNeeded = 0;
-				});
+					displayHtml(code.get());
+
+					if (updateNeeded == 2 && prevScroll > 0) {
+						setScrollTop(prevScroll);
+					}
+				}
+			}
+		}));
+		decompileJob.run();
 	}
 
 	@Override
@@ -140,7 +153,7 @@ public class SourcecodeTab extends WebViewTab {
 
 	private final Gui gui;
 	private final ISelectionProvider selectionProvider;
-	private final boolean unmatchedTmp;
+	private final boolean isSource;
 
 	private int decompId;
 	private int updateNeeded;

@@ -8,18 +8,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.stream.Collectors;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.concurrent.Task;
-import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
@@ -28,17 +22,19 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.RowConstraints;
-import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
-import javafx.stage.Modality;
+import job4j.Job;
+import job4j.JobManager;
+import job4j.JobManager.JobManagerEvent;
+import job4j.JobSettings.MutableJobSettings;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
 import net.fabricmc.mappingio.MappingReader;
@@ -49,8 +45,10 @@ import matcher.config.Config;
 import matcher.config.ProjectConfig;
 import matcher.config.Theme;
 import matcher.gui.IGuiComponent.ViewChangeCause;
+import matcher.gui.jobs.GuiJobCategories;
 import matcher.gui.menu.MainMenuBar;
-import matcher.gui.menu.NewProjectPane;
+import matcher.gui.panes.NewProjectPane;
+import matcher.jobs.MatcherJob;
 import matcher.mapping.MappingField;
 import matcher.mapping.Mappings;
 import matcher.srcprocess.BuiltinDecompiler;
@@ -64,6 +62,8 @@ public class Gui extends Application {
 
 		env = new ClassEnvironment();
 		matcher = new Matcher(env);
+
+		JobManager.get().registerEventListener((job, event) -> Platform.runLater(() -> onJobManagerEvent(job, event)));
 
 		GridPane border = new GridPane();
 
@@ -111,7 +111,7 @@ public class Gui extends Application {
 
 	@Override
 	public void stop() throws Exception {
-		threadPool.shutdown();
+		JobManager.get().shutdown();
 	}
 
 	private void handleStartupArgs(List<String> args) {
@@ -229,7 +229,7 @@ public class Gui extends Application {
 		newProject(config, inputsA.isEmpty() || inputsB.isEmpty());
 	}
 
-	public CompletableFuture<Boolean> newProject(ProjectConfig config, boolean showConfigDialog) {
+	public void newProject(ProjectConfig config, boolean showConfigDialog) {
 		ProjectConfig newConfig;
 
 		if (showConfigDialog) {
@@ -246,7 +246,7 @@ public class Gui extends Application {
 			dialog.setResultConverter(button -> button == ButtonType.OK ? content.createConfig() : null);
 
 			newConfig = dialog.showAndWait().orElse(null);
-			if (newConfig == null || !newConfig.isValid()) return CompletableFuture.completedFuture(false);
+			if (newConfig == null || !newConfig.isValid()) return;
 		} else {
 			newConfig = config;
 		}
@@ -257,50 +257,52 @@ public class Gui extends Application {
 		matcher.reset();
 		onProjectChange();
 
-		CompletableFuture<Boolean> ret = new CompletableFuture<>();
+		var job = new MatcherJob<Void>(GuiJobCategories.OPEN_NEW_PROJECT) {
+			@Override
+			protected void changeDefaultSettings(MutableJobSettings settings) {
+				settings.enableVisualPassthrough();
+			};
 
-		runProgressTask("Initializing files...",
-				progressReceiver -> {
-					matcher.init(newConfig, progressReceiver);
-					ret.complete(true);
-				},
-				() -> {
-					if (newConfig.getMappingsPathA() != null) {
-						Path mappingsPath = newConfig.getMappingsPathA();
+			@Override
+			protected Void execute(DoubleConsumer progressReceiver) {
+				menu.updateMenus(false, true);
+				matcher.init(newConfig);
+				return null;
+			}
+		};
+		job.addCompletionListener((result, error) -> Platform.runLater(() -> {
+			if (newConfig.getMappingsPathA() != null) {
+				Path mappingsPath = newConfig.getMappingsPathA();
 
-						try {
-							List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
-							Mappings.load(mappingsPath, null,
-									namespaces.get(0), namespaces.get(1),
-									MappingField.PLAIN, MappingField.MAPPED,
-									env.getEnvA(), true);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
+				try {
+					List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
+					Mappings.load(mappingsPath, null,
+							namespaces.get(0), namespaces.get(1),
+							MappingField.PLAIN, MappingField.MAPPED,
+							env.getEnvA(), true);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 
-					if (newConfig.getMappingsPathB() != null) {
-						Path mappingsPath = newConfig.getMappingsPathB();
+			if (newConfig.getMappingsPathB() != null) {
+				Path mappingsPath = newConfig.getMappingsPathB();
 
-						try {
-							List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
-							Mappings.load(mappingsPath, null,
-									namespaces.get(0), namespaces.get(1),
-									MappingField.PLAIN, MappingField.MAPPED,
-									env.getEnvB(), true);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
+				try {
+					List<String> namespaces = MappingReader.getNamespaces(mappingsPath, null);
+					Mappings.load(mappingsPath, null,
+							namespaces.get(0), namespaces.get(1),
+							MappingField.PLAIN, MappingField.MAPPED,
+							env.getEnvB(), true);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 
-					onProjectChange();
-				},
-				exc -> {
-					exc.printStackTrace();
-					ret.completeExceptionally(exc);
-				});
-
-		return ret;
+			onProjectChange();
+			menu.updateMenus(false, false);
+		}));
+		job.run();
 	}
 
 	public ClassEnvironment getEnv() {
@@ -479,70 +481,75 @@ public class Gui extends Application {
 		}
 	}
 
-	public static <T> CompletableFuture<T> runAsyncTask(Callable<T> task) {
-		Task<T> jfxTask = new Task<T>() {
-			@Override
-			protected T call() throws Exception {
-				return task.call();
-			}
-		};
+	public void onJobManagerEvent(Job<?> job, JobManagerEvent event) {
+		switch (event) {
+		case JOB_STARTED:
+			activeJobs.add(job);
+			job.addProgressListener((progress) -> Platform.runLater(() -> onProgressChange(progress)));
+			break;
+		case JOB_FINISHED:
+			activeJobs.remove(job);
+			break;
+		}
 
-		CompletableFuture<T> ret = new CompletableFuture<T>();
-
-		jfxTask.setOnSucceeded(event -> ret.complete(jfxTask.getValue()));
-		jfxTask.setOnFailed(event -> ret.completeExceptionally(jfxTask.getException()));
-		jfxTask.setOnCancelled(event -> ret.cancel(false));
-
-		threadPool.execute(jfxTask);
-
-		return ret;
+		updateProgressPane();
 	}
 
-	public void runProgressTask(String labelText, Consumer<DoubleConsumer> task) {
-		runProgressTask(labelText, task, null, null);
+	private void updateProgressPane() {
+		ProgressBar progressBar = bottomPane.getProgressBar();
+		Label jobLabel = bottomPane.getJobLabel();
+
+		if (activeJobs.size() == 0) {
+			jobLabel.setText("");
+			progressBar.setVisible(false);
+			progressBar.setProgress(0);
+		} else {
+			progressBar.setVisible(true);
+
+			for (Job<?> job : activeJobs) {
+				if (job.getProgress() <= 0) {
+					progressBar.setProgress(-1);
+					break;
+				} else if (progressBar.getProgress() < 0) {
+					progressBar.setProgress(job.getProgress() / activeJobs.size());
+				} else {
+					progressBar.setProgress(progressBar.getProgress() + (job.getProgress() / activeJobs.size()));
+				}
+			}
+
+			if (activeJobs.size() == 1) {
+				jobLabel.setText(activeJobs.get(0).getId());
+				// progressBar.setProgress(activeJobs.get(0).getProgress());
+			} else {
+				jobLabel.setText(activeJobs.size() + " tasks running");
+				StringBuilder tooltipText = new StringBuilder();
+
+				for (Job<?> job : activeJobs) {
+					tooltipText.append(job.getId() + "\n");
+				}
+
+				jobLabel.setTooltip(new Tooltip(tooltipText.toString()));
+
+				// if (progressBar.getProgress() > 0) {
+				// 	progressBar.setProgress(progressBar.getProgress() * (activeJobs.size() - 1) / activeJobs.size());
+				// }
+			}
+
+			progressBar.setTooltip(new Tooltip(""+progressBar.getProgress()));
+		}
 	}
 
-	public void runProgressTask(String labelText, Consumer<DoubleConsumer> task, Runnable onSuccess, Consumer<Throwable> onError) {
-		Stage stage = new Stage(StageStyle.UTILITY);
-		stage.initOwner(this.scene.getWindow());
-		VBox pane = new VBox(GuiConstants.padding);
+	private void onProgressChange(double progress) {
+		if (activeJobs.size() == 0) return;
 
-		stage.setScene(new Scene(pane));
-		stage.initModality(Modality.APPLICATION_MODAL);
-		stage.setOnCloseRequest(event -> event.consume());
-		stage.setResizable(false);
-		stage.setTitle("Operation progress");
+		ProgressBar progressBar = bottomPane.getProgressBar();
+		// bottomPane.getJobLabel().setText(bottomPane.getJobLabel().getText());
 
-		pane.setPadding(new Insets(GuiConstants.padding));
+		// progressBar.setProgress(progressBar.getProgress() + progress / activeJobs.size());
+		bottomPane.getJobLabel().setText(String.format("%s (%.0f%%)",
+				activeJobs.get(0).getId(), progress * 100));
 
-		pane.getChildren().add(new Label(labelText));
-
-		ProgressBar progress = new ProgressBar(0);
-		progress.setPrefWidth(400);
-		pane.getChildren().add(progress);
-
-		stage.show();
-
-		Task<Void> jfxTask = new Task<Void>() {
-			@Override
-			protected Void call() throws Exception {
-				task.accept(cProgress -> Platform.runLater(() -> progress.setProgress(cProgress)));
-
-				return null;
-			}
-		};
-
-		jfxTask.setOnSucceeded(event -> {
-			stage.hide();
-			if (onSuccess != null) onSuccess.run();
-		});
-
-		jfxTask.setOnFailed(event -> {
-			stage.hide();
-			if (onError != null) onError.accept(jfxTask.getException());
-		});
-
-		threadPool.execute(jfxTask);
+		progressBar.setProgress(progress / activeJobs.size());
 	}
 
 	public void showAlert(AlertType type, String title, String headerText, String text) {
@@ -641,8 +648,6 @@ public class Gui extends Application {
 
 	public static final List<Consumer<Gui>> loadListeners = new ArrayList<>();
 
-	private static final ExecutorService threadPool = Executors.newCachedThreadPool();
-
 	private ClassEnvironment env;
 	private Matcher matcher;
 
@@ -653,6 +658,8 @@ public class Gui extends Application {
 	private MatchPaneSrc srcPane;
 	private MatchPaneDst dstPane;
 	private BottomPane bottomPane;
+
+	private List<Job<?>> activeJobs = new ArrayList<>();
 
 	private SortKey sortKey = SortKey.Name;
 	private boolean sortMatchesAlphabetically;

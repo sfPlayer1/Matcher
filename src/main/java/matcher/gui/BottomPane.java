@@ -6,9 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.controlsfx.control.PopOver;
+import org.controlsfx.control.PopOver.ArrowLocation;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 
@@ -38,28 +42,59 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		setId("bottom-pane");
 		setPadding(new Insets(GuiConstants.padding));
 
+		SelectListener selectListener = new SelectListener();
+		srcPane.addListener(selectListener);
+		dstPane.addListener(selectListener);
+
+		// Left
+
+		HBox left = new HBox(GuiConstants.padding);
+		getChildren().add(left);
+		StackPane.setAlignment(left, Pos.CENTER_LEFT);
+		left.setAlignment(Pos.CENTER_LEFT);
+		left.setPickOnBounds(false);
+
+		progressBar.setVisible(false);
+		progressBar.setPrefWidth(200);
+
+		JobProgressView jobProgressView = new JobProgressView(gui);
+
+		PopOver jobPopOver = new PopOver(jobProgressView);
+		jobPopOver.setAnimated(false);
+		jobPopOver.setTitle("Active Jobs");
+		jobPopOver.setArrowLocation(ArrowLocation.BOTTOM_LEFT);
+
+		progressBar.setOnMouseClicked((e) -> {
+			jobPopOver.show(progressBar);
+		});
+
+		left.getChildren().add(progressBar);
+		left.getChildren().add(jobLabel);
+
+		// Center
+
 		HBox center = new HBox(GuiConstants.padding);
 		getChildren().add(center);
 		StackPane.setAlignment(center, Pos.CENTER);
 		center.setAlignment(Pos.CENTER);
+		center.setPickOnBounds(false);
 
 		matchButton.setText("match");
 		matchButton.setOnAction(event -> match());
-		matchButton.setDisable(true);
 
 		center.getChildren().add(matchButton);
 
 		matchableButton.setText("unmatchable");
 		matchableButton.setOnAction(event -> toggleMatchable());
-		matchableButton.setDisable(true);
 
 		center.getChildren().add(matchableButton);
 
 		matchPerfectMembersButton.setText("match 100% members");
 		matchPerfectMembersButton.setOnAction(event -> matchPerfectMembers());
-		matchPerfectMembersButton.setDisable(true);
 
 		center.getChildren().add(matchPerfectMembersButton);
+
+		// Right
 
 		HBox right = new HBox(GuiConstants.padding);
 		getChildren().add(right);
@@ -69,25 +104,20 @@ public class BottomPane extends StackPane implements IGuiComponent {
 
 		unmatchClassButton.setText("unmatch classes");
 		unmatchClassButton.setOnAction(event -> unmatchClass());
-		unmatchClassButton.setDisable(true);
 
 		right.getChildren().add(unmatchClassButton);
 
 		unmatchMemberButton.setText("unmatch members");
 		unmatchMemberButton.setOnAction(event -> unmatchMember());
-		unmatchMemberButton.setDisable(true);
 
 		right.getChildren().add(unmatchMemberButton);
 
 		unmatchVarButton.setText("unmatch vars");
 		unmatchVarButton.setOnAction(event -> unmatchVar());
-		unmatchVarButton.setDisable(true);
 
 		right.getChildren().add(unmatchVarButton);
 
-		SelectListener selectListener = new SelectListener();
-		srcPane.addListener(selectListener);
-		dstPane.addListener(selectListener);
+		updateMatchButtons();
 	}
 
 	@Override
@@ -95,6 +125,11 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		if (!types.isEmpty()) {
 			updateMatchButtons();
 		}
+	}
+
+	public void blockMatchButtons(boolean block) {
+		buttonsBlocked = block;
+		updateMatchButtons();
 	}
 
 	private void updateMatchButtons() {
@@ -109,7 +144,7 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		MethodVarInstance varA = srcPane.getSelectedMethodVar();
 		MethodVarInstance varB = dstPane.getSelectedMethodVar();
 
-		matchButton.setDisable(!canMatchClasses(clsA, clsB) && !canMatchMembers(memberA, memberB) && !canMatchVars(varA, varB));
+		matchButton.setDisable(buttonsBlocked || !canMatchClasses(clsA, clsB) && !canMatchMembers(memberA, memberB) && !canMatchVars(varA, varB));
 		/*
 		 * class-null   class-matchable   class-matched    member-null    member-matchable    member-matched    var-null    var-matchable    var-matched   disabled   text          target
 		 * 1            x                 x                x              x                   x                 x           x                x             1          unmatchable   -
@@ -123,17 +158,17 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		 * 0            1                 1                0              1                   1                 0           1                0             0          unmatchable   var
 		 * 0            1                 1                0              1                   1                 0           1                1             1          unmatchable   -
 		 */
-		matchableButton.setDisable(clsA == null || clsA.isMatchable() && (clsA.hasMatch() || !clsA.hasPotentialMatch())
+		matchableButton.setDisable(buttonsBlocked || clsA == null || clsA.isMatchable() && (clsA.hasMatch() || !clsA.hasPotentialMatch())
 				&& (memberA == null || memberA.isMatchable() && (memberA.hasMatch() || !memberA.hasPotentialMatch())
 				&& (varA == null || varA.isMatchable() && (varA.hasMatch() || !varA.hasPotentialMatch()))));
 		matchableButton.setText(clsA != null && (!clsA.isMatchable()
 				|| memberA != null && (!memberA.isMatchable()
 						|| varA != null && !varA.isMatchable())) ? "matchable" : "unmatchable");
-		unmatchClassButton.setDisable(!canUnmatchClass(clsA));
-		unmatchMemberButton.setDisable(!canUnmatchMember(memberA));
-		unmatchVarButton.setDisable(!canUnmatchVar(varA));
+		unmatchClassButton.setDisable(buttonsBlocked || !canUnmatchClass(clsA));
+		unmatchMemberButton.setDisable(buttonsBlocked || !canUnmatchMember(memberA));
+		unmatchVarButton.setDisable(buttonsBlocked || !canUnmatchVar(varA));
 
-		matchPerfectMembersButton.setDisable(!canMatchPerfectMembers(clsA));
+		matchPerfectMembersButton.setDisable(buttonsBlocked || !canMatchPerfectMembers(clsA));
 	}
 
 	// match / unmatch actions implementation
@@ -375,6 +410,14 @@ public class BottomPane extends StackPane implements IGuiComponent {
 		}
 	}
 
+	public ProgressBar getProgressBar() {
+		return progressBar;
+	}
+
+	public Label getJobLabel() {
+		return jobLabel;
+	}
+
 	public Button getMatchButton() {
 		return matchButton;
 	}
@@ -402,10 +445,14 @@ public class BottomPane extends StackPane implements IGuiComponent {
 	private final Gui gui;
 	private final MatchPaneSrc srcPane;
 	private final MatchPaneDst dstPane;
+	private final ProgressBar progressBar = new ProgressBar();
+	private final Label jobLabel = new Label();
 	private final Button matchButton = new Button();
 	private final Button matchableButton = new Button();
 	private final Button matchPerfectMembersButton = new Button();
 	private final Button unmatchClassButton = new Button();
 	private final Button unmatchMemberButton = new Button();
 	private final Button unmatchVarButton = new Button();
+
+	private boolean buttonsBlocked;
 }

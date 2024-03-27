@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
+import javafx.application.Platform;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextField;
@@ -17,17 +17,13 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import job4j.JobSettings.MutableJobSettings;
 
 import matcher.Matcher;
 import matcher.NameType;
-import matcher.classifier.ClassClassifier;
-import matcher.classifier.ClassifierLevel;
-import matcher.classifier.FieldClassifier;
-import matcher.classifier.MethodClassifier;
-import matcher.classifier.MethodVarClassifier;
 import matcher.classifier.RankResult;
+import matcher.jobs.RankMatchResultsJob;
 import matcher.type.ClassEnv;
-import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
 import matcher.type.FieldInstance;
 import matcher.type.MatchType;
@@ -701,41 +697,27 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			matchList.getItems().clear();
 			suppressChangeEvents = false;
 
-			ClassifierLevel matchLevel = gui.getMatcher().getAutoMatchLevel();
-			ClassEnvironment env = gui.getEnv();
-			double maxMismatch = Double.POSITIVE_INFINITY;
-
-			Callable<List<? extends RankResult<? extends Matchable<?>>>> ranker;
-
-			if (newSrcSelection == null) { // no class selected
+			if (newSrcSelection == null) {
 				return;
-			} else if (newSrcSelection instanceof ClassInstance) { // unmatched class or no member/method var selected
-				ClassInstance cls = (ClassInstance) newSrcSelection;
-				ranker = () -> ClassClassifier.rankParallel(cls, cmpClasses.toArray(new ClassInstance[0]), matchLevel, env, maxMismatch);
-			} else if (newSrcSelection instanceof MethodInstance) { // unmatched method or no method var selected
-				MethodInstance method = (MethodInstance) newSrcSelection;
-				ranker = () -> MethodClassifier.rank(method, method.getCls().getMatch().getMethods(), matchLevel, env, maxMismatch);
-			} else if (newSrcSelection instanceof FieldInstance) { // field
-				FieldInstance field = (FieldInstance) newSrcSelection;
-				ranker = () -> FieldClassifier.rank(field, field.getCls().getMatch().getFields(), matchLevel, env, maxMismatch);
-			} else if (newSrcSelection instanceof MethodVarInstance) { // method arg/var
-				MethodVarInstance var = (MethodVarInstance) newSrcSelection;
-				MethodInstance cmpMethod = var.getMethod().getMatch();
-				MethodVarInstance[] cmp = var.isArg() ? cmpMethod.getArgs() : cmpMethod.getVars();
-				ranker = () -> MethodVarClassifier.rank(var, cmp, matchLevel, env, maxMismatch);
-			} else {
-				throw new IllegalStateException();
 			}
 
-			final int cTaskId = ++taskId;
-
 			// update matches list
-			Gui.runAsyncTask(ranker).whenComplete((res, exc) -> {
-				if (exc != null) {
-					exc.printStackTrace();
-				} else if (taskId == cTaskId) {
+			final int cJobId = ++jobId;
+
+			var job = new RankMatchResultsJob(gui.getEnv(), Matcher.defaultAutoMatchLevel, newSrcSelection, cmpClasses) {
+				@Override
+				protected void changeDefaultSettings(MutableJobSettings settings) {
+					super.changeDefaultSettings(settings);
+					settings.cancelPreviousJobsWithSameId();
+				}
+			};
+			job.addCompletionListener((results, error) -> Platform.runLater(() -> {
+				if (jobId == cJobId) {
 					assert rankResults.isEmpty();
-					rankResults.addAll(res);
+
+					if (results.isPresent()) {
+						rankResults.addAll(results.get());
+					}
 
 					updateResults(oldDstSelection, !advancedFilterToggle.isSelected());
 					oldDstSelection = null;
@@ -744,7 +726,8 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 						onMatchChangeApply(matchChangeTypes);
 					}
 				}
-			});
+			}));
+			job.run();
 		}
 
 		private Matchable<?> getMatchableSrcSelection() {
@@ -767,7 +750,7 @@ public class MatchPaneDst extends SplitPane implements IFwdGuiComponent, ISelect
 			return ret;
 		}
 
-		private int taskId;
+		private int jobId;
 		private Matchable<?> oldSrcSelection;
 		private Matchable<?> oldDstSelection;
 	}

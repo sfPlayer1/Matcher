@@ -15,17 +15,18 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import job4j.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,8 @@ import matcher.classifier.MethodVarClassifier;
 import matcher.classifier.RankResult;
 import matcher.config.Config;
 import matcher.config.ProjectConfig;
+import matcher.jobs.JobCategories;
+import matcher.jobs.MatcherJob;
 import matcher.type.ClassEnv;
 import matcher.type.ClassEnvironment;
 import matcher.type.ClassInstance;
@@ -59,19 +62,64 @@ public class Matcher {
 		this.env = env;
 	}
 
-	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
-		try {
-			env.init(config, progressReceiver);
+	public void init(ProjectConfig config) {
+		var job = new MatcherJob<Void>(JobCategories.LOAD_PROJECT) {
+			@Override
+			protected void registerSubJobs() {
+				Job<Void> subJob = new MatcherJob<Void>(JobCategories.INIT_ENV) {
+					@Override
+					protected Void execute(DoubleConsumer progressReceiver) {
+						AtomicBoolean shouldCancel = new AtomicBoolean(false);
+						addCancelListener(() -> shouldCancel.set(true));
+						env.init(config, progressReceiver, shouldCancel);
+						return null;
+					}
+				};
+				addSubJob(subJob, true);
 
-			matchUnobfuscated();
-		} catch (Throwable t) {
-			reset();
-			throw t;
-		}
+				subJob = new MatcherJob<Void>(JobCategories.MATCH_UNOBFUSCATED) {
+					@Override
+					protected Void execute(DoubleConsumer progressReceiver) {
+						AtomicBoolean shouldCancel = new AtomicBoolean(false);
+						addCancelListener(() -> shouldCancel.set(true));
+						matchUnobfuscated(progressReceiver, shouldCancel);
+						return null;
+					}
+				};
+				addSubJob(subJob, false);
+			}
+
+			@Override
+			protected Void execute(DoubleConsumer progressReceiver) {
+				for (Job<?> subJob : getSubJobs(false)) {
+					subJob.run();
+				}
+
+				return null;
+			}
+		};
+
+		job.addCompletionListener((result, error) -> {
+			if (error.isPresent()) {
+				reset();
+				throw new RuntimeException(error.get());
+			}
+		});
+		job.runAndAwait();
 	}
 
-	private void matchUnobfuscated() {
+	private void matchUnobfuscated(DoubleConsumer progressReceiver, AtomicBoolean cancelListener) {
+		final float classesCount = env.getClassesA().size();
+		float classesDone = 0;
+
 		for (ClassInstance cls : env.getClassesA()) {
+			if (cancelListener.get()) {
+				break;
+			}
+
+			double progress = classesDone++ / classesCount;
+			progressReceiver.accept(progress);
+
 			if (cls.isNameObfuscated() || !cls.isReal()) continue;
 
 			ClassInstance match = env.getLocalClsByIdB(cls.getId());
@@ -90,16 +138,12 @@ public class Matcher {
 		return env;
 	}
 
-	public ClassifierLevel getAutoMatchLevel() {
-		return autoMatchLevel;
-	}
-
 	public void initFromMatches(List<Path> inputDirs,
 			List<InputFile> inputFilesA, List<InputFile> inputFilesB,
 			List<InputFile> cpFiles,
 			List<InputFile> cpFilesA, List<InputFile> cpFilesB,
-			String nonObfuscatedClassPatternA, String nonObfuscatedClassPatternB, String nonObfuscatedMemberPatternA, String nonObfuscatedMemberPatternB,
-			DoubleConsumer progressReceiver) throws IOException {
+			String nonObfuscatedClassPatternA, String nonObfuscatedClassPatternB,
+			String nonObfuscatedMemberPatternA, String nonObfuscatedMemberPatternB) throws IOException {
 		List<Path> pathsA = resolvePaths(inputDirs, inputFilesA);
 		List<Path> pathsB = resolvePaths(inputDirs, inputFilesB);
 		List<Path> sharedClassPath = resolvePaths(inputDirs, cpFiles);
@@ -120,7 +164,7 @@ public class Matcher {
 		Config.saveAsLast();
 
 		reset();
-		init(config, progressReceiver);
+		init(config);
 	}
 
 	public static Path resolvePath(Collection<Path> inputDirs, InputFile inputFile) throws IOException {
@@ -463,82 +507,6 @@ public class Matcher {
 		env.getCache().clear();
 	}
 
-	public void autoMatchAll(DoubleConsumer progressReceiver) {
-		if (autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver)) {
-			autoMatchClasses(ClassifierLevel.Initial, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
-		}
-
-		autoMatchLevel(ClassifierLevel.Intermediate, progressReceiver);
-		autoMatchLevel(ClassifierLevel.Full, progressReceiver);
-		autoMatchLevel(ClassifierLevel.Extra, progressReceiver);
-
-		boolean matchedAny;
-
-		do {
-			matchedAny = autoMatchMethodArgs(ClassifierLevel.Full, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
-			matchedAny |= autoMatchMethodVars(ClassifierLevel.Full, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
-		} while (matchedAny);
-
-		env.getCache().clear();
-	}
-
-	private void autoMatchLevel(ClassifierLevel level, DoubleConsumer progressReceiver) {
-		boolean matchedAny;
-		boolean matchedClassesBefore = true;
-
-		do {
-			matchedAny = autoMatchMethods(level, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
-			matchedAny |= autoMatchFields(level, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
-
-			if (!matchedAny && !matchedClassesBefore) {
-				break;
-			}
-
-			matchedAny |= matchedClassesBefore = autoMatchClasses(level, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
-		} while (matchedAny);
-	}
-
-	public boolean autoMatchClasses(DoubleConsumer progressReceiver) {
-		return autoMatchClasses(autoMatchLevel, absClassAutoMatchThreshold, relClassAutoMatchThreshold, progressReceiver);
-	}
-
-	public boolean autoMatchClasses(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		boolean assumeBothOrNoneObfuscated = env.assumeBothOrNoneObfuscated;
-		Predicate<ClassInstance> filter = cls -> cls.isReal() && (!assumeBothOrNoneObfuscated || cls.isNameObfuscated()) && !cls.hasMatch() && cls.isMatchable();
-
-		List<ClassInstance> classes = env.getClassesA().stream()
-				.filter(filter)
-				.collect(Collectors.toList());
-
-		ClassInstance[] cmpClasses = env.getClassesB().stream()
-				.filter(filter)
-				.collect(Collectors.toList()).toArray(new ClassInstance[0]);
-
-		double maxScore = ClassClassifier.getMaxScore(level);
-		double maxMismatch = maxScore - getRawScore(absThreshold * (1 - relThreshold), maxScore);
-		Map<ClassInstance, ClassInstance> matches = new ConcurrentHashMap<>(classes.size());
-
-		runInParallel(classes, cls -> {
-			List<RankResult<ClassInstance>> ranking = ClassClassifier.rank(cls, cmpClasses, level, env, maxMismatch);
-
-			if (checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-				ClassInstance match = ranking.get(0).getSubject();
-
-				matches.put(cls, match);
-			}
-		}, progressReceiver);
-
-		sanitizeMatches(matches);
-
-		for (Map.Entry<ClassInstance, ClassInstance> entry : matches.entrySet()) {
-			match(entry.getKey(), entry.getValue());
-		}
-
-		LOGGER.info("Auto matched {} classes ({} unmatched, {} total)", matches.size(), (classes.size() - matches.size()), env.getClassesA().size());
-
-		return !matches.isEmpty();
-	}
-
 	public static <T, C> void runInParallel(List<T> workSet, Consumer<T> worker, DoubleConsumer progressReceiver) {
 		if (workSet.isEmpty()) return;
 
@@ -566,47 +534,7 @@ public class Matcher {
 		}
 	}
 
-	public boolean autoMatchMethods(DoubleConsumer progressReceiver) {
-		return autoMatchMethods(autoMatchLevel, absMethodAutoMatchThreshold, relMethodAutoMatchThreshold, progressReceiver);
-	}
-
-	public boolean autoMatchMethods(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		AtomicInteger totalUnmatched = new AtomicInteger();
-		Map<MethodInstance, MethodInstance> matches = match(level, absThreshold, relThreshold,
-				cls -> cls.getMethods(), MethodClassifier::rank, MethodClassifier.getMaxScore(level),
-				progressReceiver, totalUnmatched);
-
-		for (Map.Entry<MethodInstance, MethodInstance> entry : matches.entrySet()) {
-			match(entry.getKey(), entry.getValue());
-		}
-
-		LOGGER.info("Auto matched {} methods ({} unmatched)", matches.size(), totalUnmatched.get());
-
-		return !matches.isEmpty();
-	}
-
-	public boolean autoMatchFields(DoubleConsumer progressReceiver) {
-		return autoMatchFields(autoMatchLevel, absFieldAutoMatchThreshold, relFieldAutoMatchThreshold, progressReceiver);
-	}
-
-	public boolean autoMatchFields(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		AtomicInteger totalUnmatched = new AtomicInteger();
-		double maxScore = FieldClassifier.getMaxScore(level);
-
-		Map<FieldInstance, FieldInstance> matches = match(level, absThreshold, relThreshold,
-				cls -> cls.getFields(), FieldClassifier::rank, maxScore,
-				progressReceiver, totalUnmatched);
-
-		for (Map.Entry<FieldInstance, FieldInstance> entry : matches.entrySet()) {
-			match(entry.getKey(), entry.getValue());
-		}
-
-		LOGGER.info("Auto matched {} fields ({} unmatched)", matches.size(), totalUnmatched.get());
-
-		return !matches.isEmpty();
-	}
-
-	private <T extends MemberInstance<T>> Map<T, T> match(ClassifierLevel level, double absThreshold, double relThreshold,
+	public <T extends MemberInstance<T>> Map<T, T> match(ClassifierLevel level, double absThreshold, double relThreshold,
 			Function<ClassInstance, T[]> memberGetter, IRanker<T> ranker, double maxScore,
 			DoubleConsumer progressReceiver, AtomicInteger totalUnmatched) {
 		List<ClassInstance> classes = env.getClassesA().stream()
@@ -649,78 +577,6 @@ public class Matcher {
 		return ret;
 	}
 
-	public boolean autoMatchMethodArgs(DoubleConsumer progressReceiver) {
-		return autoMatchMethodArgs(autoMatchLevel, absMethodArgAutoMatchThreshold, relMethodArgAutoMatchThreshold, progressReceiver);
-	}
-
-	public boolean autoMatchMethodArgs(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		return autoMatchMethodVars(true, MethodInstance::getArgs, level, absThreshold, relThreshold, progressReceiver);
-	}
-
-	public boolean autoMatchMethodVars(DoubleConsumer progressReceiver) {
-		return autoMatchMethodVars(autoMatchLevel, absMethodVarAutoMatchThreshold, relMethodVarAutoMatchThreshold, progressReceiver);
-	}
-
-	public boolean autoMatchMethodVars(ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		return autoMatchMethodVars(false, MethodInstance::getVars, level, absThreshold, relThreshold, progressReceiver);
-	}
-
-	private boolean autoMatchMethodVars(boolean isArg, Function<MethodInstance, MethodVarInstance[]> supplier,
-			ClassifierLevel level, double absThreshold, double relThreshold, DoubleConsumer progressReceiver) {
-		List<MethodInstance> methods = env.getClassesA().stream()
-				.filter(cls -> cls.isReal() && cls.hasMatch() && cls.getMethods().length > 0)
-				.flatMap(cls -> Stream.<MethodInstance>of(cls.getMethods()))
-				.filter(m -> m.hasMatch() && supplier.apply(m).length > 0)
-				.filter(m -> {
-					for (MethodVarInstance a : supplier.apply(m)) {
-						if (!a.hasMatch() && a.isMatchable()) return true;
-					}
-
-					return false;
-				})
-				.collect(Collectors.toList());
-		Map<MethodVarInstance, MethodVarInstance> matches;
-		AtomicInteger totalUnmatched = new AtomicInteger();
-
-		if (methods.isEmpty()) {
-			matches = Collections.emptyMap();
-		} else {
-			double maxScore = MethodVarClassifier.getMaxScore(level);
-			double maxMismatch = maxScore - getRawScore(absThreshold * (1 - relThreshold), maxScore);
-			matches = new ConcurrentHashMap<>(512);
-
-			runInParallel(methods, m -> {
-				int unmatched = 0;
-
-				for (MethodVarInstance var : supplier.apply(m)) {
-					if (var.hasMatch() || !var.isMatchable()) continue;
-
-					List<RankResult<MethodVarInstance>> ranking = MethodVarClassifier.rank(var, supplier.apply(m.getMatch()), level, env, maxMismatch);
-
-					if (checkRank(ranking, absThreshold, relThreshold, maxScore)) {
-						MethodVarInstance match = ranking.get(0).getSubject();
-
-						matches.put(var, match);
-					} else {
-						unmatched++;
-					}
-				}
-
-				if (unmatched > 0) totalUnmatched.addAndGet(unmatched);
-			}, progressReceiver);
-
-			sanitizeMatches(matches);
-		}
-
-		for (Map.Entry<MethodVarInstance, MethodVarInstance> entry : matches.entrySet()) {
-			match(entry.getKey(), entry.getValue());
-		}
-
-		LOGGER.info("Auto matched {} method {}s ({} unmatched)", matches.size(), (isArg ? "arg" : "var"), totalUnmatched.get());
-
-		return !matches.isEmpty();
-	}
-
 	public static boolean checkRank(List<? extends RankResult<?>> ranking, double absThreshold, double relThreshold, double maxScore) {
 		if (ranking.isEmpty()) return false;
 
@@ -742,7 +598,7 @@ public class Matcher {
 		return ret * ret;
 	}
 
-	private static double getRawScore(double score, double maxScore) {
+	public static double getRawScore(double score, double maxScore) {
 		return Math.sqrt(score) * maxScore;
 	}
 
@@ -845,19 +701,20 @@ public class Matcher {
 		public final int matchedFieldCount;
 	}
 
-	public static final ExecutorService threadPool = Executors.newWorkStealingPool();
 	public static final Logger LOGGER = LoggerFactory.getLogger("Matcher");
+	public static volatile ForkJoinPool threadPool = (ForkJoinPool) Executors.newWorkStealingPool(4);
+	public volatile boolean debugMode;
 
 	private final ClassEnvironment env;
-	private final ClassifierLevel autoMatchLevel = ClassifierLevel.Extra;
-	private final double absClassAutoMatchThreshold = 0.85;
-	private final double relClassAutoMatchThreshold = 0.085;
-	private final double absMethodAutoMatchThreshold = 0.85;
-	private final double relMethodAutoMatchThreshold = 0.085;
-	private final double absFieldAutoMatchThreshold = 0.85;
-	private final double relFieldAutoMatchThreshold = 0.085;
-	private final double absMethodArgAutoMatchThreshold = 0.85;
-	private final double relMethodArgAutoMatchThreshold = 0.085;
-	private final double absMethodVarAutoMatchThreshold = 0.85;
-	private final double relMethodVarAutoMatchThreshold = 0.085;
+	public static final ClassifierLevel defaultAutoMatchLevel = ClassifierLevel.Extra;
+	public static final double absClassAutoMatchThreshold = 0.85;
+	public static final double relClassAutoMatchThreshold = 0.085;
+	public static final double absMethodAutoMatchThreshold = 0.85;
+	public static final double relMethodAutoMatchThreshold = 0.085;
+	public static final double absFieldAutoMatchThreshold = 0.85;
+	public static final double relFieldAutoMatchThreshold = 0.085;
+	public static final double absMethodArgAutoMatchThreshold = 0.85;
+	public static final double relMethodArgAutoMatchThreshold = 0.085;
+	public static final double absMethodVarAutoMatchThreshold = 0.85;
+	public static final double relMethodVarAutoMatchThreshold = 0.085;
 }

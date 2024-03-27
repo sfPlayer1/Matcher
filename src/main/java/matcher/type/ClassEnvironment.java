@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.DoubleConsumer;
 import java.util.regex.Pattern;
 
@@ -43,7 +44,7 @@ import matcher.srcprocess.Decompiler;
 import matcher.type.Signature.ClassSignature;
 
 public final class ClassEnvironment implements ClassEnv {
-	public void init(ProjectConfig config, DoubleConsumer progressReceiver) {
+	public void init(ProjectConfig config, DoubleConsumer progressReceiver, AtomicBoolean cancelListener) {
 		final double cpInitCost = 0.05;
 		final double classReadCost = 0.2;
 		double progress = 0;
@@ -56,9 +57,13 @@ public final class ClassEnvironment implements ClassEnv {
 
 		try {
 			for (int i = 0; i < 2; i++) {
+				if (cancelListener.get()) {
+					return;
+				}
+
 				if ((i == 0) != inputsBeforeClassPath) {
 					// class path indexing
-					initClassPath(config.getSharedClassPath(), inputsBeforeClassPath);
+					initClassPath(config.getSharedClassPath(), inputsBeforeClassPath, cancelListener);
 					CompletableFuture.allOf(
 							CompletableFuture.runAsync(() -> extractorA.processClassPath(config.getClassPathA(), inputsBeforeClassPath)),
 							CompletableFuture.runAsync(() -> extractorB.processClassPath(config.getClassPathB(), inputsBeforeClassPath))).get();
@@ -91,8 +96,12 @@ public final class ClassEnvironment implements ClassEnv {
 		progressReceiver.accept(1);
 	}
 
-	private void initClassPath(Collection<Path> sharedClassPath, boolean checkExisting) throws IOException {
+	private void initClassPath(Collection<Path> sharedClassPath, boolean checkExisting, AtomicBoolean cancelListener) throws IOException {
 		for (Path archive : sharedClassPath) {
+			if (cancelListener.get()) {
+				return;
+			}
+
 			cpFiles.add(new InputFile(archive));
 
 			FileSystem fs = Util.iterateJar(archive, false, file -> {
